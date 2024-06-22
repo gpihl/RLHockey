@@ -18,7 +18,8 @@ for i in range(g.TRAINING_PARAMS['training_iterations']):
         model1 = SAC("MultiInputPolicy", env, learning_rate=g.TRAINING_PARAMS['learning_rate'], verbose=1)
         model2 = SAC("MultiInputPolicy", env, learning_rate=g.TRAINING_PARAMS['learning_rate'], verbose=1)
 
-    env.envs[0].get_wrapper_attr('game').player_2_model = model2
+    game = env.envs[0].get_wrapper_attr('game')
+    game.player_2_model = model2
 
     model1.learn(total_timesteps=g.TRAINING_PARAMS['training_steps'])
 
@@ -26,5 +27,7 @@ for i in range(g.TRAINING_PARAMS['training_iterations']):
 
     print(f"Saving model {next_model_path}")
     model1.save(next_model_path)
-    g.save_dict_to_file(g.REWARD_POLICY, next_model_path + '.txt')
-    g.save_dict_to_file(g.TRAINING_PARAMS, next_model_path + '.txt')
+    g.save_text_to_file(str(g.REWARD_POLICY), next_model_path + '.txt')
+    g.save_text_to_file(str(g.TRAINING_PARAMS), next_model_path + '.txt')
+    g.save_text_to_file(f"Total reward: {game.total_reward}", next_model_path + '.txt')
+    

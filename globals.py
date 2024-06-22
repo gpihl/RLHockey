@@ -7,18 +7,18 @@ REWARD_POLICY = {
     'acc_reward': -1.0,
     'player_1_goal': 400,
     'player_2_goal': -400,
-    'ball_proximity': 1.0,
-    'ball_velocity': 2.0,
-    'ball_velocity_toward_goal': 4.0,
+    'ball_proximity': 2.0,
+    'ball_velocity': 0.0,
+    'ball_velocity_toward_goal': 5.0,
     'normalization': 100,
 }
 
 TRAINING_PARAMS = {
-    'training_steps': 5000,
+    'training_steps': 50000,
     'learning_rate': 1.0e-4,
     'model_name': 'newester_test',
     'base_path': 'models',
-    'training_iterations': 10,
+    'training_iterations': 100,
 }
 
 # Colors
@@ -76,10 +76,10 @@ def interpolate_color(color1, color2, t):
         int(color1[2] + (color2[2] - color1[2]) * t)
     )    
 
-def save_dict_to_file(data_dict, file_path):
+def save_text_to_file(text, file_path):
     try:
         with open(file_path, 'a') as file:
-            file.write(str(data_dict))
+            file.write(text + '\n\n')
         print(f"File saved successfully at {file_path}")
     except Exception as e:
         print(f"An error occurred: {e}")

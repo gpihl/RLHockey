@@ -17,6 +17,10 @@ class Game:
         self.steps = 0
         self.no_render = False
         self.fps = g.HIGH_FPS if training else g.LOW_FPS
+        self.current_reward = 0.0
+        self.round_reward = 0.0
+        self.total_reward = 0.0
+        self.steps = 0        
         self.init_pygame()
         self.create_objects()
         self.reset()
@@ -38,9 +42,8 @@ class Game:
         self.puck = Puck()
 
     def reset(self):
-        self.training_player = 2
         self.current_reward = 0.0
-        self.total_reward = 0.0
+        self.round_reward = 0.0
         self.steps = 0
         self.paddle1.reset(self.training)
         self.paddle2.reset(self.training)
@@ -84,6 +87,7 @@ class Game:
         reward /= g.REWARD_POLICY["normalization"]
 
         self.current_reward = reward
+        self.round_reward += reward
         self.total_reward += reward
 
         return reward
@@ -108,7 +112,7 @@ class Game:
 
         self.clock.tick(self.fps)
 
-        return self.get_observation(1), self.get_reward(action), self.is_done(), { 'cumulative_reward': self.total_reward }
+        return self.get_observation(1), self.get_reward(action), self.is_done(), { 'cumulative_reward': self.round_reward }
     
     def get_observation(self, player):
         if player == 1:
@@ -174,8 +178,8 @@ class Game:
         text = self.reward_font.render(current_reward_label, True, g.REWARD_COLOR)
         self.screen.blit(text, g.REWARD_POS)
 
-        total_reward_label = f"{self.total_reward:.5}"
-        text = self.reward_font.render(total_reward_label, True, g.REWARD_COLOR)
+        round_reward_label = f"{self.round_reward:.5}"
+        text = self.reward_font.render(round_reward_label, True, g.REWARD_COLOR)
         self.screen.blit(text, (g.REWARD_POS[0], g.REWARD_POS[1] + 30))
 
     def draw_time_left(self):
