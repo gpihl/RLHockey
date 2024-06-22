@@ -4,6 +4,9 @@ import numpy as np
 import time
 import math
 import globals as g
+from stable_baselines3 import SAC
+from stable_baselines3.common.env_util import make_vec_env
+import environment
 from paddle import Paddle
 from puck import Puck
 
@@ -35,14 +38,13 @@ class Game:
         self.puck = Puck()
 
     def reset(self):
-        print("Resetting game")
         self.training_player = 2
         self.current_reward = 0.0
         self.total_reward = 0.0
         self.steps = 0
-        self.paddle1.reset()
-        self.paddle2.reset()
-        self.puck.reset()
+        self.paddle1.reset(self.training)
+        self.paddle2.reset(self.training)
+        self.puck.reset(self.training)
 
     def handle_ui_input(self):
         pygame.event.get()
@@ -147,6 +149,7 @@ class Game:
     def render(self):
         self.screen.fill(g.BG_COLOR)
         self.draw_goals()
+        self.draw_field_lines()
         self.paddle1.draw(self.screen)
         self.paddle2.draw(self.screen)
         self.puck.draw(self.screen)
@@ -154,9 +157,10 @@ class Game:
         pygame.display.flip()
 
     def draw_ui(self):
-        self.draw_reward()
         self.draw_time_left()
-        self.draw_steps_left()
+        if self.training:
+            self.draw_reward()
+            self.draw_steps_left()
 
     def draw_steps_left(self):
         steps_left = str(g.TRAINING_PARAMS['training_steps'] - self.total_steps)
@@ -192,11 +196,29 @@ class Game:
         pygame.draw.rect(self.screen, goal1_color, (*goal1_pos, *goal1_size))
         pygame.draw.rect(self.screen, goal2_color, (*goal2_pos, *goal2_size))
 
+    def draw_field_lines(self):
+        color = g.interpolate_color((255,255,255), g.BG_COLOR, 0.9)
+        line_thickness = 18
+
+        mid_circle_radius = 100
+        mid_point_radius = 30
+        g.draw_circle([g.WIDTH / 2, g.HEIGHT / 2], mid_circle_radius, color, self.screen, False)
+        g.draw_circle([g.WIDTH / 2, g.HEIGHT / 2], mid_circle_radius - line_thickness, g.BG_COLOR, self.screen, False)
+        g.draw_circle([g.WIDTH / 2, g.HEIGHT / 2], mid_point_radius, color, self.screen, False)
+
+        mid_line_size = (line_thickness, g.HEIGHT)
+        mid_line_pos = (g.WIDTH / 2 - mid_line_size[0] / 2, 0)
+        pygame.draw.rect(self.screen, color, (*mid_line_pos, *mid_line_size))        
+
     def close(self):
         pygame.quit()
 
 def standalone_game():
     game = Game(training=False)
+
+    latest_model_path = g.get_latest_model_path(g.TRAINING_PARAMS['base_path'], g.TRAINING_PARAMS['model_name'])
+    env = make_vec_env(lambda: environment.AirHockeyEnv(False), n_envs=1)
+    game.player_2_model = SAC.load(latest_model_path, env=env)
 
     running = True
     while running:

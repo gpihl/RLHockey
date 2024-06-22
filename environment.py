@@ -5,9 +5,10 @@ import numpy as np
 import globals as g
 
 class AirHockeyEnv(gym.Env):
-    def __init__(self):
+    def __init__(self, training=True):
         super(AirHockeyEnv, self).__init__()
-        self.game = game.Game(training=True)
+        if training:
+            self.game = game.Game(training=True)
 
         self.observation_space = spaces.Dict({
             "paddle_1_pos": spaces.Box(low=np.array([0, 0]), high=np.array([1, 1]), dtype=np.float32),

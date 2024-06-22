@@ -6,11 +6,15 @@ class Paddle:
     def __init__(self, player):
         self.player = player
         self.color = g.PADDLE_COLOR_1 if self.player == 1 else g.PADDLE_COLOR_2
-        self.reset()
+        self.reset(False)
 
-    def reset(self):
-        self.pos = self.get_starting_pos_random()
-        # self.pos = self.get_starting_pos_regular()
+    def reset(self, training):
+        if not training:
+            self.pos = self.get_starting_pos_regular()
+        else:
+            self.pos = self.get_starting_pos_random()
+            # self.pos = self.get_starting_pos_regular()            
+
         self.vel = np.array([0, 0], dtype=np.float32)
 
     def get_starting_pos_random(self):

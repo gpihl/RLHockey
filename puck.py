@@ -6,12 +6,16 @@ class Puck:
     def __init__(self):
         self.pos = self.get_starting_pos_regular()
         self.prev_puck_start_pos = self.pos
-        self.reset()
+        self.reset(False)
 
-    def reset(self):
-        # self.pos = self.get_starting_pos_random()
-        # self.pos = self.get_starting_pos_regular()
-        self.pos = self.get_starting_pos_moved_a_bit()
+    def reset(self, training):
+        if not training:
+            self.pos = self.get_starting_pos_regular()
+        else:
+            # self.pos = self.get_starting_pos_regular()
+            # self.pos = self.get_starting_pos_random()
+            self.pos = self.get_starting_pos_moved_a_bit()
+
         self.vel = np.array([0.0,0.0])
 
     def get_starting_pos_random(self):
@@ -31,7 +35,7 @@ class Puck:
         return new_starting_pos
     
     def get_starting_pos_regular(self):
-        return np.array([g.WIDTH / 2 - g.PUCK_RADIUS, g.HEIGHT / 2 - g.PUCK_RADIUS])
+        return np.array([g.WIDTH / 2, g.HEIGHT / 2])
 
     def update(self, paddles):
         self.vel *= g.PUCK_FRICTION
