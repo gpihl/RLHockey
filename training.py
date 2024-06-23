@@ -19,10 +19,8 @@ def main():
             model2 = SAC.load(latest_model_path, env=env, device=g.device)
         else:
             print(f"Creating new model {latest_model_path}")
-            model1 = SAC("MultiInputPolicy", env, learning_rate=g.TRAINING_PARAMS['learning_rate'], verbose=1, device=g.device)
-            model2 = SAC("MultiInputPolicy", env, learning_rate=g.TRAINING_PARAMS['learning_rate'], verbose=1, device=g.device)
-            # model1 = SAC("MultiInputPolicy", env, learning_rate=g.TRAINING_PARAMS['learning_rate'], verbose=1, device=g.device, batch_size=4096, buffer_size=1000000)
-            # model2 = SAC("MultiInputPolicy", env, learning_rate=g.TRAINING_PARAMS['learning_rate'], verbose=1, device=g.device, batch_size=4096, buffer_size=1000000)
+            model1 = SAC("MultiInputPolicy", env, learning_rate=g.TRAINING_PARAMS['learning_rate'], verbose=1, device=g.device, batch_size=4096, buffer_size=1000000)
+            model2 = SAC("MultiInputPolicy", env, learning_rate=g.TRAINING_PARAMS['learning_rate'], verbose=1, device=g.device, batch_size=4096, buffer_size=1000000)
 
         game = env.envs[0].get_wrapper_attr('game')
         game.player_2_model = model2

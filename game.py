@@ -169,23 +169,23 @@ class Game:
 
         # print(action)
  
-        # self.paddle1.control(action[0], action[1])
-        # self.paddle1.update()
+        self.paddle1.control(action[0], action[1])
+        self.paddle1.update()
 
-        # player_2_action = [0,0]
-        # if self.player_2_model:
-        #     player_2_action = self.player_2_model.predict(self.get_observation(2))[0]        
-        # if self.player_2_human:
-        #     player_2_action = self.get_player_action(keys)
-        #     self.paddle2.control(player_2_action[0], player_2_action[1])
-        # else:
-        #     self.paddle2.control(-player_2_action[0], player_2_action[1])
+        player_2_action = [0,0]
+        if self.player_2_model:
+            player_2_action = self.player_2_model.predict(self.get_observation(2))[0]        
+        if self.player_2_human:
+            player_2_action = self.get_player_action(keys)
+            self.paddle2.control(player_2_action[0], player_2_action[1])
+        else:
+            self.paddle2.control(-player_2_action[0], player_2_action[1])
         
 
-        # self.paddle2.update()
+        self.paddle2.update()
 
-        # self.paddle1.check_collision(self.paddle2)
-        # self.puck.update([self.paddle1, self.paddle2])
+        self.paddle1.check_collision(self.paddle2)
+        self.puck.update([self.paddle1, self.paddle2])
 
         if not self.no_render:
             self.render()
@@ -251,7 +251,11 @@ class Game:
                 "goal_dir":     torch.tensor([0.0, 0.0], device=device),
             }    
 
-        return {k: v.cpu() for k, v in obs.items()}
+        for key in obs:
+            obs[key] = torch.tensor(obs[key], device=device).cpu().numpy()
+
+        return obs
+
 
     def scale(self, vec, x_max, y_max):
         return np.array([vec[0] / x_max, vec[1] / y_max])

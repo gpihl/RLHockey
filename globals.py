@@ -2,7 +2,6 @@ import pygame.gfxdraw
 import os
 import torch
 
-
 device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 print(f"Using device: {device}")
 
@@ -21,7 +20,7 @@ REWARD_POLICY = {
 TRAINING_PARAMS = {
     'training_steps': 5000,
     'learning_rate': 1.0e-4,
-    'model_name': 'bajsy_ny',
+    'model_name': 'bajsy',
     'base_path': 'models',
     'training_iterations': 10000,
 }
@@ -30,7 +29,7 @@ TRAINING_PARAMS = {
 BG_COLOR = (43, 50, 80)
 
 # Display
-WIDTH, HEIGHT = 800, 400
+WIDTH, HEIGHT = 2000, 1000
 HIGH_FPS = 60000
 LOW_FPS = 120
 
