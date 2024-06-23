@@ -1,5 +1,9 @@
 import pygame.gfxdraw
 import os
+import torch
+
+device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
+print(f"Using device: {device}")
 
 # Training params
 REWARD_POLICY = {   
@@ -7,27 +11,27 @@ REWARD_POLICY = {
     'acc_reward': -1.0,
     'player_1_goal': 400,
     'player_2_goal': -400,
-    'ball_proximity': 2.0,
+    'ball_proximity': 100.0,
     'ball_velocity': 0.0,
-    'ball_velocity_toward_goal': 5.0,
+    'ball_vel_2_goal': 5.0,
     'normalization': 100,
 }
 
 TRAINING_PARAMS = {
-    'training_steps': 50000,
+    'training_steps': 5000,
     'learning_rate': 1.0e-4,
-    'model_name': 'newester_test',
+    'model_name': 'bajsy',
     'base_path': 'models',
-    'training_iterations': 100,
+    'training_iterations': 10000,
 }
 
 # Colors
 BG_COLOR = (43, 50, 80)
 
 # Display
-WIDTH, HEIGHT = 800, 400
+WIDTH, HEIGHT = 2000, 1000
 HIGH_FPS = 60000
-LOW_FPS = 60
+LOW_FPS = 120
 
 # Fonts
 REWARD_COLOR = (154, 120, 134)
@@ -48,17 +52,21 @@ STEPS_LEFT_POS = (WIDTH - 70, 30)
 # Paddle
 PADDLE_COLOR_1 = (51, 153, 255)
 PADDLE_COLOR_2 = (0, 204, 102)
-PADDLE_RADIUS = 20
-PADDLE_FRICTION = 0.92
-PADDLE_SPEED = 1.0
-MAX_PADDLE_SPEED = 25
+PADDLE_RADIUS = int(30 * (WIDTH) / 800)
+PADDLE_FRICTION = 0.94
+PADDLE_ACC = 1.6
+MAX_PADDLE_SPEED = 38
 
 # Puck
 PUCK_COLOR = (124, 254, 253)
-MAX_PUCK_SPEED = 25
+MAX_PUCK_SPEED = 40
 PUCK_START_SPEED = 4
-PUCK_RADIUS = 15
-PUCK_FRICTION = 0.99
+PUCK_RADIUS = int(25 * (WIDTH) / 800)
+PUCK_FRICTION = 0.996
+PUCK_RESTITUTION = 0.95
+
+# Goal
+GOAL_HEIGHT = 260 * int(WIDTH / 800)
 
 # Match
 TIME_LIMIT = 15 * 60

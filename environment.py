@@ -20,7 +20,7 @@ class AirHockeyEnv(gym.Env):
             "goal_dir":     spaces.Box(low=np.array([-1, -1]), high=np.array([1, 1]), dtype=np.float32),
         })
 
-        self.action_space = spaces.Box(low=-g.PADDLE_SPEED, high=g.PADDLE_SPEED, shape=(2,), dtype=np.float32)
+        self.action_space = spaces.Box(low=-g.PADDLE_ACC, high=g.PADDLE_ACC, shape=(2,), dtype=np.float32)
 
     def reset(self, seed=None, **kwargs):
         print("Resetting environment")
