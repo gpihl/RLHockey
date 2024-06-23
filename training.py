@@ -13,14 +13,17 @@ def main():
         env = make_vec_env(lambda: environment.AirHockeyEnv(), n_envs=1)
         # env = SubprocVecEnv([lambda: environment.AirHockeyEnv(training=True) for _ in range(4)])
 
+        batch_size = 4096
+        buffer_size = 1000000
+        
         if latest_model_path:
             print(f"Loading model {latest_model_path}")
-            model1 = SAC.load(latest_model_path, env=env, device=g.device)
-            model2 = SAC.load(latest_model_path, env=env, device=g.device)
+            model1 = SAC.load(latest_model_path, env=env, device=g.device, batch_size=batch_size, buffer_size=buffer_size)
+            model2 = SAC.load(latest_model_path, env=env, device=g.device, batch_size=batch_size, buffer_size=buffer_size)
         else:
             print(f"Creating new model {latest_model_path}")
-            model1 = SAC("MultiInputPolicy", env, learning_rate=g.TRAINING_PARAMS['learning_rate'], verbose=1, device=g.device, batch_size=4096, buffer_size=1000000)
-            model2 = SAC("MultiInputPolicy", env, learning_rate=g.TRAINING_PARAMS['learning_rate'], verbose=1, device=g.device, batch_size=4096, buffer_size=1000000)
+            model1 = SAC("MultiInputPolicy", env, learning_rate=g.TRAINING_PARAMS['learning_rate'], verbose=1, device=g.device, batch_size=batch_size, buffer_size=buffer_size)
+            model2 = SAC("MultiInputPolicy", env, learning_rate=g.TRAINING_PARAMS['learning_rate'], verbose=1, device=g.device, batch_size=batch_size, buffer_size=buffer_size)
 
         game = env.envs[0].get_wrapper_attr('game')
         game.player_2_model = model2

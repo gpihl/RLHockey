@@ -27,10 +27,11 @@ class AirHockeyEnv(gym.Env):
         super().reset(seed=seed)
         self.game.reset()
         observation = self.game.get_observation(1)
-        return observation, {}
+        return {k: v.numpy() for k, v in observation.items()}, {}
 
     def step(self, action):
         observation, reward, done, info = self.game.step(action)
+        observation = {k: v.numpy() for k, v in observation.items()}
         if done:
             print(f'Total reward: {info['cumulative_reward']}')
         truncated = False

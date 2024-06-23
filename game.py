@@ -78,12 +78,12 @@ class Game:
         self.puck.reset(self.training)
 
     def create_sliders(self):
-        y = g.HEIGHT - 400
-        x = g.WIDTH - 270
+        y = int(g.HEIGHT - 400 * g.WIDTH / 2000)
+        x = int(g.WIDTH - 270 * g.WIDTH / 2000)
         for key, value in g.REWARD_POLICY.items():
-            slider = Slider(self.screen, x, y, 200, 20, -max(np.abs(value) * 2, 10), max(np.abs(value * 2), 10), value, key)
+            slider = Slider(self.screen, x, y, int(200 * g.WIDTH / 2000), int(20 * g.WIDTH / 2000), -max(np.abs(value) * 2, 10), max(np.abs(value * 2), 10), value, key)
             self.sliders.append(slider)
-            y += 50
+            y += int(50 * g.WIDTH / 2000)
 
     def update_sliders(self):
         for slider in self.sliders:
@@ -251,11 +251,7 @@ class Game:
                 "goal_dir":     torch.tensor([0.0, 0.0], device=device),
             }    
 
-        for key in obs:
-            obs[key] = torch.tensor(obs[key], device=device).cpu().numpy()
-
-        return obs
-
+        return {k: v.cpu() for k, v in obs.items()}
 
     def scale(self, vec, x_max, y_max):
         return np.array([vec[0] / x_max, vec[1] / y_max])
@@ -312,7 +308,7 @@ class Game:
     def draw_goals(self):
         goal1_color = g.interpolate_color(g.PADDLE_COLOR_1, g.BG_COLOR, 0.7)
         goal2_color = g.interpolate_color(g.PADDLE_COLOR_2, g.BG_COLOR, 0.7)
-        goal_width = 16 * int((g.WIDTH) / 800)
+        goal_width = int(16 * g.WIDTH / 800)
         goal1_pos = (0, (g.HEIGHT - g.GOAL_HEIGHT) / 2)
         goal1_size = (goal_width, g.GOAL_HEIGHT)
         goal2_pos = (g.WIDTH - goal_width, (g.HEIGHT - g.GOAL_HEIGHT) / 2)
@@ -322,10 +318,10 @@ class Game:
 
     def draw_field_lines(self):
         color = g.interpolate_color((255,255,255), g.BG_COLOR, 0.9)
-        line_thickness = 18 * int((g.WIDTH) / 800)
+        line_thickness = int(18 * g.WIDTH / 800)
 
-        mid_circle_radius = 100 * int((g.WIDTH) / 800)
-        mid_point_radius = 30* int((g.WIDTH) / 800)
+        mid_circle_radius = int(100 * g.WIDTH / 800)
+        mid_point_radius = int(30 * g.WIDTH / 800)
         g.draw_circle([g.WIDTH / 2, g.HEIGHT / 2], mid_circle_radius, color, self.screen, False)
         g.draw_circle([g.WIDTH / 2, g.HEIGHT / 2], mid_circle_radius - line_thickness, g.BG_COLOR, self.screen, False)
         g.draw_circle([g.WIDTH / 2, g.HEIGHT / 2], mid_point_radius, color, self.screen, False)
@@ -349,7 +345,7 @@ class Slider:
         self.handle_color = g.interpolate_color((255,255,255), g.PADDLE_COLOR_2, 0.5)
         self.text_color = g.TIME_COLOR
         self.bg_color = g.interpolate_color((255,255,255), g.BG_COLOR, 0.5)
-        self.font = pygame.font.SysFont('Arial', 20)
+        self.font = pygame.font.SysFont('Arial', int(20 * g.WIDTH / 2000))
         self.dragging = False
         self.rect_surface = pygame.Surface((width, height), pygame.SRCALPHA)
         self.rect_surface.fill((*self.bg_color, 30))
@@ -363,7 +359,7 @@ class Slider:
 
         # Draw label
         label_surface = self.font.render(f'{self.label}: {self.value:.2f}', True, self.text_color)
-        self.screen.blit(label_surface, (self.rect.x, self.rect.y - 25))
+        self.screen.blit(label_surface, (self.rect.x, self.rect.y - int(25 * g.WIDTH / 2000)))
     # def draw(self):
     #     # Draw background
     #     # pygame.draw.rect(self.screen, (*self.bg_color, 100), self.rect)
