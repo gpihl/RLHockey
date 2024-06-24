@@ -12,16 +12,17 @@ sound_handler = SoundHandler()
 REWARD_POLICY = {   
     'time_reward': -0.1,
     'acc_reward': -0.1,
-    'player_1_goal': 5,
-    'player_2_goal': -5,
-    'ball_proximity': 0.3,
-    'ball_velocity': 1.5,
-    'ball_vel_2_goal': 1.5,
+    'player_1_goal': 20,
+    'player_2_goal': -20,
+    'ball_proximity': 0.05,
+    'ball_velocity': 0.3,
+    'ball_vel_2_goal': 0.3,
+    'center': -0.3,
     'normalization': 1.0,
 }
 
 TRAINING_PARAMS = {
-    'training_steps': 5000,
+    'training_steps': 15000,
     'learning_rate': 1.0e-4,
     'model_name': 'new-observations',
     'base_path': 'models',
@@ -30,8 +31,8 @@ TRAINING_PARAMS = {
     'blocked_goals': False,
     'random_starting_locations': False,
     'no_render': False,
-    'no_sound': False,
-    'field_split': False,
+    'no_sound': True,
+    'field_split': True,
     'device': 'cpu',
     'algorithm': 'PPO'
 }
@@ -76,7 +77,7 @@ MAX_PADDLE_SPEED = 38
 PUCK_COLOR = (124, 254, 253)
 MAX_PUCK_SPEED = 40
 PUCK_START_SPEED = 4
-PUCK_RADIUS = int(25 * WIDTH / 800)
+PUCK_RADIUS = int(20 * WIDTH / 800)
 PUCK_FRICTION = 0.996
 PUCK_RESTITUTION = 0.95
 

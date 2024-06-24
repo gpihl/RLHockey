@@ -66,17 +66,20 @@ class Paddle:
         relative_pos[1] /= g.HEIGHT
         return relative_pos
     
-    def update(self):
+    def update(self, training):
         self.vel *= (g.PADDLE_FRICTION ** g.DELTA_T)
         self.vel = np.clip(self.vel, -g.MAX_PADDLE_SPEED, g.MAX_PADDLE_SPEED)
+        if training and self.player == 2:
+            self.vel += np.random.normal(0, 0.4, 2) * g.DELTA_T
+
         self.pos += self.vel * g.DELTA_T
         
         if g.TRAINING_PARAMS['field_split']:
             if self.player == 1:
                 left_wall = g.PADDLE_RADIUS
-                right_wall = g.WIDTH / 2 - g.PADDLE_RADIUS
+                right_wall = g.WIDTH / 2 + g.PADDLE_RADIUS
             else:
-                left_wall = g.WIDTH / 2 + g.PADDLE_RADIUS
+                left_wall = g.WIDTH / 2 - g.PADDLE_RADIUS
                 right_wall = g.WIDTH - g.PADDLE_RADIUS
         else:
             left_wall = g.PADDLE_RADIUS

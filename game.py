@@ -177,6 +177,12 @@ class Game:
         proximity_reward = ((g.WIDTH - dist_to_puck) / g.WIDTH) * side_multiplier * g.REWARD_POLICY["ball_proximity"]
         reward += proximity_reward
 
+        dist_to_center = np.abs(self.paddle1.pos[0] - g.WIDTH/2)
+        center_reward = ((g.WIDTH / 2 - dist_to_center) / (g.WIDTH / 2)) * g.REWARD_POLICY["center"]
+        # print(center_reward)
+        reward += center_reward
+
+
         reward += self.puck.collect_shot_reward('vel_2_goal') * g.REWARD_POLICY["ball_vel_2_goal"]
         reward += self.puck.collect_shot_reward('ball_velocity') * g.REWARD_POLICY["ball_velocity"]
         reward /= g.REWARD_POLICY["normalization"]
@@ -202,7 +208,7 @@ class Game:
         # print(action)
  
         self.paddle1.control(action[0], action[1])
-        self.paddle1.update()
+        self.paddle1.update(self.training)
 
         player_2_action = [0,0]
         if self.player_2_model:
@@ -214,7 +220,7 @@ class Game:
             self.paddle2.control(-player_2_action[0], player_2_action[1])
         
 
-        self.paddle2.update()
+        self.paddle2.update(self.training)
 
         self.paddle1.handle_collision(self.paddle2)
         self.puck.update([self.paddle1, self.paddle2])

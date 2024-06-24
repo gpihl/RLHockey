@@ -1,6 +1,7 @@
 import numpy as np
 import random
 import globals as g
+import math
 
 class Puck: 
     def __init__(self):
@@ -48,7 +49,8 @@ class Puck:
     def update(self, paddles):
         self.vel *=  (g.PUCK_FRICTION ** g.DELTA_T)
         self.vel = np.clip(self.vel, -g.MAX_PUCK_SPEED, g.MAX_PUCK_SPEED)
-        self.pos += self.vel * g.DELTA_T
+        self.vel += np.random.normal(0, 0.05, 2) * g.DELTA_T
+        self.pos += self.vel * g.DELTA_T        
 
         for paddle in paddles:
             self.handle_paddle_collision(paddle)
@@ -88,11 +90,14 @@ class Puck:
     def collect_shot_reward(self, reward_type):
         if reward_type == 'vel_2_goal':
             reward = self.shot_on_goal_reward
+            self.shot_on_goal_reward = 0
         elif reward_type == 'ball_velocity':
             reward = self.shot_reward
-        
-        self.shot_reward = 0
-        self.shot_on_goal_reward = 0
+            self.shot_reward = 0
+
+        # if reward != 0:
+        #     print(reward)
+
         return reward
     
     def handle_paddle_collision(self, paddle):
@@ -115,8 +120,12 @@ class Puck:
             paddle.vel -= 0.2 * impulse / g.PADDLE_RADIUS
             self.pos += normal * (overlap / 2)
 
-            self.shot_on_goal_rewardl = self.vel[0] - prev_vel[0]
+
+            self.shot_on_goal_rewardl = self.vel[0] - prev_vel[0]            
             self.shot_reward = np.linalg.norm(relative_velocity)
+            
+            if paddle.player == 2:
+                self.shot_reward *= -1
 
             sound_vel = np.linalg.norm(relative_velocity)
             if sound_vel != 0:
