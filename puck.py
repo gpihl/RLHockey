@@ -4,20 +4,20 @@ import globals as g
 
 class Puck: 
     def __init__(self):
-        self.pos = self.get_starting_pos_regular()
+        self.pos = self.get_starting_pos_regular(2)
         self.prev_puck_start_pos = self.pos
         self.shot_reward = 0
         self.shot_on_goal_reward = 0
-        self.reset(False)
+        self.reset(False, 2)
 
-    def reset(self, training):
+    def reset(self, training, last_scorer):
         if not training:
-            self.pos = self.get_starting_pos_regular()
+            self.pos = self.get_starting_pos_regular(last_scorer)
         else:
             if g.TRAINING_PARAMS['random_starting_locations']:
                 self.pos = self.get_starting_pos_random()
             else:
-                self.pos = self.get_starting_pos_regular()
+                self.pos = self.get_starting_pos_regular(last_scorer)
             
             # self.pos = self.get_starting_pos_moved_a_bit()
 
@@ -39,8 +39,11 @@ class Puck:
         new_starting_pos = np.clip(new_starting_pos, g.PUCK_RADIUS*2 + 20, g.WIDTH - 2*g.PUCK_RADIUS - 20)
         return new_starting_pos
     
-    def get_starting_pos_regular(self):
-        return np.array([g.WIDTH / 2, g.HEIGHT / 2])
+    def get_starting_pos_regular(self, last_scorer):
+        if last_scorer == 2:
+            return np.array([g.WIDTH / 4, g.HEIGHT / 2])
+        elif last_scorer == 1:
+            return np.array([g.WIDTH * 3 / 4, g.HEIGHT / 2])
 
     def update(self, paddles):
         self.vel *=  (g.PUCK_FRICTION ** g.DELTA_T)

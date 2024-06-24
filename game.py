@@ -28,6 +28,7 @@ class Game:
         self.total_steps = 0
         self.prev_t = time.time()
         self.curr_t = time.time()
+        self.last_scorer = 2
         self.steps = 0
         self.fps = g.HIGH_FPS if training else g.LOW_FPS
         self.current_reward = 0.0
@@ -87,7 +88,7 @@ class Game:
         self.steps = 0
         self.paddle1.reset(self.training)
         self.paddle2.reset(self.training)
-        self.puck.reset(self.training)
+        self.puck.reset(self.training, self.last_scorer)
 
     def create_sliders(self):
         y = int(g.HEIGHT - 400 * g.WIDTH / 2000)
@@ -170,7 +171,11 @@ class Game:
         elif self.player_2_scored():
             reward += g.REWARD_POLICY["player_2_goal"]
 
-        reward += ((g.WIDTH - np.linalg.norm(self.paddle1.pos - self.puck.pos)) / g.WIDTH) * g.REWARD_POLICY["ball_proximity"]
+        relative_pos = self.puck.pos - self.paddle1.pos
+        dist_to_puck = np.linalg.norm(relative_pos)
+        side_multiplier = np.dot(relative_pos / dist_to_puck, np.array([1.0, 0.0]))
+        proximity_reward = ((g.WIDTH - dist_to_puck) / g.WIDTH) * side_multiplier * g.REWARD_POLICY["ball_proximity"]
+        reward += proximity_reward
 
         reward += self.puck.collect_shot_reward('vel_2_goal') * g.REWARD_POLICY["ball_vel_2_goal"]
         reward += self.puck.collect_shot_reward('ball_velocity') * g.REWARD_POLICY["ball_velocity"]
@@ -213,6 +218,11 @@ class Game:
 
         self.paddle1.handle_collision(self.paddle2)
         self.puck.update([self.paddle1, self.paddle2])
+
+        if self.player_1_scored():
+            self.last_scorer = 1
+        elif self.player_2_scored():
+            self.last_scorer = 2
 
         if not g.TRAINING_PARAMS['no_render']:
             self.render()

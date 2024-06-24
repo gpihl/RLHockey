@@ -66,9 +66,6 @@ class Paddle:
         relative_pos[1] /= g.HEIGHT
         return relative_pos
     
-
-
-    
     def update(self):
         self.vel *= (g.PADDLE_FRICTION ** g.DELTA_T)
         self.vel = np.clip(self.vel, -g.MAX_PADDLE_SPEED, g.MAX_PADDLE_SPEED)

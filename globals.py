@@ -33,7 +33,7 @@ TRAINING_PARAMS = {
     'no_sound': False,
     'field_split': False,
     'device': 'cpu',
-    'algorithm': 'SAC'  
+    'algorithm': 'PPO'
 }
 
 TRAINING_PARAMS['model_name'] += TRAINING_PARAMS['algorithm']
@@ -44,7 +44,7 @@ DELTA_T = 0.85
 BG_COLOR = (43, 50, 80)
 
 # Display
-WIDTH, HEIGHT = 2000, 1000
+WIDTH, HEIGHT = 800, 400
 HIGH_FPS = 60000
 LOW_FPS = 120
 
