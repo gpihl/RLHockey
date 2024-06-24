@@ -7,6 +7,7 @@ from stable_baselines3.common.vec_env import SubprocVecEnv
 def main():
     for i in range(g.TRAINING_PARAMS['training_iterations']):
         latest_model_path = g.get_latest_model_path(g.TRAINING_PARAMS['base_path'], g.TRAINING_PARAMS['model_name'])
+        random_model_path = g.get_random_model_path(g.TRAINING_PARAMS['base_path'], g.TRAINING_PARAMS['model_name'])
         next_model_path = g.get_next_model_path(g.TRAINING_PARAMS['base_path'], g.TRAINING_PARAMS['model_name'])
 
         env = make_vec_env(lambda: environment.AirHockeyEnv(), n_envs=1)
@@ -25,8 +26,14 @@ def main():
         if latest_model_path:
             print(f"Loading model {latest_model_path}")
             model1 = algorithm.load(latest_model_path, env=env, device=g.TRAINING_PARAMS['device'], batch_size=batch_size)
+            model1.learning_rate = g.TRAINING_PARAMS['learning_rate']
+            # for param_group in model1.optimizer.param_groups:
+            #     param_group['lr'] = g.TRAINING_PARAMS['learning_rate']
+
             if g.TRAINING_PARAMS['player_2_active']:
-                model2 = algorithm.load(latest_model_path, env=env, device=g.device, batch_size=batch_size)
+                print(random_model_path)
+                # model2 = algorithm.load(latest_model_path, env=env, device=g.device, batch_size=batch_size)
+                model2 = algorithm.load(random_model_path, env=env, device=g.device, batch_size=batch_size)
         else:
             print(f"Creating new model {latest_model_path}")
             model1 = algorithm("MultiInputPolicy", env, learning_rate=g.TRAINING_PARAMS['learning_rate'], verbose=1, device=g.TRAINING_PARAMS['device'], batch_size=batch_size)

@@ -1,6 +1,8 @@
 import pygame.gfxdraw
 import os
 import torch
+import random
+import numpy as np
 from sound_handler import SoundHandler
 
 device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
@@ -9,30 +11,42 @@ print(f"Using device: {device}")
 sound_handler = SoundHandler()
 
 # Training params
+# REWARD_POLICY = {   
+#     'time_reward': -0.1,
+#     'acc_reward': -0.1,
+#     'player_1_goal': 20,
+#     'player_2_goal': -20,
+#     'ball_proximity': 0.05,
+#     'ball_velocity': 0.3,
+#     'ball_vel_2_goal': 0.3,
+#     'center': -0.3,
+#     'normalization': 1.0,
+# }
+
 REWARD_POLICY = {   
-    'time_reward': -0.1,
-    'acc_reward': -0.1,
+    'time_reward': -0.02,
+    'acc_reward': -0.04,
     'player_1_goal': 20,
     'player_2_goal': -20,
-    'ball_proximity': 0.05,
-    'ball_velocity': 0.3,
-    'ball_vel_2_goal': 0.3,
-    'center': -0.3,
+    'ball_proximity': 0.0,
+    'ball_velocity': 0.0,
+    'ball_vel_2_goal': 0.0,
+    'center': -0.0,
     'normalization': 1.0,
 }
 
 TRAINING_PARAMS = {
     'training_steps': 15000,
-    'learning_rate': 1.0e-4,
+    'learning_rate': 0.3e-4,
     'model_name': 'new-observations',
     'base_path': 'models',
-    'training_iterations': 10000,
+    'training_iterations': 4000,
     'player_2_active': True,
     'blocked_goals': False,
-    'random_starting_locations': False,
+    'random_starting_locations': True,
     'no_render': False,
     'no_sound': True,
-    'field_split': True,
+    'field_split': False,
     'device': 'cpu',
     'algorithm': 'PPO'
 }
@@ -69,8 +83,8 @@ STEPS_LEFT_POS = (WIDTH - 70, 30)
 PADDLE_COLOR_1 = (51, 153, 255)
 PADDLE_COLOR_2 = (0, 204, 102)
 PADDLE_RADIUS = int(30 * WIDTH / 800)
-PADDLE_FRICTION = 0.94
-PADDLE_ACC = 1.6
+PADDLE_FRICTION = 0.86
+PADDLE_ACC = 2.5
 MAX_PADDLE_SPEED = 38
 
 # Puck
@@ -82,7 +96,7 @@ PUCK_FRICTION = 0.996
 PUCK_RESTITUTION = 0.95
 
 # Goal
-GOAL_HEIGHT = int(260 * WIDTH / 800)
+GOAL_HEIGHT = int(140 * WIDTH / 800)
 
 # Match
 TIME_LIMIT = 60 * LOW_FPS
@@ -114,6 +128,17 @@ def get_latest_model_path(base_path, prefix):
         return None
     latest_model = max(models, key=lambda x: int(x.split('_')[-1].split('.')[0]))
     return os.path.join(base_path, latest_model)
+
+def get_random_model_path(base_path, prefix):
+    models = [f for f in os.listdir(base_path) if f.startswith(prefix) and f.endswith('.zip')]
+    if not models:
+        return None
+
+    models.sort(key = lambda x: int(x.split('_')[-1].split('.')[0]))
+    random_index = max(0, len(models) - int(np.abs(np.random.normal(0, 0.25, 1)[0]) * len(models)) - 1)
+    print(f"random_index: {random_index}")
+    random_model = models[random_index]
+    return os.path.join(base_path, random_model)
 
 def get_next_model_path(base_path, prefix):
     models = [f for f in os.listdir(base_path) if f.startswith(prefix) and f.endswith('.zip')]

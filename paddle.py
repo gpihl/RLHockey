@@ -35,7 +35,7 @@ class Paddle:
 
     def control(self, ax, ay):
         acc = np.array([ax, ay], dtype=np.float32)
-        self.vel += acc * g.DELTA_T
+        self.vel += acc * g.DELTA_T * g.PADDLE_ACC / 1.6
 
     def get_relative_pos_of_paddle_obs(self, paddle):
         relative_pos = paddle.pos - self.pos
@@ -69,17 +69,17 @@ class Paddle:
     def update(self, training):
         self.vel *= (g.PADDLE_FRICTION ** g.DELTA_T)
         self.vel = np.clip(self.vel, -g.MAX_PADDLE_SPEED, g.MAX_PADDLE_SPEED)
-        if training and self.player == 2:
-            self.vel += np.random.normal(0, 0.4, 2) * g.DELTA_T
+        # if training and self.player == 2:
+        #     self.vel += np.random.normal(0, 0.4, 2) * g.DELTA_T
 
         self.pos += self.vel * g.DELTA_T
         
         if g.TRAINING_PARAMS['field_split']:
             if self.player == 1:
                 left_wall = g.PADDLE_RADIUS
-                right_wall = g.WIDTH / 2 + g.PADDLE_RADIUS
+                right_wall = g.WIDTH / 2 - g.PADDLE_RADIUS
             else:
-                left_wall = g.WIDTH / 2 - g.PADDLE_RADIUS
+                left_wall = g.WIDTH / 2 + g.PADDLE_RADIUS
                 right_wall = g.WIDTH - g.PADDLE_RADIUS
         else:
             left_wall = g.PADDLE_RADIUS

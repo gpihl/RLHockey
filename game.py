@@ -445,6 +445,8 @@ def standalone_game():
         print(f"Joystick {i} number of axes: {joystick.get_numaxes()}")
         print(f"Joystick {i} number of buttons: {joystick.get_numbuttons()}")
 
+    g.TRAINING_PARAMS['no_sound'] = False
+
     game = Game(training=False)
 
     latest_model_path = g.get_latest_model_path(g.TRAINING_PARAMS['base_path'], g.TRAINING_PARAMS['model_name'])

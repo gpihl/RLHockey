@@ -45,7 +45,8 @@ class SoundHandler:
             'dorian': [1,3,4,6,8,10,11],
             'mixolydian': [1,3,5,6,8,10,11],
             'lydian': [1,3,5,7,8,10,12],
-            'major': [1,3,5,6,8,10,12],            
+            'major': [1,3,5,6,8,10,12],
+            'maj9': [1,3,5,8,12],
             'phrygian': [1,2,4,6,8,9,11],            
             'chromatic': [1,2,3,4,5,6,7,8,9,10,11],
         }
@@ -71,9 +72,9 @@ class SoundHandler:
 
         
 
-    def velocity_to_sound_index(self, velocity, scale='major'):
+    def velocity_to_sound_index(self, velocity, scale='maj9'):
         velocity = max(0, min(velocity, g.MAX_PUCK_SPEED + g.MAX_PADDLE_SPEED))
-        index = int((velocity / (g.MAX_PUCK_SPEED + g.MAX_PADDLE_SPEED)) * 23) + 1
+        index = int((velocity * 2 / (g.MAX_PUCK_SPEED + g.MAX_PADDLE_SPEED)) * 23) + 1
         scale_index = self.map_to_scale(index, scale)
         return scale_index
     
