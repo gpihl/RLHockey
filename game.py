@@ -5,7 +5,7 @@ import numpy as np
 import time
 import math
 import globals as g
-from stable_baselines3 import SAC
+from stable_baselines3 import SAC, PPO
 from stable_baselines3.common.env_util import make_vec_env
 import environment
 from paddle import Paddle
@@ -265,18 +265,33 @@ class Game:
     def get_observation(self, player):
         # Set device to CUDA if available
         device = g.device
-        obs = {
-            "paddle_2_pos": torch.tensor(self.paddle1.get_relative_pos_of_paddle_obs(self.paddle2), device=device),
-            "puck_pos":     torch.tensor(self.paddle1.get_relative_pos_of_puck_obs(self.puck), device=device),
-            "paddle_1_vel": torch.tensor(self.scale(self.paddle1.vel, g.MAX_PADDLE_SPEED, g.MAX_PADDLE_SPEED), device=device),
-            "paddle_2_vel": torch.tensor(self.scale(self.paddle2.vel, g.MAX_PADDLE_SPEED, g.MAX_PADDLE_SPEED), device=device),
-            "puck_vel":     torch.tensor(self.scale(self.puck.vel, g.MAX_PUCK_SPEED, g.MAX_PUCK_SPEED), device=device),
-            "goal_1_top_pos":     torch.tensor(self.paddle1.get_relative_pos_of_goal_1_top(), device=device),
-            "goal_1_bot_pos":     torch.tensor(self.paddle1.get_relative_pos_of_goal_1_bot(), device=device),
-            "goal_2_top_pos":     torch.tensor(self.paddle1.get_relative_pos_of_goal_2_top(), device=device),
-            "goal_2_bot_pos":     torch.tensor(self.paddle1.get_relative_pos_of_goal_2_bot(), device=device),
-        }
-        return {k: v.cpu() for k, v in obs.items()}
+        if player == 1:
+            obs = {
+                "paddle_2_pos": self.paddle1.get_relative_pos_of_paddle_obs(self.paddle2),
+                "puck_pos":     self.paddle1.get_relative_pos_of_puck_obs(self.puck),
+                "paddle_1_vel": self.scale(self.paddle1.vel, g.MAX_PADDLE_SPEED, g.MAX_PADDLE_SPEED),
+                "paddle_2_vel": self.scale(self.paddle2.vel, g.MAX_PADDLE_SPEED, g.MAX_PADDLE_SPEED),
+                "puck_vel":     self.scale(self.puck.vel, g.MAX_PUCK_SPEED, g.MAX_PUCK_SPEED),
+                "goal_1_top_pos":     self.paddle1.get_relative_pos_of_goal_1_top(),
+                "goal_1_bot_pos":     self.paddle1.get_relative_pos_of_goal_1_bot(),
+                "goal_2_top_pos":     self.paddle1.get_relative_pos_of_goal_2_top(),
+                "goal_2_bot_pos":     self.paddle1.get_relative_pos_of_goal_2_bot(),
+            }
+        elif player == 2:
+            obs = {
+                "paddle_2_pos": self.paddle2.get_relative_pos_of_paddle_obs(self.paddle1),
+                "puck_pos":     self.paddle2.get_relative_pos_of_puck_obs(self.puck),
+                "paddle_1_vel": self.scale(self.paddle2.vel, g.MAX_PADDLE_SPEED, g.MAX_PADDLE_SPEED),
+                "paddle_2_vel": self.scale(self.paddle1.vel, g.MAX_PADDLE_SPEED, g.MAX_PADDLE_SPEED),
+                "puck_vel":     self.scale(self.puck.vel, g.MAX_PUCK_SPEED, g.MAX_PUCK_SPEED),
+                "goal_1_top_pos":     self.paddle2.get_relative_pos_of_goal_2_top(),
+                "goal_1_bot_pos":     self.paddle2.get_relative_pos_of_goal_2_bot(),                
+                "goal_2_top_pos":     self.paddle2.get_relative_pos_of_goal_1_top(),
+                "goal_2_bot_pos":     self.paddle2.get_relative_pos_of_goal_1_bot(),
+            }
+            obs = {k: np.array([-v[0], v[1]]) for k, v in obs.items()}
+
+        return {k: torch.tensor(v, device=device).cpu() for k, v in obs.items()}
 
     def scale(self, vec, x_max, y_max):
         return np.array([vec[0] / x_max, vec[1] / y_max])
@@ -428,9 +443,15 @@ def standalone_game():
 
     latest_model_path = g.get_latest_model_path(g.TRAINING_PARAMS['base_path'], g.TRAINING_PARAMS['model_name'])
 
+    algorithm = None
+    if g.TRAINING_PARAMS['algorithm'] == 'PPO':
+        algorithm = PPO
+    elif g.TRAINING_PARAMS['algorithm'] == 'SAC':
+        algorithm = SAC
+
     if latest_model_path:
         env = make_vec_env(lambda: environment.AirHockeyEnv(False), n_envs=1)
-        game.player_2_model = SAC.load(latest_model_path, env=env)
+        game.player_2_model = algorithm.load(latest_model_path, env=env)
 
     running = True
     while running:
