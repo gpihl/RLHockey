@@ -12,8 +12,10 @@ class Paddle:
         if not training:
             self.pos = self.get_starting_pos_regular()
         else:
-            # self.pos = self.get_starting_pos_random()
-            self.pos = self.get_starting_pos_regular()            
+            if g.TRAINING_PARAMS['random_starting_locations']:
+                self.pos = self.get_starting_pos_random()
+            else:
+                self.pos = self.get_starting_pos_regular()            
 
         self.vel = np.array([0, 0], dtype=np.float32)
 
@@ -33,18 +35,61 @@ class Paddle:
 
     def control(self, ax, ay):
         acc = np.array([ax, ay], dtype=np.float32)
-        self.vel += acc
+        self.vel += acc * g.DELTA_T
 
+    def get_relative_pos_of_paddle_obs(self, paddle):
+        relative_pos = paddle.pos - self.pos
+        return self.normalize_relative_pos(relative_pos)
+    
+    def get_relative_pos_of_puck_obs(self, puck):
+        relative_pos = puck.pos - self.pos
+        return self.normalize_relative_pos(relative_pos)
+
+    def get_relative_pos_of_goal_1_top(self):
+        relative_pos = np.array([0, (g.HEIGHT - g.GOAL_HEIGHT) / 2]) - self.pos
+        return self.normalize_relative_pos(relative_pos)
+    
+    def get_relative_pos_of_goal_1_bot(self):
+        relative_pos = np.array([0, g.HEIGHT - (g.HEIGHT - g.GOAL_HEIGHT) / 2]) - self.pos
+        return self.normalize_relative_pos(relative_pos)    
+    
+    def get_relative_pos_of_goal_2_top(self):
+        relative_pos = np.array([g.WIDTH, (g.HEIGHT - g.GOAL_HEIGHT) / 2]) - self.pos
+        return self.normalize_relative_pos(relative_pos)
+
+    def get_relative_pos_of_goal_2_bot(self):
+        relative_pos = np.array([g.WIDTH, g.HEIGHT - (g.HEIGHT - g.GOAL_HEIGHT) / 2]) - self.pos
+        return self.normalize_relative_pos(relative_pos)
+
+    def normalize_relative_pos(self, relative_pos):
+        relative_pos[0] /= g.WIDTH
+        relative_pos[1] /= g.HEIGHT
+        return relative_pos
+    
+
+
+    
     def update(self):
-        self.vel *= g.PADDLE_FRICTION
+        self.vel *= (g.PADDLE_FRICTION ** g.DELTA_T)
         self.vel = np.clip(self.vel, -g.MAX_PADDLE_SPEED, g.MAX_PADDLE_SPEED)
-        self.pos += self.vel
+        self.pos += self.vel * g.DELTA_T
+        
+        if g.TRAINING_PARAMS['field_split']:
+            if self.player == 1:
+                left_wall = g.PADDLE_RADIUS
+                right_wall = g.WIDTH / 2 - g.PADDLE_RADIUS
+            else:
+                left_wall = g.WIDTH / 2 + g.PADDLE_RADIUS
+                right_wall = g.WIDTH - g.PADDLE_RADIUS
+        else:
+            left_wall = g.PADDLE_RADIUS
+            right_wall = g.WIDTH - g.PADDLE_RADIUS
 
-        if self.pos[0] < g.PADDLE_RADIUS:
-            self.pos[0] = g.PADDLE_RADIUS
+        if self.pos[0] < left_wall:
+            self.pos[0] = left_wall
             self.vel[0] = 0
-        elif self.pos[0] > g.WIDTH - g.PADDLE_RADIUS:
-            self.pos[0] = g.WIDTH - g.PADDLE_RADIUS
+        elif self.pos[0] > right_wall:
+            self.pos[0] = right_wall
             self.vel[0] = 0
 
         if self.pos[1] < g.PADDLE_RADIUS:
@@ -54,7 +99,7 @@ class Paddle:
             self.pos[1] = g.HEIGHT - g.PADDLE_RADIUS
             self.vel[1] = 0
 
-    def check_collision(self, paddle):
+    def handle_collision(self, paddle):
         dist = np.linalg.norm(self.pos - paddle.pos)
         if dist < g.PADDLE_RADIUS + g.PADDLE_RADIUS:
             normal = (self.pos - paddle.pos) / dist
@@ -71,6 +116,11 @@ class Paddle:
             overlap = g.PADDLE_RADIUS + g.PADDLE_RADIUS - dist
             self.pos += (normal * overlap) / 2
             paddle.pos -= (normal * overlap) / 2
+
+            sound_vel = np.linalg.norm(relative_velocity)
+            if sound_vel != 0:
+                sound_vel = np.abs(sound_vel)
+                g.sound_handler.play_sound(sound_vel, self.pos[0], 'paddle')
 
     def draw(self, screen):
         g.draw_circle(self.pos, g.PADDLE_RADIUS, self.color, screen)

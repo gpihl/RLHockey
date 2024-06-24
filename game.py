@@ -12,17 +12,28 @@ from paddle import Paddle
 from puck import Puck
 
 class Game:
+    _instance = None
+
+    def __new__(cls, training):
+        if cls._instance is None:
+            cls._instance = super(Game, cls).__new__(cls)
+            cls._instance._initialized = False
+        return cls._instance
+
     def __init__(self, training=True):
+        if self._initialized:
+            return
+        self._initialized = True            
         self.training = training
         self.total_steps = 0
+        self.prev_t = time.time()
+        self.curr_t = time.time()
         self.steps = 0
-        self.no_render = False
         self.fps = g.HIGH_FPS if training else g.LOW_FPS
         self.current_reward = 0.0
         self.round_reward = 0.0
         self.total_reward = 0.0
-        self.steps = 0        
-        self.init_pygame()
+        self.init_pygame()      
         self.joystick = None
         self.init_controls()
         self.create_objects()
@@ -33,6 +44,7 @@ class Game:
         self.sliders = []
         self.create_sliders()
         self.events = []
+        print("Game initialization done")
 
     def init_pygame(self):
         pygame.init()
@@ -90,7 +102,12 @@ class Game:
             g.REWARD_POLICY[slider.label] = slider.get_value()        
 
     def handle_ui_input(self, keys):
-        self.events = pygame.event.get()
+        try:
+            self.events = pygame.event.get()
+        except:
+            pass
+    
+        # self.events = pygame.event.get()
         self.handle_keyboard_input(keys)
 
     def get_player_action(self, keys):
@@ -111,16 +128,20 @@ class Game:
         return action
 
     def handle_keyboard_input(self, keys):
-        if keys[pygame.K_e] and np.abs(time.time() - self.last_ui_input) > 0.5:
-            self.last_ui_input = time.time()
+        if np.abs(time.time() - self.last_ui_input) < 0.5:
+            return
+        
+        self.last_ui_input = time.time()
+
+        if keys[pygame.K_e]:
             self.fps = g.HIGH_FPS if self.fps == g.LOW_FPS else g.LOW_FPS
             print(f"switching to {self.fps} FPS")
-        elif keys[pygame.K_r] and np.abs(time.time() - self.last_ui_input) > 0.5:
-            self.last_ui_input = time.time()
-            self.no_render = not self.no_render
-        elif keys[pygame.K_t] and np.abs(time.time() - self.last_ui_input) > 0.5:
-            self.last_ui_input = time.time()
-            self.player_2_human = True
+        elif keys[pygame.K_r]:
+            g.TRAINING_PARAMS['no_render'] = not g.TRAINING_PARAMS['no_render']
+        elif keys[pygame.K_m]:
+            g.TRAINING_PARAMS['no_sound'] = not g.TRAINING_PARAMS['no_sound']
+        elif keys[pygame.K_t]:
+            self.player_2_human = not self.player_2_human
 
     def goal_top(self):
         return (g.HEIGHT - g.GOAL_HEIGHT) / 2
@@ -129,9 +150,15 @@ class Game:
         return g.GOAL_HEIGHT + (g.HEIGHT - g.GOAL_HEIGHT) / 2
 
     def player_1_scored(self):
+        if g.TRAINING_PARAMS['blocked_goals']:
+            return False
+        
         return self.puck.pos[0] >= g.WIDTH - g.PUCK_RADIUS and self.puck.pos[1] > self.goal_top() and self.puck.pos[1] < self.goal_bottom()
     
     def player_2_scored(self):
+        if g.TRAINING_PARAMS['blocked_goals']:
+            return False
+                
         return self.puck.pos[0] <= g.PUCK_RADIUS and self.puck.pos[1] > self.goal_top() and self.puck.pos[1] < self.goal_bottom()
     
     def get_reward(self, action):
@@ -145,8 +172,8 @@ class Game:
 
         reward += ((g.WIDTH - np.linalg.norm(self.paddle1.pos - self.puck.pos)) / g.WIDTH) * g.REWARD_POLICY["ball_proximity"]
 
-        reward += self.puck.vel[0] * g.REWARD_POLICY["ball_vel_2_goal"]
-        reward += np.linalg.norm(self.puck.vel) * g.REWARD_POLICY["ball_velocity"]
+        reward += self.puck.collect_shot_reward('vel_2_goal') * g.REWARD_POLICY["ball_vel_2_goal"]
+        reward += self.puck.collect_shot_reward('ball_velocity') * g.REWARD_POLICY["ball_velocity"]
         reward /= g.REWARD_POLICY["normalization"]
 
         self.current_reward = reward
@@ -160,8 +187,8 @@ class Game:
 
     def step(self, action):
         # print(self.get_observation(2))
-
-
+        self.prev_t = self.curr_t
+        self.curr_t = time.time()
         self.steps += 1
         self.total_steps += 1
         keys = pygame.key.get_pressed()
@@ -184,10 +211,10 @@ class Game:
 
         self.paddle2.update()
 
-        self.paddle1.check_collision(self.paddle2)
+        self.paddle1.handle_collision(self.paddle2)
         self.puck.update([self.paddle1, self.paddle2])
 
-        if not self.no_render:
+        if not g.TRAINING_PARAMS['no_render']:
             self.render()
 
         for event in self.events:
@@ -228,29 +255,17 @@ class Game:
     def get_observation(self, player):
         # Set device to CUDA if available
         device = g.device
-        
-        if player == 1:
-            obs = {
-                "paddle_1_pos": torch.tensor(self.scale(self.paddle1.pos, g.WIDTH, g.HEIGHT), device=device),
-                "paddle_2_pos": torch.tensor(self.scale(self.paddle2.pos, g.WIDTH, g.HEIGHT), device=device),
-                "puck_pos":     torch.tensor(self.scale(self.puck.pos, g.WIDTH, g.HEIGHT), device=device),
-                "paddle_1_vel": torch.tensor(self.scale(self.paddle1.vel, g.MAX_PADDLE_SPEED, g.MAX_PADDLE_SPEED), device=device),
-                "paddle_2_vel": torch.tensor(self.scale(self.paddle2.vel, g.MAX_PADDLE_SPEED, g.MAX_PADDLE_SPEED), device=device),
-                "puck_vel":     torch.tensor(self.scale(self.puck.vel, g.MAX_PUCK_SPEED, g.MAX_PUCK_SPEED), device=device),
-                "goal_dir":     torch.tensor([0.0, 0.0], device=device),
-            }
-
-        if player == 2:
-            obs = {
-                "paddle_1_pos": torch.tensor(self.scale(self.mirror_observation(self.paddle2.pos, True), g.WIDTH, g.HEIGHT), device=device),
-                "paddle_2_pos": torch.tensor(self.scale(self.mirror_observation(self.paddle1.pos, True), g.WIDTH, g.HEIGHT), device=device),
-                "puck_pos":     torch.tensor(self.scale(self.mirror_observation(self.puck.pos, True), g.WIDTH, g.HEIGHT), device=device),
-                "paddle_1_vel": torch.tensor(self.scale(self.mirror_observation(self.paddle2.vel, False), g.MAX_PADDLE_SPEED, g.MAX_PADDLE_SPEED), device=device),
-                "paddle_2_vel": torch.tensor(self.scale(self.mirror_observation(self.paddle1.vel, False), g.MAX_PADDLE_SPEED, g.MAX_PADDLE_SPEED), device=device),
-                "puck_vel":     torch.tensor(self.scale(self.mirror_observation(self.puck.vel, False), g.MAX_PUCK_SPEED, g.MAX_PUCK_SPEED), device=device),
-                "goal_dir":     torch.tensor([0.0, 0.0], device=device),
-            }    
-
+        obs = {
+            "paddle_2_pos": torch.tensor(self.paddle1.get_relative_pos_of_paddle_obs(self.paddle2), device=device),
+            "puck_pos":     torch.tensor(self.paddle1.get_relative_pos_of_puck_obs(self.puck), device=device),
+            "paddle_1_vel": torch.tensor(self.scale(self.paddle1.vel, g.MAX_PADDLE_SPEED, g.MAX_PADDLE_SPEED), device=device),
+            "paddle_2_vel": torch.tensor(self.scale(self.paddle2.vel, g.MAX_PADDLE_SPEED, g.MAX_PADDLE_SPEED), device=device),
+            "puck_vel":     torch.tensor(self.scale(self.puck.vel, g.MAX_PUCK_SPEED, g.MAX_PUCK_SPEED), device=device),
+            "goal_1_top_pos":     torch.tensor(self.paddle1.get_relative_pos_of_goal_1_top(), device=device),
+            "goal_1_bot_pos":     torch.tensor(self.paddle1.get_relative_pos_of_goal_1_bot(), device=device),
+            "goal_2_top_pos":     torch.tensor(self.paddle1.get_relative_pos_of_goal_2_top(), device=device),
+            "goal_2_bot_pos":     torch.tensor(self.paddle1.get_relative_pos_of_goal_2_bot(), device=device),
+        }
         return {k: v.cpu() for k, v in obs.items()}
 
     def scale(self, vec, x_max, y_max):
@@ -320,10 +335,11 @@ class Game:
         color = g.interpolate_color((255,255,255), g.BG_COLOR, 0.9)
         line_thickness = int(18 * g.WIDTH / 800)
 
-        mid_circle_radius = int(100 * g.WIDTH / 800)
-        mid_point_radius = int(30 * g.WIDTH / 800)
+        mid_circle_color = g.interpolate_color((255,255,255), g.BG_COLOR, 0.8)
+        mid_circle_radius = int(120 * g.WIDTH / 800)
+        mid_point_radius = int(40 * g.WIDTH / 800)
         g.draw_circle([g.WIDTH / 2, g.HEIGHT / 2], mid_circle_radius, color, self.screen, False)
-        g.draw_circle([g.WIDTH / 2, g.HEIGHT / 2], mid_circle_radius - line_thickness, g.BG_COLOR, self.screen, False)
+        g.draw_circle([g.WIDTH / 2, g.HEIGHT / 2], mid_circle_radius - line_thickness, mid_circle_color, self.screen, False)
         g.draw_circle([g.WIDTH / 2, g.HEIGHT / 2], mid_point_radius, color, self.screen, False)
 
         mid_line_size = (line_thickness, g.HEIGHT)
@@ -383,13 +399,21 @@ class Slider:
                 self.handle_rect.x = new_x
                 self.value = self.min_val + (new_x - self.rect.x) / self.rect.width * (self.max_val - self.min_val)
                 g.REWARD_POLICY[self.label] = self.value
-                print(g.REWARD_POLICY)
 
     def get_value(self):
         return self.value
 
-
 def standalone_game():
+    pygame.joystick.init()
+    joystick_count = pygame.joystick.get_count()
+    print(f"Number of joysticks: {joystick_count}")
+    for i in range(joystick_count):
+        joystick = pygame.joystick.Joystick(i)
+        joystick.init()
+        print(f"Joystick {i} name: {joystick.get_name()}")
+        print(f"Joystick {i} number of axes: {joystick.get_numaxes()}")
+        print(f"Joystick {i} number of buttons: {joystick.get_numbuttons()}")
+
     game = Game(training=False)
 
     latest_model_path = g.get_latest_model_path(g.TRAINING_PARAMS['base_path'], g.TRAINING_PARAMS['model_name'])
@@ -400,19 +424,59 @@ def standalone_game():
 
     running = True
     while running:
-        for event in pygame.event.get():
-            if event.type == pygame.QUIT:
-                running = False
+        try:
+            for event in pygame.event.get():
+                if event.type == pygame.QUIT:
+                    running = False
+                elif event.type == pygame.JOYDEVICEREMOVED:
+                    print(f"Joystick {event.instance_id} disconnected")
+                    # Re-initialize joysticks here if needed
+                    pygame.joystick.quit()
+                    pygame.joystick.init()
 
-        keys = pygame.key.get_pressed()
-        action = game.get_player_action(keys)
+            keys = pygame.key.get_pressed()
+            action = game.get_player_action(keys)
 
-        _, _, done, _ = game.step(action)
+            _, _, done, _ = game.step(action)
 
-        if done:
-            game.reset()
+            if done:
+                game.reset()
+
+        except pygame.error as e:
+            print(f"Pygame error occurred: {e}")
+        except Exception as e:
+            print(f"An unexpected error occurred: {e}")
+            import traceback
+            traceback.print_exc()
 
     game.close()
+    pygame.joystick.quit()
+    pygame.quit()
+
+# def standalone_game():
+#     game = Game(training=False)
+
+#     latest_model_path = g.get_latest_model_path(g.TRAINING_PARAMS['base_path'], g.TRAINING_PARAMS['model_name'])
+
+#     if latest_model_path:
+#         env = make_vec_env(lambda: environment.AirHockeyEnv(False), n_envs=1)
+#         game.player_2_model = SAC.load(latest_model_path, env=env)
+
+#     running = True
+#     while running:
+#         for event in pygame.event.get():
+#             if event.type == pygame.QUIT:
+#                 running = False
+
+#         keys = pygame.key.get_pressed()
+#         action = game.get_player_action(keys)
+
+#         _, _, done, _ = game.step(action)
+
+#         if done:
+#             game.reset()
+
+#     game.close()
 
 if __name__ == "__main__":
     standalone_game()

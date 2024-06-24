@@ -1,35 +1,50 @@
 import pygame.gfxdraw
 import os
 import torch
+from sound_handler import SoundHandler
 
 device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 print(f"Using device: {device}")
 
+sound_handler = SoundHandler()
+
 # Training params
 REWARD_POLICY = {   
-    'time_reward': -1.0,
-    'acc_reward': -1.0,
-    'player_1_goal': 400,
-    'player_2_goal': -400,
-    'ball_proximity': 100.0,
-    'ball_velocity': 0.0,
-    'ball_vel_2_goal': 5.0,
-    'normalization': 100,
+    'time_reward': -0.1,
+    'acc_reward': -0.1,
+    'player_1_goal': 5,
+    'player_2_goal': -5,
+    'ball_proximity': 0.3,
+    'ball_velocity': 1.5,
+    'ball_vel_2_goal': 1.5,
+    'normalization': 1.0,
 }
 
 TRAINING_PARAMS = {
     'training_steps': 5000,
     'learning_rate': 1.0e-4,
-    'model_name': 'bajsy',
+    'model_name': 'new-observations',
     'base_path': 'models',
     'training_iterations': 10000,
+    'player_2_active': True,
+    'blocked_goals': False,
+    'random_starting_locations': False,
+    'no_render': False,
+    'no_sound': False,
+    'field_split': False,
+    'device': 'cpu',
+    'algorithm': 'SAC'  
 }
+
+TRAINING_PARAMS['model_name'] += TRAINING_PARAMS['algorithm']
+
+DELTA_T = 0.85
 
 # Colors
 BG_COLOR = (43, 50, 80)
 
 # Display
-WIDTH, HEIGHT = 800, 400
+WIDTH, HEIGHT = 2000, 1000
 HIGH_FPS = 60000
 LOW_FPS = 120
 
@@ -69,7 +84,7 @@ PUCK_RESTITUTION = 0.95
 GOAL_HEIGHT = int(260 * WIDTH / 800)
 
 # Match
-TIME_LIMIT = 15 * 60
+TIME_LIMIT = 60 * LOW_FPS
 
 # Helper functions
 def draw_circle(pos, radius, color, screen, aa=True):

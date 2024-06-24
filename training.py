@@ -4,7 +4,6 @@ from stable_baselines3.common.env_util import make_vec_env
 import globals as g
 from stable_baselines3.common.vec_env import SubprocVecEnv
 
-
 def main():
     for i in range(g.TRAINING_PARAMS['training_iterations']):
         latest_model_path = g.get_latest_model_path(g.TRAINING_PARAMS['base_path'], g.TRAINING_PARAMS['model_name'])
@@ -13,17 +12,26 @@ def main():
         env = make_vec_env(lambda: environment.AirHockeyEnv(), n_envs=1)
         # env = SubprocVecEnv([lambda: environment.AirHockeyEnv(training=True) for _ in range(4)])
 
-        batch_size = 4096
+        batch_size = 2048
         buffer_size = 1000000
         
+        algorithm = None
+        if g.TRAINING_PARAMS['algorithm'] == 'PPO':
+            algorithm = PPO
+        elif g.TRAINING_PARAMS['algorithm'] == 'SAC':
+            algorithm = SAC
+
+        model2 = None
         if latest_model_path:
             print(f"Loading model {latest_model_path}")
-            model1 = SAC.load(latest_model_path, env=env, device=g.device, batch_size=batch_size, buffer_size=buffer_size)
-            model2 = SAC.load(latest_model_path, env=env, device=g.device, batch_size=batch_size, buffer_size=buffer_size)
+            model1 = algorithm.load(latest_model_path, env=env, device=g.TRAINING_PARAMS['device'], batch_size=batch_size)
+            if g.TRAINING_PARAMS['player_2_active']:
+                model2 = algorithm.load(latest_model_path, env=env, device=g.device, batch_size=batch_size)
         else:
             print(f"Creating new model {latest_model_path}")
-            model1 = SAC("MultiInputPolicy", env, learning_rate=g.TRAINING_PARAMS['learning_rate'], verbose=1, device=g.device, batch_size=batch_size, buffer_size=buffer_size)
-            model2 = SAC("MultiInputPolicy", env, learning_rate=g.TRAINING_PARAMS['learning_rate'], verbose=1, device=g.device, batch_size=batch_size, buffer_size=buffer_size)
+            model1 = algorithm("MultiInputPolicy", env, learning_rate=g.TRAINING_PARAMS['learning_rate'], verbose=1, device=g.TRAINING_PARAMS['device'], batch_size=batch_size)
+            if g.TRAINING_PARAMS['player_2_active']:            
+                model2 = algorithm("MultiInputPolicy", env, learning_rate=g.TRAINING_PARAMS['learning_rate'], verbose=1, device=g.device, batch_size=batch_size)
 
         game = env.envs[0].get_wrapper_attr('game')
         game.player_2_model = model2

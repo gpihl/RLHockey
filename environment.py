@@ -11,13 +11,15 @@ class AirHockeyEnv(gym.Env):
             self.game = game.Game(training=True)
 
         self.observation_space = spaces.Dict({
-            "paddle_1_pos": spaces.Box(low=np.array([0, 0]), high=np.array([1, 1]), dtype=np.float32),
-            "paddle_2_pos": spaces.Box(low=np.array([0, 0]), high=np.array([1, 1]), dtype=np.float32),
-            "puck_pos":     spaces.Box(low=np.array([0, 0]), high=np.array([1, 1]), dtype=np.float32),
+            "paddle_2_pos": spaces.Box(low=-1, high=1, shape=(2,), dtype=np.float32),
+            "puck_pos":     spaces.Box(low=-1, high=1, shape=(2,), dtype=np.float32),
             "paddle_1_vel": spaces.Box(low=-1, high=1, shape=(2,), dtype=np.float32),
             "paddle_2_vel": spaces.Box(low=-1, high=1, shape=(2,), dtype=np.float32),
             "puck_vel":     spaces.Box(low=-1, high=1, shape=(2,), dtype=np.float32),
-            "goal_dir":     spaces.Box(low=np.array([-1, -1]), high=np.array([1, 1]), dtype=np.float32),
+            "goal_1_top_pos": spaces.Box(low=-1, high=1, shape=(2,), dtype=np.float32),
+            "goal_1_bot_pos": spaces.Box(low=-1, high=1, shape=(2,), dtype=np.float32),
+            "goal_2_top_pos": spaces.Box(low=-1, high=1, shape=(2,), dtype=np.float32),
+            "goal_2_bot_pos": spaces.Box(low=-1, high=1, shape=(2,), dtype=np.float32),                                    
         })
 
         self.action_space = spaces.Box(low=-g.PADDLE_ACC, high=g.PADDLE_ACC, shape=(2,), dtype=np.float32)
