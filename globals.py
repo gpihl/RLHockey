@@ -64,7 +64,7 @@ GAMEPLAY_PARAMS = {
 
 TRAINING_PARAMS['model_name'] += TRAINING_PARAMS['algorithm']
 
-DELTA_T = 0.80
+
 
 # Colors
 BG_COLOR = (43, 50, 80)
@@ -72,7 +72,7 @@ BG_COLOR = (43, 50, 80)
 # Display
 WIDTH, HEIGHT = 2000, 1000
 HIGH_FPS = 60000
-LOW_FPS = 120
+LOW_FPS = 60
 
 # Fonts
 REWARD_COLOR = (154, 120, 134)
@@ -111,6 +111,9 @@ GOAL_HEIGHT = int(140 * WIDTH / 800)
 
 # Match
 TIME_LIMIT = 60 * LOW_FPS
+
+# Physics
+DELTA_T = 0.80 * 120 / LOW_FPS
 
 # Helper functions
 def draw_circle(pos, radius, color, screen, aa=True):

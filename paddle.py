@@ -13,7 +13,7 @@ class Paddle:
         self.magnetic_effect_active = False
         self.reset(training=False)
         self.last_dash_time = 0
-        self.velocity_history = deque(maxlen=20)  # Stores the last 10 velocities by default
+        self.velocity_history = deque(maxlen=5)  # Stores the last 10 velocities by default
         self.average_velocity = np.array([0.0, 0.0])        
 
     def reset(self, training):
