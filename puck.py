@@ -93,7 +93,7 @@ class Puck:
 
     def check_paddle_collision(self, paddle):
         dist = np.linalg.norm(self.pos - paddle.pos)
-        return dist < g.PUCK_RADIUS + g.PADDLE_RADIUS
+        return dist < g.PUCK_RADIUS + paddle.radius
     
     def collect_shot_reward(self, reward_type):
         if reward_type == 'vel_2_goal':
@@ -124,7 +124,7 @@ class Puck:
             self.vel += impulse / g.PUCK_RADIUS
             self.limit_speed()
 
-            overlap = g.PUCK_RADIUS + g.PADDLE_RADIUS - dist
+            overlap = g.PUCK_RADIUS + paddle.radius - dist
             paddle.pos -= normal * (overlap / 2)
             paddle.vel -= 0.2 * impulse / g.PADDLE_RADIUS
             paddle.limit_speed()

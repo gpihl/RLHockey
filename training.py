@@ -15,6 +15,8 @@ def main():
 
         batch_size = 2048
         buffer_size = 1000000
+
+        g.SETTINGS['is_training'] = True
         
         algorithm = None
         if g.TRAINING_PARAMS['algorithm'] == 'PPO':

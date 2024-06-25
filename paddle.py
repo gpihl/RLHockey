@@ -11,10 +11,12 @@ class Paddle:
         self.pos = np.array([0.0,0.0])
         self.last_pos = np.array([0.0,0.0])
         self.magnetic_effect_active = False
+        self.radius = g.PADDLE_RADIUS        
         self.reset(training=False)
-        self.last_dash_time = 0
+        self.last_dash_time = 0.0
         self.charging_dash = False
-        self.charge_start_time = 0
+        self.charge_start_time = 0.0
+        self.dash_charge_power = 0.0
         self.velocity_history = deque(maxlen=5)
         self.average_velocity = np.array([0.0, 0.0])        
 
@@ -32,16 +34,16 @@ class Paddle:
         self.vel = np.array([0.0, 0.0])
 
     def get_starting_pos_random(self):
-        starting_pos = np.array([random.uniform(2*g.PADDLE_RADIUS, g.WIDTH - 2*g.PADDLE_RADIUS), 
-                                 random.uniform(2*g.PADDLE_RADIUS, g.HEIGHT - 2*g.PADDLE_RADIUS)], 
+        starting_pos = np.array([random.uniform(2*self.radius, g.WIDTH - 2*self.radius), 
+                                 random.uniform(2*self.radius, g.HEIGHT - 2*self.radius)], 
                                  dtype=np.float32)
         return starting_pos
     
     def get_starting_pos_regular(self):
         if self.player == 1:
-            starting_pos = np.array([g.PADDLE_RADIUS*3.0, g.HEIGHT // 2])
+            starting_pos = np.array([self.radius*3.0, g.HEIGHT // 2])
         else:
-            starting_pos = np.array([g.WIDTH - g.PADDLE_RADIUS*3.0, g.HEIGHT // 2])
+            starting_pos = np.array([g.WIDTH - self.radius*3.0, g.HEIGHT // 2])
 
         return starting_pos
     
@@ -50,10 +52,15 @@ class Paddle:
         self.average_velocity = np.mean(self.velocity_history, axis=0)  
     
     def dash(self, puck):
+        if g.SETTINGS['is_training'] and not g.TRAINING_PARAMS['dash_enabled']:
+            return
+
         current_time = time.time()
         if current_time - self.last_dash_time > g.GAMEPLAY_PARAMS['dash_cooldown']:
             self.last_dash_time = current_time
             self.charging_dash = False
+            charge_time = current_time - self.charge_start_time
+            self.dash_charge_power = min(1.0, charge_time / g.GAMEPLAY_PARAMS['dash_max_charge_time'])
 
             # Apply impulse in the direction of current movement
             if np.linalg.norm(self.average_velocity) > 0:
@@ -69,12 +76,11 @@ class Paddle:
 
             average_speed = np.linalg.norm(self.average_velocity)
 
-            charge_time = current_time - self.charge_start_time
-            charge_time_factor = charge_time / g.GAMEPLAY_PARAMS['dash_max_charge_time']
-            self.vel += dash_direction * charge_time_factor * g.GAMEPLAY_PARAMS['dash_impulse'] * (average_speed / g.MAX_PADDLE_SPEED)
+
+            self.vel += dash_direction * self.dash_charge_power * g.GAMEPLAY_PARAMS['dash_impulse'] * (average_speed / g.MAX_PADDLE_SPEED)
             self.limit_speed()
             
-            g.sound_handler.play_sound(g.MAX_PADDLE_SPEED / 2, self.pos[0], 1)
+            g.sound_handler.play_sound(g.MAX_PADDLE_SPEED * self.dash_charge_power / 2, self.pos[0], 1)
             
     def limit_speed(self):
         speed = np.linalg.norm(self.vel)
@@ -82,7 +88,7 @@ class Paddle:
             self.vel = (self.vel / speed) * g.MAX_PUCK_SPEED
 
     def is_dashing(self):
-        return time.time() - self.last_dash_time < g.GAMEPLAY_PARAMS['dash_duration']
+        return (time.time() - self.last_dash_time) < g.GAMEPLAY_PARAMS['dash_duration'] * self.dash_charge_power
 
     def apply_aim_assist(self, puck, max_assist_strength=0.4):
         future_time = 0.3  # Look 0.5 seconds ahead
@@ -115,7 +121,7 @@ class Paddle:
         self.magnetic_effect_active = active
 
     def calculate_magnetic_force(self, puck_pos, ambient_force=0.1):
-        max_distance = (g.PUCK_RADIUS + g.PADDLE_RADIUS) * 1.5
+        max_distance = (g.PUCK_RADIUS + self.radius) * 1.5
         to_puck = puck_pos - self.pos
         distance = np.linalg.norm(to_puck)
         
@@ -147,13 +153,19 @@ class Paddle:
     
     def handle_controls(self, puck, action):
         self.set_magnetic_effect(action['magnet'])
+
         if action['dash']:
+            if not self.charging_dash:
+                self.charge_start_time = time.time()
+            self.charging_dash = True
+        elif self.charging_dash:
+            self.charging_dash = False
             self.dash(puck)
         
         self.control(action['acceleration'])
 
     def control(self, acc):
-        self.vel += acc * g.DELTA_T * g.PADDLE_ACC / 1.6
+        self.vel += acc * g.DELTA_T * g.PADDLE_ACC
 
     def get_relative_pos_of_paddle_obs(self, paddle):
         relative_pos = paddle.pos - self.pos
@@ -189,6 +201,12 @@ class Paddle:
 
         self.last_pos = self.pos.copy()
 
+        if self.charging_dash:
+            charging_time = time.time() - self.charge_start_time
+            self.radius = int((1.0 + 0.3 * min(1.0, charging_time / g.GAMEPLAY_PARAMS['dash_max_charge_time'])) * g.PADDLE_RADIUS)
+        else:
+            self.radius = g.PADDLE_RADIUS
+
         if self.is_dashing():
             self.apply_aim_assist(puck)
         else:
@@ -203,14 +221,14 @@ class Paddle:
         
         if g.TRAINING_PARAMS['field_split']:
             if self.player == 1:
-                left_wall = g.PADDLE_RADIUS
-                right_wall = g.WIDTH / 2 - g.PADDLE_RADIUS
+                left_wall = self.radius
+                right_wall = g.WIDTH / 2 - self.radius
             else:
-                left_wall = g.WIDTH / 2 + g.PADDLE_RADIUS
-                right_wall = g.WIDTH - g.PADDLE_RADIUS
+                left_wall = g.WIDTH / 2 + self.radius
+                right_wall = g.WIDTH - self.radius
         else:
-            left_wall = g.PADDLE_RADIUS
-            right_wall = g.WIDTH - g.PADDLE_RADIUS
+            left_wall = self.radius
+            right_wall = g.WIDTH - self.radius
 
         if self.pos[0] < left_wall:
             self.pos[0] = left_wall
@@ -219,16 +237,16 @@ class Paddle:
             self.pos[0] = right_wall
             self.vel[0] = 0.0
 
-        if self.pos[1] < g.PADDLE_RADIUS:
-            self.pos[1] = g.PADDLE_RADIUS
+        if self.pos[1] < self.radius:
+            self.pos[1] = self.radius
             self.vel[1] = 0.0
-        elif self.pos[1] > g.HEIGHT - g.PADDLE_RADIUS:
-            self.pos[1] = g.HEIGHT - g.PADDLE_RADIUS
+        elif self.pos[1] > g.HEIGHT - self.radius:
+            self.pos[1] = g.HEIGHT - self.radius
             self.vel[1] = 0.0
 
     def handle_collision(self, paddle):
         dist = np.linalg.norm(self.pos - paddle.pos)
-        if dist < g.PADDLE_RADIUS + g.PADDLE_RADIUS:
+        if dist < self.radius + self.radius:
             normal = (self.pos - paddle.pos) / dist
             relative_velocity = self.vel - paddle.vel
             velocity_along_normal = np.dot(relative_velocity, normal)
@@ -236,11 +254,11 @@ class Paddle:
                 return
 
             impulse_scalar = -(2) * velocity_along_normal
-            impulse_scalar /= (1 / g.PADDLE_RADIUS + 1 / g.PADDLE_RADIUS)
+            impulse_scalar /= (1 / self.radius + 1 / self.radius)
             impulse = impulse_scalar * normal
-            self.vel += (impulse / g.PADDLE_RADIUS)
-            paddle.vel -= (impulse / g.PADDLE_RADIUS)
-            overlap = g.PADDLE_RADIUS + g.PADDLE_RADIUS - dist
+            self.vel += (impulse / self.radius)
+            paddle.vel -= (impulse / self.radius)
+            overlap = self.radius + self.radius - dist
             self.pos += (normal * overlap) / 2
             paddle.pos -= (normal * overlap) / 2
 
@@ -252,6 +270,12 @@ class Paddle:
         glow = max(0.0, 1.0 - (time.time() - self.last_dash_time) / g.GAMEPLAY_PARAMS['dash_duration'])
         # glow 
         color = g.interpolate_color(self.color, (255,255,255), glow)
-        g.draw_circle(self.pos, g.PADDLE_RADIUS, color, screen)
-        g.draw_circle(self.pos, int(g.PADDLE_RADIUS / 2), g.interpolate_color(color, (0,0,0), 0.3), screen)
-        g.draw_circle(self.pos, int(g.PADDLE_RADIUS / 3), g.interpolate_color(color, (0,0,0), 0.1), screen)
+
+        if self.charging_dash:
+            charging_time = time.time() - self.charge_start_time
+            charge_color_shift = min(1.0, charging_time / g.GAMEPLAY_PARAMS['dash_max_charge_time'])
+            color = g.interpolate_color(color, (255,100,100), charge_color_shift)
+
+        g.draw_circle(self.pos, self.radius, color, screen)
+        g.draw_circle(self.pos, int(self.radius / 2), g.interpolate_color(color, (0,0,0), 0.3), screen)
+        g.draw_circle(self.pos, int(self.radius / 3), g.interpolate_color(color, (0,0,0), 0.1), screen)

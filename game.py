@@ -82,7 +82,7 @@ class Game:
 
     def handle_keyboard_input(self):
         self.events = pygame.event.get()        
-        
+
         if np.abs(time.time() - self.last_ui_input) < 0.5:
             return
         self.last_ui_input = time.time()
@@ -146,6 +146,9 @@ class Game:
         reward += self.puck.collect_shot_reward('ball_velocity') * g.REWARD_POLICY["ball_velocity"]
         reward /= g.REWARD_POLICY["normalization"]
 
+        dash_reward = action['dash'] * g.REWARD_POLICY['dash']
+        reward += dash_reward
+
         self.current_reward = reward
         self.round_reward += reward
         self.total_reward += reward
@@ -179,7 +182,7 @@ class Game:
         self.total_steps += 1
 
         self.handle_keyboard_input()
-        
+        g.sound_handler.update()
 
         self.paddle1.update(self.puck, player_1_action)
         self.paddle2.update(self.puck, player_2_action)
@@ -199,6 +202,11 @@ class Game:
                 slider.handle_event(event)
 
         self.clock.tick(self.fps)
+
+        if self.player_1_scored():
+            g.sound_handler.play_goal_sound(g.WIDTH)
+        elif self.player_2_scored():
+            g.sound_handler.play_goal_sound(0)
 
         return self.get_observation(1), self.get_reward(player_1_action), self.is_done(), { 'cumulative_reward': self.round_reward }
 

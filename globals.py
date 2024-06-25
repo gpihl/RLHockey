@@ -13,6 +13,9 @@ sound_handler = SoundHandler()
 
 # Training params
 
+SETTINGS = {
+    'is_training': False
+}
 
 REWARD_POLICY = {   
     'time_reward': -0.05,
@@ -25,6 +28,7 @@ REWARD_POLICY = {
     'center': -0.01,
     'dist_to_player': 0.1,
     'pointless_motion': -0.4,
+    'dash': -10.0,
     'normalization': 1.0,    
 }
 
@@ -42,7 +46,8 @@ TRAINING_PARAMS = {
     'no_sound': True,
     'field_split': False,
     'device': 'cpu',
-    'algorithm': 'PPO'
+    'algorithm': 'PPO',
+    'dash_enabled': False,
 }
 
 TRAINING_PARAMS['model_name'] += TRAINING_PARAMS['algorithm']
@@ -95,7 +100,7 @@ PADDLE_COLOR_1 = (51, 153, 255)
 PADDLE_COLOR_2 = (0, 204, 102)
 PADDLE_RADIUS = int(30 * WIDTH / 800)
 PADDLE_FRICTION = 0.86
-PADDLE_ACC = 2.5
+PADDLE_ACC = 2.0
 MAX_PADDLE_SPEED = 40
 
 # Puck
@@ -234,8 +239,8 @@ def empty_action():
 
 def game_action_from_model_action(model_action):
     return {
-        'acceleration': np.array(model_action),
-        'dash': False,
+        'acceleration': np.array([model_action[0], model_action[1]]),
+        'dash': model_action[2] > 0.9,
         'magnet': False,
     }
 

@@ -23,17 +23,24 @@ class SoundHandler:
 
         pygame.mixer.pre_init(44100, -16, 2, 256)
         pygame.mixer.init()
-        pygame.mixer.set_num_channels(24)  # Increase number of channels
+        pygame.mixer.set_num_channels(36)  # Increase number of channels
 
         self.sounds = {}
-        self.active_sounds = deque(maxlen=24)
+        self.active_sounds = deque(maxlen=36)
         self.sound_lock = threading.Lock()
         self.load_sounds()
         self.create_octave_up_sounds()
         self.scales = {}
         self.create_scales()
+        self.current_scale = 'maj9'
+        self.scale_change_period = 5
 
         print('Sound handler init done')
+
+    def update(self):
+        time_segment = int(time.time() / self.scale_change_period)
+        scale_name = list(self.scales.keys())[time_segment % len(self.scales.keys())]
+        self.current_scale = scale_name
 
     def create_scales(self):
         self.scales = {
@@ -65,10 +72,10 @@ class SoundHandler:
             else:
                 print(f"Warning: Sound file {path} not found.")
 
-    def velocity_to_sound_index(self, velocity, scale='maj9'):
+    def velocity_to_sound_index(self, velocity):
         velocity = max(0, min(velocity, g.MAX_PUCK_SPEED + g.MAX_PADDLE_SPEED))
-        index = int((1 - (velocity / (g.MAX_PUCK_SPEED + g.MAX_PADDLE_SPEED))) * len(self.scales[scale])) + 1
-        scale_index = self.map_to_scale(index, scale)
+        index = int((1 - (velocity / (g.MAX_PUCK_SPEED + g.MAX_PADDLE_SPEED))) * len(self.scales[self.current_scale])) + 1
+        scale_index = self.map_to_scale(index, self.current_scale)
         return scale_index
 
     def create_octave_up_sounds(self):
@@ -90,6 +97,10 @@ class SoundHandler:
         
         # Convert back to pygame sound
         return pygame.sndarray.make_sound(resampled.astype(np.int16))
+    
+    def play_goal_sound(self, x):
+        for sound_name in self.scales[self.current_scale]:
+            self.play_sound(g.MAX_PUCK_SPEED / 4, x, sound_name)
 
     def play_sound(self, velocity, x_coord, sound_name):
         if g.TRAINING_PARAMS['no_sound']:
