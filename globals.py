@@ -10,6 +10,7 @@ print(f"Using device: {device}")
 
 sound_handler = SoundHandler()
 
+
 # Training params
 
 
@@ -31,7 +32,7 @@ REWARD_POLICY = {
 TRAINING_PARAMS = {
     'training_steps': 15000,
     'learning_rate': 1.0e-4,
-    'model_name': 'new-observations',
+    'model_name': 'hej',
     'base_path': 'models',
     'training_iterations': 4000,
     'player_2_active': True,
@@ -41,19 +42,29 @@ TRAINING_PARAMS = {
     'no_sound': True,
     'field_split': False,
     'device': 'cpu',
-
     'algorithm': 'PPO'
 }
+
+TRAINING_PARAMS['model_name'] += TRAINING_PARAMS['algorithm']
 
 GAMEPLAY_PARAMS = {
     'dash_cooldown': 0.5,
     'dash_impulse': 700,
     'dash_duration': 0.22,
+    'dash_max_charge_time': 0.5,
 }
 
-TRAINING_PARAMS['model_name'] += TRAINING_PARAMS['algorithm']
+CONTROLS_PARAMS = {
+    'dash': 'x',
+    'magnet': 'l1',
+}
 
+PS5_CONTROLLER = {
+    'x': 0,
+    'l1': 9
+}
 
+controller = PS5_CONTROLLER
 
 # Colors
 BG_COLOR = (43, 50, 80)
@@ -61,7 +72,7 @@ BG_COLOR = (43, 50, 80)
 # Display
 WIDTH, HEIGHT = 2000, 1000
 HIGH_FPS = 60000
-LOW_FPS = 120
+LOW_FPS = 60
 
 # Fonts
 REWARD_COLOR = (154, 120, 134)
@@ -152,3 +163,80 @@ def get_next_model_path(base_path, prefix):
         latest_number = int(latest_model.split('_')[-1].split('.')[0])
         next_model_number = latest_number + 1
     return os.path.join(base_path, f"{prefix}_{next_model_number}.zip")
+
+def button_pressed(action_name):
+    button_idx = controller[CONTROLS_PARAMS[action_name]]
+    return joystick.get_button(button_idx)
+
+def get_human_action():
+    action = empty_action()
+
+    if joystick != None:
+        action = get_joystick_action()
+
+    keys = get_keys()
+    if keys[pygame.K_w]:
+        action['acceleration'][1] = -PADDLE_ACC
+    if keys[pygame.K_s]:
+        action['acceleration'][1] = PADDLE_ACC
+    if keys[pygame.K_a]:
+        action['acceleration'][0] = -PADDLE_ACC
+    if keys[pygame.K_d]:
+        action['acceleration'][0] = PADDLE_ACC
+    
+    return action
+
+def get_joystick_action():
+    if joystick == None:
+        return None
+            
+    input_vector = np.array([joystick.get_axis(0), joystick.get_axis(1)])
+    input_vector = apply_non_linear_response(input_vector)
+
+    return {
+        'acceleration': np.array([input_vector[0] * PADDLE_ACC, input_vector[1] * PADDLE_ACC]),
+        'dash': button_pressed('dash'),
+        'magnet': button_pressed('magnet'),
+    }
+
+def apply_non_linear_response(input_vector, exponent=1.5):
+    magnitude = np.linalg.norm(input_vector)
+    modified_magnitude = np.power(magnitude, exponent)
+    modified_magnitude = np.clip(modified_magnitude, 0, 1)
+
+    if magnitude == 0:
+        return np.zeros_like(input_vector)
+    
+    return input_vector * (modified_magnitude / magnitude)
+
+def get_keys():
+    return pygame.key.get_pressed()
+
+def init_controls():
+    pygame.joystick.init()
+
+    if pygame.joystick.get_count() == 0:
+        print("No joystick connected")
+        return
+
+    joystick = pygame.joystick.Joystick(0)
+    joystick.init()
+
+    print(f"Joystick name: {joystick.get_name()}")
+    return joystick
+
+def empty_action():
+    return {
+        'acceleration': np.array([0.0, 0.0]),
+        'dash': False,
+        'magnet': False,
+    }
+
+def game_action_from_model_action(model_action):
+    return {
+        'acceleration': np.array(model_action),
+        'dash': False,
+        'magnet': False,
+    }
+
+joystick = init_controls()

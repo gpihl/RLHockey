@@ -35,8 +35,6 @@ class Game:
         self.round_reward = 0.0
         self.total_reward = 0.0
         self.init_pygame()      
-        self.joystick = None
-        self.init_controls()
         self.create_objects()
         self.reset()
         self.last_ui_input = 0
@@ -56,37 +54,6 @@ class Game:
         self.reward_font = pygame.font.SysFont(g.REWARD_FONT, g.REWARD_FONT_SIZE)
         self.time_font = pygame.font.SysFont(g.TIME_FONT, g.TIME_FONT_SIZE)
         self.steps_left_font = pygame.font.SysFont(g.STEPS_LEFT_FONT, g.STEPS_LEFT_FONT_SIZE)
-
-    def init_controls(self):
-        pygame.joystick.init()
-
-        if pygame.joystick.get_count() == 0:
-            print("No joystick connected")
-            return
-
-        self.joystick = pygame.joystick.Joystick(0)
-        self.joystick.init()
-
-        print(f"Joystick name: {self.joystick.get_name()}")
-
-    def get_joystick_action(self):
-        if self.joystick == None:
-            return None
-                
-        input_vector = np.array([self.joystick.get_axis(0), self.joystick.get_axis(1)])
-        input_vector = self.apply_non_linear_response(input_vector)
-        output = [input_vector[0] * g.PADDLE_ACC, input_vector[1] * g.PADDLE_ACC]
-        return output
-    
-    def apply_non_linear_response(self, input_vector, exponent=1.5):
-        magnitude = np.linalg.norm(input_vector)
-        modified_magnitude = np.power(magnitude, exponent)
-        modified_magnitude = np.clip(modified_magnitude, 0, 1)
-
-        if magnitude == 0:
-            return np.zeros_like(input_vector)
-        
-        return input_vector * (modified_magnitude / magnitude)
 
     def create_objects(self):
         self.paddle1 = Paddle(1)
@@ -113,38 +80,14 @@ class Game:
         for slider in self.sliders:
             g.REWARD_POLICY[slider.label] = slider.get_value()        
 
-    def handle_ui_input(self, keys):
-        try:
-            self.events = pygame.event.get()
-        except:
-            pass
-    
-        # self.events = pygame.event.get()
-        self.handle_keyboard_input(keys)
-
-    def get_player_action(self, keys):
-        action = [0,0]
-        joystick_action = self.get_joystick_action()
-        if joystick_action != None:
-            action = joystick_action
-
-        if keys[pygame.K_w]:
-            action[1] = -g.PADDLE_ACC
-        if keys[pygame.K_s]:
-            action[1] = g.PADDLE_ACC
-        if keys[pygame.K_a]:
-            action[0] = -g.PADDLE_ACC
-        if keys[pygame.K_d]:
-            action[0] = g.PADDLE_ACC
-
-        return action
-
-    def handle_keyboard_input(self, keys):
+    def handle_keyboard_input(self):
+        self.events = pygame.event.get()        
+        
         if np.abs(time.time() - self.last_ui_input) < 0.5:
             return
-        
         self.last_ui_input = time.time()
 
+        keys = g.get_keys()
         if keys[pygame.K_e]:
             self.fps = g.HIGH_FPS if self.fps == g.LOW_FPS else g.LOW_FPS
             print(f"switching to {self.fps} FPS")
@@ -174,8 +117,9 @@ class Game:
         return self.puck.pos[0] <= g.PUCK_RADIUS and self.puck.pos[1] > self.goal_top() and self.puck.pos[1] < self.goal_bottom()
     
     def get_reward(self, action):
+        acceleration = action['acceleration']
         reward = g.REWARD_POLICY["time_reward"]
-        reward += np.linalg.norm(np.array(action)) * g.REWARD_POLICY["acc_reward"]
+        reward += np.linalg.norm(acceleration) * g.REWARD_POLICY["acc_reward"]
 
         if self.player_1_scored():
             reward += g.REWARD_POLICY["player_1_goal"]
@@ -190,13 +134,12 @@ class Game:
 
         dist_to_center = np.abs(self.paddle1.pos[0] - g.WIDTH/2)
         center_reward = ((g.WIDTH / 2 - dist_to_center) / (g.WIDTH / 2)) * g.REWARD_POLICY["center"]
-        # print(center_reward)
         reward += center_reward
 
         dist_to_player = np.linalg.norm(self.paddle1.pos - self.paddle2.pos) / g.WIDTH
         reward += dist_to_player * g.REWARD_POLICY['dist_to_player']
 
-        pointless_reward = self.paddle1.pointless_motion(action) * g.REWARD_POLICY["pointless_motion"]
+        pointless_reward = self.paddle1.pointless_motion(acceleration) * g.REWARD_POLICY["pointless_motion"]
         reward += pointless_reward
 
         reward += self.puck.collect_shot_reward('vel_2_goal') * g.REWARD_POLICY["ball_vel_2_goal"]
@@ -212,41 +155,34 @@ class Game:
     def is_done(self):
         return self.steps > g.TIME_LIMIT or self.player_1_scored() or self.player_2_scored()
 
-    def step(self, action):
-        # print(self.get_observation(2))
+    def step(self, action=None):
+        player_1_model_action = action
+        player_1_action = None
+        player_2_action = None
+
+        human_action = g.get_human_action()
+
+        if player_1_model_action is not None:
+            player_1_action = g.game_action_from_model_action(player_1_model_action)
+        else:
+            player_1_action = human_action
+
+        if self.player_2_model is not None:
+            player_2_model_action = self.player_2_model.predict(self.get_observation(2))[0]
+            player_2_action = g.game_action_from_model_action(player_2_model_action)
+        else:
+            player_2_action = human_action
+
         self.prev_t = self.curr_t
         self.curr_t = time.time()
         self.steps += 1
         self.total_steps += 1
-        keys = pygame.key.get_pressed()
-        self.handle_ui_input(keys)
 
-        self.paddle1.control(action[0], action[1])
-        self.paddle1.update(self.training)
-        if not self.training:
-            if self.paddle1.is_dashing():
-                self.paddle1.apply_aim_assist(self.puck)
+        self.handle_keyboard_input()
+        
 
-            if self.joystick:
-                l1_pressed = self.joystick.get_button(9)
-                self.paddle1.set_magnetic_effect(l1_pressed)
-                a_pressed = self.joystick.get_button(0)
-                if a_pressed:
-                    self.paddle1.dash(self.puck)
-
-
-        player_2_action = [0,0]
-        if self.player_2_model:
-            player_2_action = self.player_2_model.predict(self.get_observation(2))[0]        
-        if self.player_2_human:
-            player_2_action = self.get_player_action(keys)
-            # self.previous
-            self.paddle2.control(player_2_action[0], player_2_action[1])
-        else:
-            self.paddle2.control(-player_2_action[0], player_2_action[1])        
-
-        self.paddle2.update(self.training)
-
+        self.paddle1.update(self.puck, player_1_action)
+        self.paddle2.update(self.puck, player_2_action)
         self.paddle1.handle_collision(self.paddle2)
         self.puck.update([self.paddle1, self.paddle2])
 
@@ -264,38 +200,9 @@ class Game:
 
         self.clock.tick(self.fps)
 
-        return self.get_observation(1), self.get_reward(action), self.is_done(), { 'cumulative_reward': self.round_reward }
-    
-
-    
-    # def get_observation(self, player):
-    #     if player == 1:
-    #         obs = {
-    #             "paddle_1_pos": self.scale(self.paddle1.pos, g.WIDTH, g.HEIGHT),
-    #             "paddle_2_pos": self.scale(self.paddle2.pos, g.WIDTH, g.HEIGHT),
-    #             "puck_pos":     self.scale(self.puck.pos, g.WIDTH, g.HEIGHT),
-    #             "paddle_1_vel": self.scale(self.paddle1.vel, g.MAX_PADDLE_SPEED, g.MAX_PADDLE_SPEED),
-    #             "paddle_2_vel": self.scale(self.paddle2.vel, g.MAX_PADDLE_SPEED, g.MAX_PADDLE_SPEED),
-    #             "puck_vel":     self.scale(self.puck.vel, g.MAX_PUCK_SPEED, g.MAX_PUCK_SPEED),
-    #             "goal_dir":     np.array([0.0, 0.0]),
-    #         }
-
-    #     if player == 2:
-    #         obs = {
-    #             "paddle_1_pos": self.scale(self.mirror_observation(self.paddle2.pos, True), g.WIDTH, g.HEIGHT),
-    #             "paddle_2_pos": self.scale(self.mirror_observation(self.paddle1.pos, True), g.WIDTH, g.HEIGHT),
-    #             "puck_pos":     self.scale(self.mirror_observation(self.puck.pos, True), g.WIDTH, g.HEIGHT),
-    #             "paddle_1_vel": self.scale(self.mirror_observation(self.paddle2.vel, False), g.MAX_PADDLE_SPEED, g.MAX_PADDLE_SPEED),
-    #             "paddle_2_vel": self.scale(self.mirror_observation(self.paddle1.vel, False), g.MAX_PADDLE_SPEED, g.MAX_PADDLE_SPEED),
-    #             "puck_vel":     self.scale(self.mirror_observation(self.puck.vel, False), g.MAX_PUCK_SPEED, g.MAX_PUCK_SPEED),
-    #             "goal_dir":     np.array([0.0, 0.0]),
-    #         }            
-
-    #     return obs
+        return self.get_observation(1), self.get_reward(player_1_action), self.is_done(), { 'cumulative_reward': self.round_reward }
 
     def get_observation(self, player):
-        # Set device to CUDA if available
-        device = g.device
         if player == 1:
             obs = {
                 "paddle_2_pos": self.paddle1.get_relative_pos_of_paddle_obs(self.paddle2),
@@ -322,7 +229,7 @@ class Game:
             }
             obs = {k: np.array([-v[0], v[1]]) for k, v in obs.items()}
 
-        return {k: torch.tensor(v, device=device).cpu() for k, v in obs.items()}
+        return {k: torch.tensor(v, device=g.device).cpu() for k, v in obs.items()}
 
     def scale(self, vec, x_max, y_max):
         return np.array([vec[0] / x_max, vec[1] / y_max])
@@ -432,15 +339,6 @@ class Slider:
         # Draw label
         label_surface = self.font.render(f'{self.label}: {self.value:.2f}', True, self.text_color)
         self.screen.blit(label_surface, (self.rect.x, self.rect.y - int(25 * g.WIDTH / 2000)))
-    # def draw(self):
-    #     # Draw background
-    #     # pygame.draw.rect(self.screen, (*self.bg_color, 100), self.rect)
-    #     self.screen.blit(self.rect_surface, (300, 225))
-    #     # Draw handle
-    #     pygame.draw.rect(self.screen, self.handle_color, self.handle_rect)
-    #     # Draw label
-    #     label_surface = self.font.render(f'{self.label}: {self.value:.2f}', True, self.text_color)
-    #     self.screen.blit(label_surface, (self.rect.x, self.rect.y - 25))
 
     def handle_event(self, event):
         if event.type == pygame.MOUSEBUTTONDOWN:
@@ -460,18 +358,7 @@ class Slider:
         return self.value
 
 def standalone_game():
-    pygame.joystick.init()
-    joystick_count = pygame.joystick.get_count()
-    print(f"Number of joysticks: {joystick_count}")
-    for i in range(joystick_count):
-        joystick = pygame.joystick.Joystick(i)
-        joystick.init()
-        print(f"Joystick {i} name: {joystick.get_name()}")
-        print(f"Joystick {i} number of axes: {joystick.get_numaxes()}")
-        print(f"Joystick {i} number of buttons: {joystick.get_numbuttons()}")
-
     g.TRAINING_PARAMS['no_sound'] = False
-
     game = Game(training=False)
 
     latest_model_path = g.get_latest_model_path(g.TRAINING_PARAMS['base_path'], g.TRAINING_PARAMS['model_name'])
@@ -493,14 +380,12 @@ def standalone_game():
                 running = False
             elif event.type == pygame.JOYDEVICEREMOVED:
                 print(f"Joystick {event.instance_id} disconnected")
-                # Re-initialize joysticks here if needed
                 pygame.joystick.quit()
-                pygame.joystick.init()
+            elif event.type == pygame.JOYDEVICEADDED:
+                print(f"Joystick connected")
+                g.init_controls()
 
-        keys = pygame.key.get_pressed()
-        action = game.get_player_action(keys)
-
-        _, _, done, _ = game.step(action)
+        _, _, done, _ = game.step()
 
         if done:
             game.reset()
@@ -508,31 +393,6 @@ def standalone_game():
     game.close()
     pygame.joystick.quit()
     pygame.quit()
-
-# def standalone_game():
-#     game = Game(training=False)
-
-#     latest_model_path = g.get_latest_model_path(g.TRAINING_PARAMS['base_path'], g.TRAINING_PARAMS['model_name'])
-
-#     if latest_model_path:
-#         env = make_vec_env(lambda: environment.AirHockeyEnv(False), n_envs=1)
-#         game.player_2_model = SAC.load(latest_model_path, env=env)
-
-#     running = True
-#     while running:
-#         for event in pygame.event.get():
-#             if event.type == pygame.QUIT:
-#                 running = False
-
-#         keys = pygame.key.get_pressed()
-#         action = game.get_player_action(keys)
-
-#         _, _, done, _ = game.step(action)
-
-#         if done:
-#             game.reset()
-
-#     game.close()
 
 if __name__ == "__main__":
     standalone_game()

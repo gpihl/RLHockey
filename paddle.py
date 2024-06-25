@@ -13,7 +13,9 @@ class Paddle:
         self.magnetic_effect_active = False
         self.reset(training=False)
         self.last_dash_time = 0
-        self.velocity_history = deque(maxlen=5)  # Stores the last 10 velocities by default
+        self.charging_dash = False
+        self.charge_start_time = 0
+        self.velocity_history = deque(maxlen=5)
         self.average_velocity = np.array([0.0, 0.0])        
 
     def reset(self, training):
@@ -25,6 +27,8 @@ class Paddle:
             else:
                 self.pos = self.get_starting_pos_regular()           
 
+        self.last_dash_time = 0
+        self.charging_dash = False
         self.vel = np.array([0, 0])
 
     def get_starting_pos_random(self):
@@ -42,9 +46,6 @@ class Paddle:
         return starting_pos
     
     def update_velocity_history(self):
-        """
-        Update the velocity history and calculate the average velocity.
-        """
         self.velocity_history.append(self.vel.copy())
         self.average_velocity = np.mean(self.velocity_history, axis=0)  
     
@@ -52,7 +53,7 @@ class Paddle:
         current_time = time.time()
         if current_time - self.last_dash_time > g.GAMEPLAY_PARAMS['dash_cooldown']:
             self.last_dash_time = current_time
-
+            self.charging_dash = False
 
             # Apply impulse in the direction of current movement
             if np.linalg.norm(self.average_velocity) > 0:
@@ -67,9 +68,13 @@ class Paddle:
                 dash_direction = np.array([1, 0]) if self.player == 1 else np.array([-1, 0])
 
             average_speed = np.linalg.norm(self.average_velocity)
-            # Apply the impulse
-            self.vel += dash_direction * g.GAMEPLAY_PARAMS['dash_impulse'] * (average_speed / g.MAX_PADDLE_SPEED)
+
+            charge_time = current_time - self.charge_start_time
+            charge_time_factor = charge_time / g.GAMEPLAY_PARAMS['dash_max_charge_time']
+            self.vel += dash_direction * charge_time_factor * g.GAMEPLAY_PARAMS['dash_impulse'] * (average_speed / g.MAX_PADDLE_SPEED)
             self.limit_speed()
+            
+            g.sound_handler.play_sound(g.MAX_PADDLE_SPEED / 2, self.pos[0], 1)
             
     def limit_speed(self):
         speed = np.linalg.norm(self.vel)
@@ -79,15 +84,8 @@ class Paddle:
     def is_dashing(self):
         return time.time() - self.last_dash_time < g.GAMEPLAY_PARAMS['dash_duration']
 
-    def apply_aim_assist(self, puck, max_assist_strength=0.6):
-        """
-        Apply aim assist to the paddle's movement, proportional to velocity and proximity to the puck.
-        
-        :param puck: The Puck object
-        :param max_assist_strength: Maximum strength of the aim assist (0 to 1)
-        """
-        # Predict puck position in the near future
-        future_time = 0.5  # Look 0.5 seconds ahead
+    def apply_aim_assist(self, puck, max_assist_strength=0.4):
+        future_time = 0.3  # Look 0.5 seconds ahead
         predicted_puck_pos = puck.pos + puck.vel * future_time
 
         # Calculate vector from paddle to predicted puck position
@@ -103,10 +101,11 @@ class Paddle:
             ideal_vel = ideal_vel / np.linalg.norm(ideal_vel) * max_speed
 
         # Calculate assist strength based on current velocity and proximity to puck
-        velocity_factor = min(np.linalg.norm(self.vel) / max_speed, 1.0)
+        relative_velocity = np.linalg.norm(self.vel - puck.vel)
+        velocity_factor = min(relative_velocity / g.MAX_PADDLE_SPEED + g.MAX_PUCK_SPEED, 1.0)
         velocity_factor = velocity_factor ** 2
-        proximity_factor = 1 - min(distance_to_puck / (g.WIDTH / 2), 1)  # Assumes field width as max distance
-        proximity_factor = proximity_factor ** 2
+        proximity_factor = 1 - min(distance_to_puck / (g.WIDTH / 2), 1)
+        proximity_factor = proximity_factor ** 4
         assist_strength = max_assist_strength * velocity_factor * proximity_factor
 
         # Blend current velocity with ideal velocity
@@ -144,10 +143,16 @@ class Paddle:
         # Check if movement is below epsilon and acceleration is being applied
         if distance_moved < epsilon and acceleration_applied:
             return True
-        return False  
+        return False
+    
+    def handle_controls(self, puck, action):
+        self.set_magnetic_effect(action['magnet'])
+        if action['dash']:
+            self.dash(puck)
+        
+        self.control(action['acceleration'])
 
-    def control(self, ax, ay):
-        acc = np.array([ax, ay])
+    def control(self, acc):
         self.vel = self.vel.astype(np.float64)
         self.vel += acc * g.DELTA_T * g.PADDLE_ACC / 1.6
 
@@ -180,21 +185,21 @@ class Paddle:
         relative_pos[1] /= g.HEIGHT
         return relative_pos
     
-    def update(self, training):
+    def update(self, puck, action):
+        self.handle_controls(puck, action)
+
         self.last_pos = self.pos.copy()
 
-        # if not dashing, apply friction
-        if not self.is_dashing():
+        if self.is_dashing():
+            self.apply_aim_assist(puck)
+        else:
             self.vel *= (g.PADDLE_FRICTION ** g.DELTA_T)
  
         speed = np.linalg.norm(self.vel)
         if speed > g.MAX_PADDLE_SPEED:
             self.vel = (self.vel / speed) * g.MAX_PADDLE_SPEED
 
-        self.update_velocity_history()
-        # if training and self.player == 2:
-        #     self.vel += np.random.normal(0, 0.4, 2) * g.DELTA_T
-        
+        self.update_velocity_history()      
         self.pos += self.vel * g.DELTA_T
         
         if g.TRAINING_PARAMS['field_split']:
