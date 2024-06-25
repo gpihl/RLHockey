@@ -29,7 +29,7 @@ class Paddle:
 
         self.last_dash_time = 0
         self.charging_dash = False
-        self.vel = np.array([0, 0])
+        self.vel = np.array([0.0, 0.0])
 
     def get_starting_pos_random(self):
         starting_pos = np.array([random.uniform(2*g.PADDLE_RADIUS, g.WIDTH - 2*g.PADDLE_RADIUS), 
@@ -153,7 +153,6 @@ class Paddle:
         self.control(action['acceleration'])
 
     def control(self, acc):
-        self.vel = self.vel.astype(np.float64)
         self.vel += acc * g.DELTA_T * g.PADDLE_ACC / 1.6
 
     def get_relative_pos_of_paddle_obs(self, paddle):
@@ -215,17 +214,17 @@ class Paddle:
 
         if self.pos[0] < left_wall:
             self.pos[0] = left_wall
-            self.vel[0] = 0
+            self.vel[0] = 0.0
         elif self.pos[0] > right_wall:
             self.pos[0] = right_wall
-            self.vel[0] = 0
+            self.vel[0] = 0.0
 
         if self.pos[1] < g.PADDLE_RADIUS:
             self.pos[1] = g.PADDLE_RADIUS
-            self.vel[1] = 0
+            self.vel[1] = 0.0
         elif self.pos[1] > g.HEIGHT - g.PADDLE_RADIUS:
             self.pos[1] = g.HEIGHT - g.PADDLE_RADIUS
-            self.vel[1] = 0
+            self.vel[1] = 0.0
 
     def handle_collision(self, paddle):
         dist = np.linalg.norm(self.pos - paddle.pos)
