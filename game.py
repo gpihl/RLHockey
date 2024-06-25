@@ -72,11 +72,11 @@ class Game:
     def get_joystick_action(self):
         if self.joystick == None:
             return None
-        
+                
         input_vector = np.array([self.joystick.get_axis(2), self.joystick.get_axis(3)])
         # input_vector = self.apply_non_linear_response(input_vector)
         output = [input_vector[0] * g.PADDLE_ACC, input_vector[1] * g.PADDLE_ACC]
-        return 
+        return output
     
     def apply_non_linear_response(self, input_vector, exponent=1.0):
         magnitude = np.linalg.norm(input_vector)

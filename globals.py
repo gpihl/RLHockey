@@ -22,7 +22,7 @@ REWARD_POLICY = {
     'ball_velocity': 0.5,
     'ball_vel_2_goal': 1.0,
     'center': -0.0,
-    'dist_to_player': 0.5,
+    'dist_to_player': 0.3,
     'pointless_motion': 0.5,
     'normalization': 1.0,    
 }
@@ -58,7 +58,7 @@ TRAINING_PARAMS = {
 
 TRAINING_PARAMS['model_name'] += TRAINING_PARAMS['algorithm']
 
-DELTA_T = 0.85
+DELTA_T = 0.6
 
 # Colors
 BG_COLOR = (43, 50, 80)
