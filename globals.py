@@ -56,15 +56,21 @@ TRAINING_PARAMS = {
     'algorithm': 'PPO'
 }
 
+GAMEPLAY_PARAMS = {
+    'dash_cooldown': 0.5,
+    'dash_impulse': 700,
+    'dash_duration': 0.22,
+}
+
 TRAINING_PARAMS['model_name'] += TRAINING_PARAMS['algorithm']
 
-DELTA_T = 0.6
+DELTA_T = 0.80
 
 # Colors
 BG_COLOR = (43, 50, 80)
 
 # Display
-WIDTH, HEIGHT = 800, 400
+WIDTH, HEIGHT = 2000, 1000
 HIGH_FPS = 60000
 LOW_FPS = 120
 
@@ -90,11 +96,11 @@ PADDLE_COLOR_2 = (0, 204, 102)
 PADDLE_RADIUS = int(30 * WIDTH / 800)
 PADDLE_FRICTION = 0.86
 PADDLE_ACC = 2.5
-MAX_PADDLE_SPEED = 38
+MAX_PADDLE_SPEED = 40
 
 # Puck
 PUCK_COLOR = (124, 254, 253)
-MAX_PUCK_SPEED = 40
+MAX_PUCK_SPEED = 60
 PUCK_START_SPEED = 4
 PUCK_RADIUS = int(20 * WIDTH / 800)
 PUCK_FRICTION = 0.996

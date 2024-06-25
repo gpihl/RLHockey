@@ -50,10 +50,13 @@ class Puck:
         self.vel *=  (g.PUCK_FRICTION ** g.DELTA_T)
         self.vel = np.clip(self.vel, -g.MAX_PUCK_SPEED, g.MAX_PUCK_SPEED)
         self.vel += np.random.normal(0, 0.005, 2) * g.DELTA_T
+        self.limit_speed()
         self.pos += self.vel * g.DELTA_T        
 
         for paddle in paddles:
             self.handle_paddle_collision(paddle)
+            magnetic_force = paddle.calculate_magnetic_force(self.pos)
+            self.vel += magnetic_force * g.DELTA_T
 
         self.handle_wall_collision()
 
@@ -82,6 +85,11 @@ class Puck:
             # sound_vel = np.abs(sound_vel)
             sound_vel = np.linalg.norm(self.vel)
             g.sound_handler.play_sound(sound_vel, self.pos[0], 'table_hit')
+
+    def limit_speed(self):
+        speed = np.linalg.norm(self.vel)
+        if speed > g.MAX_PUCK_SPEED:
+            self.vel = (self.vel / speed) * g.MAX_PUCK_SPEED
 
     def check_paddle_collision(self, paddle):
         dist = np.linalg.norm(self.pos - paddle.pos)
@@ -112,9 +120,10 @@ class Puck:
 
             impulse_scalar = -(1 + g.PUCK_RESTITUTION) * velocity_along_normal
             impulse_scalar /= (1 / g.PUCK_RADIUS + 1 / g.PADDLE_RADIUS)
-            impulse = 1.0 * impulse_scalar * normal
+            impulse = 0.9 * impulse_scalar * normal
             self.vel += impulse / g.PUCK_RADIUS
-            self.vel = np.clip(self.vel, -g.MAX_PUCK_SPEED, g.MAX_PUCK_SPEED)
+            self.limit_speed()
+
             overlap = g.PUCK_RADIUS + g.PADDLE_RADIUS - dist
             paddle.pos -= normal * (overlap / 2)
             paddle.vel -= 0.2 * impulse / g.PADDLE_RADIUS
@@ -135,6 +144,7 @@ class Puck:
 
     def draw(self, screen):
         red_level = np.linalg.norm(self.vel) / (g.MAX_PUCK_SPEED + 10)
+        red_level = max(min(red_level, 1.0), 0.0)
         puck_color = g.interpolate_color(g.PUCK_COLOR, (255, 0, 0), red_level)
         g.draw_circle(self.pos, g.PUCK_RADIUS, puck_color, screen)
         g.draw_circle(self.pos, int(7*g.PUCK_RADIUS / 9), g.interpolate_color(puck_color, (0,0,0), 0.2), screen)

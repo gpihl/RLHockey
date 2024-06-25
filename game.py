@@ -74,11 +74,11 @@ class Game:
             return None
                 
         input_vector = np.array([self.joystick.get_axis(2), self.joystick.get_axis(3)])
-        # input_vector = self.apply_non_linear_response(input_vector)
+        input_vector = self.apply_non_linear_response(input_vector)
         output = [input_vector[0] * g.PADDLE_ACC, input_vector[1] * g.PADDLE_ACC]
         return output
     
-    def apply_non_linear_response(self, input_vector, exponent=1.0):
+    def apply_non_linear_response(self, input_vector, exponent=1.5):
         magnitude = np.linalg.norm(input_vector)
         modified_magnitude = np.power(magnitude, exponent)
         modified_magnitude = np.clip(modified_magnitude, 0, 1)
@@ -221,10 +221,18 @@ class Game:
         keys = pygame.key.get_pressed()
         self.handle_ui_input(keys)
 
-        # print(action)
- 
         self.paddle1.control(action[0], action[1])
         self.paddle1.update(self.training)
+        if not self.training:
+            if self.paddle1.is_dashing():
+                self.paddle1.apply_aim_assist(self.puck)
+
+            l1_pressed = self.joystick.get_button(9)
+            self.paddle1.set_magnetic_effect(l1_pressed)
+            r1_pressed = self.joystick.get_button(10)            
+            if r1_pressed:
+                self.paddle1.dash(self.puck)
+
 
         player_2_action = [0,0]
         if self.player_2_model:
@@ -479,30 +487,22 @@ def standalone_game():
 
     running = True
     while running:
-        try:
-            for event in pygame.event.get():
-                if event.type == pygame.QUIT:
-                    running = False
-                elif event.type == pygame.JOYDEVICEREMOVED:
-                    print(f"Joystick {event.instance_id} disconnected")
-                    # Re-initialize joysticks here if needed
-                    pygame.joystick.quit()
-                    pygame.joystick.init()
+        for event in pygame.event.get():
+            if event.type == pygame.QUIT:
+                running = False
+            elif event.type == pygame.JOYDEVICEREMOVED:
+                print(f"Joystick {event.instance_id} disconnected")
+                # Re-initialize joysticks here if needed
+                pygame.joystick.quit()
+                pygame.joystick.init()
 
-            keys = pygame.key.get_pressed()
-            action = game.get_player_action(keys)
+        keys = pygame.key.get_pressed()
+        action = game.get_player_action(keys)
 
-            _, _, done, _ = game.step(action)
+        _, _, done, _ = game.step(action)
 
-            if done:
-                game.reset()
-
-        except pygame.error as e:
-            print(f"Pygame error occurred: {e}")
-        except Exception as e:
-            print(f"An unexpected error occurred: {e}")
-            import traceback
-            traceback.print_exc()
+        if done:
+            game.reset()
 
     game.close()
     pygame.joystick.quit()
