@@ -31,7 +31,7 @@ def main():
             #     param_group['lr'] = g.TRAINING_PARAMS['learning_rate']
 
             if g.TRAINING_PARAMS['player_2_active']:
-                print(random_model_path)
+                # print(random_model_path)
                 # model2 = algorithm.load(latest_model_path, env=env, device=g.device, batch_size=batch_size)
                 model2 = algorithm.load(random_model_path, env=env, device=g.device, batch_size=batch_size)
         else:

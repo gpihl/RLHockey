@@ -49,7 +49,7 @@ class Puck:
     def update(self, paddles):
         self.vel *=  (g.PUCK_FRICTION ** g.DELTA_T)
         self.vel = np.clip(self.vel, -g.MAX_PUCK_SPEED, g.MAX_PUCK_SPEED)
-        self.vel += np.random.normal(0, 0.01, 2) * g.DELTA_T
+        self.vel += np.random.normal(0, 0.005, 2) * g.DELTA_T
         self.pos += self.vel * g.DELTA_T        
 
         for paddle in paddles:
@@ -112,7 +112,7 @@ class Puck:
 
             impulse_scalar = -(1 + g.PUCK_RESTITUTION) * velocity_along_normal
             impulse_scalar /= (1 / g.PUCK_RADIUS + 1 / g.PADDLE_RADIUS)
-            impulse = 1.2 * impulse_scalar * normal
+            impulse = 1.0 * impulse_scalar * normal
             self.vel += impulse / g.PUCK_RADIUS
             self.vel = np.clip(self.vel, -g.MAX_PUCK_SPEED, g.MAX_PUCK_SPEED)
             overlap = g.PUCK_RADIUS + g.PADDLE_RADIUS - dist
@@ -130,7 +130,7 @@ class Puck:
             sound_vel = np.linalg.norm(relative_velocity)
             if sound_vel != 0:
                 sound_vel = np.abs(sound_vel)
-                # g.sound_handler.play_sound(sound_vel, self.pos[0], 'paddle')
+                g.sound_handler.play_sound(sound_vel / 4, self.pos[0], 'paddle')
                 g.sound_handler.play_sound(sound_vel, self.pos[0], 'table_hit')
 
     def draw(self, screen):

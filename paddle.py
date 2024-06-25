@@ -6,6 +6,8 @@ class Paddle:
     def __init__(self, player):
         self.player = player
         self.color = g.PADDLE_COLOR_1 if self.player == 1 else g.PADDLE_COLOR_2
+        self.pos = np.array([0.0,0.0])
+        self.last_pos = np.array([0.0,0.0])
         self.reset(False)
 
     def reset(self, training):
@@ -15,7 +17,7 @@ class Paddle:
             if g.TRAINING_PARAMS['random_starting_locations']:
                 self.pos = self.get_starting_pos_random()
             else:
-                self.pos = self.get_starting_pos_regular()            
+                self.pos = self.get_starting_pos_regular()           
 
         self.vel = np.array([0, 0], dtype=np.float32)
 
@@ -32,6 +34,18 @@ class Paddle:
             starting_pos = np.array([g.WIDTH - g.PADDLE_RADIUS*3.0, g.HEIGHT // 2])
 
         return starting_pos
+    
+    def pointless_motion(self, acceleration, epsilon=0.01):
+        # Calculate the distance moved since last position
+        distance_moved = np.linalg.norm(self.pos - self.last_pos)
+        
+        # Check if acceleration is being applied (non-zero)
+        acceleration_applied = np.any(acceleration != 0)
+        
+        # Check if movement is below epsilon and acceleration is being applied
+        if distance_moved < epsilon and acceleration_applied:
+            return True
+        return False  
 
     def control(self, ax, ay):
         acc = np.array([ax, ay], dtype=np.float32)
@@ -67,11 +81,12 @@ class Paddle:
         return relative_pos
     
     def update(self, training):
+        self.last_pos = self.pos.copy()
         self.vel *= (g.PADDLE_FRICTION ** g.DELTA_T)
         self.vel = np.clip(self.vel, -g.MAX_PADDLE_SPEED, g.MAX_PADDLE_SPEED)
         # if training and self.player == 2:
         #     self.vel += np.random.normal(0, 0.4, 2) * g.DELTA_T
-
+        
         self.pos += self.vel * g.DELTA_T
         
         if g.TRAINING_PARAMS['field_split']:

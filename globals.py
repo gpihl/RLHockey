@@ -11,43 +11,48 @@ print(f"Using device: {device}")
 sound_handler = SoundHandler()
 
 # Training params
+
+
+REWARD_POLICY = {   
+    'time_reward': -0.1,
+    'acc_reward': -0.05,
+    'player_1_goal': 50,
+    'player_2_goal': -50,
+    'ball_proximity': 0.15,
+    'ball_velocity': 0.5,
+    'ball_vel_2_goal': 1.0,
+    'center': -0.0,
+    'dist_to_player': 0.5,
+    'pointless_motion': 0.5,
+    'normalization': 1.0,    
+}
+
 # REWARD_POLICY = {   
-#     'time_reward': -0.1,
-#     'acc_reward': -0.1,
+#     'time_reward': -0.02,
+#     'acc_reward': -0.04,
 #     'player_1_goal': 20,
 #     'player_2_goal': -20,
-#     'ball_proximity': 0.05,
-#     'ball_velocity': 0.3,
-#     'ball_vel_2_goal': 0.3,
-#     'center': -0.3,
+#     'ball_proximity': 0.0,
+#     'ball_velocity': 0.0,
+#     'ball_vel_2_goal': 0.0,
+#     'center': -0.0,
 #     'normalization': 1.0,
 # }
 
-REWARD_POLICY = {   
-    'time_reward': -0.02,
-    'acc_reward': -0.04,
-    'player_1_goal': 20,
-    'player_2_goal': -20,
-    'ball_proximity': 0.0,
-    'ball_velocity': 0.0,
-    'ball_vel_2_goal': 0.0,
-    'center': -0.0,
-    'normalization': 1.0,
-}
-
 TRAINING_PARAMS = {
     'training_steps': 15000,
-    'learning_rate': 0.3e-4,
+    'learning_rate': 1.0e-4,
     'model_name': 'new-observations',
     'base_path': 'models',
     'training_iterations': 4000,
     'player_2_active': True,
     'blocked_goals': False,
-    'random_starting_locations': True,
+    'random_starting_locations': False,
     'no_render': False,
     'no_sound': True,
     'field_split': False,
     'device': 'cpu',
+
     'algorithm': 'PPO'
 }
 

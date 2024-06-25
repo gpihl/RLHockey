@@ -45,6 +45,7 @@ class Game:
         self.sliders = []
         self.create_sliders()
         self.events = []
+        self.previous_action = np.array([0,0])
         print("Game initialization done")
 
     def init_pygame(self):
@@ -72,10 +73,20 @@ class Game:
         if self.joystick == None:
             return None
         
-        x = self.joystick.get_axis(2)
-        y = self.joystick.get_axis(3)
+        input_vector = np.array([self.joystick.get_axis(2), self.joystick.get_axis(3)])
+        # input_vector = self.apply_non_linear_response(input_vector)
+        output = [input_vector[0] * g.PADDLE_ACC, input_vector[1] * g.PADDLE_ACC]
+        return 
+    
+    def apply_non_linear_response(self, input_vector, exponent=1.0):
+        magnitude = np.linalg.norm(input_vector)
+        modified_magnitude = np.power(magnitude, exponent)
+        modified_magnitude = np.clip(modified_magnitude, 0, 1)
 
-        return [x * g.PADDLE_ACC, y * g.PADDLE_ACC]        
+        if magnitude == 0:
+            return np.zeros_like(input_vector)
+        
+        return input_vector * (modified_magnitude / magnitude)
 
     def create_objects(self):
         self.paddle1 = Paddle(1)
@@ -182,6 +193,11 @@ class Game:
         # print(center_reward)
         reward += center_reward
 
+        dist_to_player = np.linalg.norm(self.paddle1.pos - self.paddle2.pos) / g.WIDTH
+        reward += dist_to_player * g.REWARD_POLICY['dist_to_player']
+
+        pointless_reward = self.paddle1.pointless_motion(action) * g.REWARD_POLICY["pointless_motion"]
+        reward += pointless_reward
 
         reward += self.puck.collect_shot_reward('vel_2_goal') * g.REWARD_POLICY["ball_vel_2_goal"]
         reward += self.puck.collect_shot_reward('ball_velocity') * g.REWARD_POLICY["ball_velocity"]
@@ -215,10 +231,10 @@ class Game:
             player_2_action = self.player_2_model.predict(self.get_observation(2))[0]        
         if self.player_2_human:
             player_2_action = self.get_player_action(keys)
+            # self.previous
             self.paddle2.control(player_2_action[0], player_2_action[1])
         else:
-            self.paddle2.control(-player_2_action[0], player_2_action[1])
-        
+            self.paddle2.control(-player_2_action[0], player_2_action[1])        
 
         self.paddle2.update(self.training)
 
