@@ -22,22 +22,11 @@ REWARD_POLICY = {
     'ball_velocity': 0.5,
     'ball_vel_2_goal': 0.3,
     'center': -0.01,
-    'dist_to_player': 0.01,
+    'dist_to_player': 0.1,
     'pointless_motion': -0.4,
     'normalization': 1.0,    
 }
 
-# REWARD_POLICY = {   
-#     'time_reward': -0.02,
-#     'acc_reward': -0.04,
-#     'player_1_goal': 20,
-#     'player_2_goal': -20,
-#     'ball_proximity': 0.0,
-#     'ball_velocity': 0.0,
-#     'ball_vel_2_goal': 0.0,
-#     'center': -0.0,
-#     'normalization': 1.0,
-# }
 
 TRAINING_PARAMS = {
     'training_steps': 15000,
@@ -47,7 +36,7 @@ TRAINING_PARAMS = {
     'training_iterations': 4000,
     'player_2_active': True,
     'blocked_goals': False,
-    'random_starting_locations': False,
+    'random_starting_locations': True,
     'no_render': False,
     'no_sound': True,
     'field_split': False,
@@ -72,7 +61,7 @@ BG_COLOR = (43, 50, 80)
 # Display
 WIDTH, HEIGHT = 2000, 1000
 HIGH_FPS = 60000
-LOW_FPS = 60
+LOW_FPS = 120
 
 # Fonts
 REWARD_COLOR = (154, 120, 134)

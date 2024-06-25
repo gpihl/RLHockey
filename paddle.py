@@ -79,7 +79,7 @@ class Paddle:
     def is_dashing(self):
         return time.time() - self.last_dash_time < g.GAMEPLAY_PARAMS['dash_duration']
 
-    def apply_aim_assist(self, puck, max_assist_strength=0.4):
+    def apply_aim_assist(self, puck, max_assist_strength=0.6):
         """
         Apply aim assist to the paddle's movement, proportional to velocity and proximity to the puck.
         
@@ -106,7 +106,7 @@ class Paddle:
         velocity_factor = min(np.linalg.norm(self.vel) / max_speed, 1.0)
         velocity_factor = velocity_factor ** 2
         proximity_factor = 1 - min(distance_to_puck / (g.WIDTH / 2), 1)  # Assumes field width as max distance
-        proximity_factor = proximity_factor ** 4
+        proximity_factor = proximity_factor ** 2
         assist_strength = max_assist_strength * velocity_factor * proximity_factor
 
         # Blend current velocity with ideal velocity

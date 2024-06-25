@@ -73,7 +73,7 @@ class Game:
         if self.joystick == None:
             return None
                 
-        input_vector = np.array([self.joystick.get_axis(2), self.joystick.get_axis(3)])
+        input_vector = np.array([self.joystick.get_axis(0), self.joystick.get_axis(1)])
         input_vector = self.apply_non_linear_response(input_vector)
         output = [input_vector[0] * g.PADDLE_ACC, input_vector[1] * g.PADDLE_ACC]
         return output
@@ -230,8 +230,8 @@ class Game:
             if self.joystick:
                 l1_pressed = self.joystick.get_button(9)
                 self.paddle1.set_magnetic_effect(l1_pressed)
-                r1_pressed = self.joystick.get_button(10)
-                if r1_pressed:
+                a_pressed = self.joystick.get_button(0)
+                if a_pressed:
                     self.paddle1.dash(self.puck)
 
 
