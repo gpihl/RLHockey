@@ -227,11 +227,12 @@ class Game:
             if self.paddle1.is_dashing():
                 self.paddle1.apply_aim_assist(self.puck)
 
-            l1_pressed = self.joystick.get_button(9)
-            self.paddle1.set_magnetic_effect(l1_pressed)
-            r1_pressed = self.joystick.get_button(10)            
-            if r1_pressed:
-                self.paddle1.dash(self.puck)
+            if self.joystick:
+                l1_pressed = self.joystick.get_button(9)
+                self.paddle1.set_magnetic_effect(l1_pressed)
+                r1_pressed = self.joystick.get_button(10)
+                if r1_pressed:
+                    self.paddle1.dash(self.puck)
 
 
         player_2_action = [0,0]

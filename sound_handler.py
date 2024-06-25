@@ -50,7 +50,7 @@ class SoundHandler:
         }
 
         for k, _ in self.scales.items():
-            self.scales[k] += [n+12 for n in self.scales[k]] + [n+24 for n in self.scales[k]]
+            self.scales[k] += [n+12 for n in self.scales[k]]
 
     def map_to_scale(self, number, scale):
         return self.scales[scale][(number - 1) % len(self.scales[scale])]
@@ -67,22 +67,29 @@ class SoundHandler:
 
     def velocity_to_sound_index(self, velocity, scale='maj9'):
         velocity = max(0, min(velocity, g.MAX_PUCK_SPEED + g.MAX_PADDLE_SPEED))
-        index = int((velocity * 2 / (g.MAX_PUCK_SPEED + g.MAX_PADDLE_SPEED)) * 23) + 1
+        index = int((1 - (velocity / (g.MAX_PUCK_SPEED + g.MAX_PADDLE_SPEED))) * len(self.scales[scale])) + 1
         scale_index = self.map_to_scale(index, scale)
         return scale_index
 
     def create_octave_up_sounds(self):
-        for octave in [2, 3]:
+        for octave in [2]:
             for i in range(1, 13):
                 if i in self.sounds:
-                    original_sound = pygame.sndarray.array(self.sounds[i])
+                    original_sound = self.sounds[i]
                     transposed_sound = self.pitch_shift(original_sound, octave)
-                    self.sounds[i + 12 * (octave - 1)] = pygame.sndarray.make_sound(transposed_sound.astype(np.int16))
+                    self.sounds[i + 12 * (octave - 1)] = transposed_sound
                 else:
                     print(f"Warning: Original sound {i} not found, skipping transposition")
 
     def pitch_shift(self, sound, pitch_shift):
-        return signal.resample(sound, int(len(sound) / pitch_shift))
+        # Convert pygame sound to numpy array
+        array = pygame.sndarray.array(sound)
+        
+        # Resample the audio
+        resampled = signal.resample(array, int(len(array) / pitch_shift))
+        
+        # Convert back to pygame sound
+        return pygame.sndarray.make_sound(resampled.astype(np.int16))
 
     def play_sound(self, velocity, x_coord, sound_name):
         if g.TRAINING_PARAMS['no_sound']:
@@ -93,13 +100,18 @@ class SoundHandler:
 
         if sound_name in self.sounds:
             volume = velocity / ((g.MAX_PUCK_SPEED + g.MAX_PADDLE_SPEED) if sound_name == 'paddle' else (g.MAX_PUCK_SPEED))
+            volume = min(0.8, volume)
             left_vol = volume * (g.WIDTH - x_coord) / g.WIDTH
             right_vol = volume * x_coord / g.WIDTH
+
+            sound = self.sounds[sound_name]
+            if sound_name == 'table_hit':
+                sound = self.pitch_shift(sound, 1 + volume)
 
             channel = pygame.mixer.find_channel()
             if channel:
                 channel.set_volume(left_vol, right_vol)
-                channel.play(self.sounds[sound_name])
+                channel.play(sound)
             else:
                 pass
                 # print("No free channel available to play sound")

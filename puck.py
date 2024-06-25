@@ -127,6 +127,7 @@ class Puck:
             overlap = g.PUCK_RADIUS + g.PADDLE_RADIUS - dist
             paddle.pos -= normal * (overlap / 2)
             paddle.vel -= 0.2 * impulse / g.PADDLE_RADIUS
+            paddle.limit_speed()
             self.pos += normal * (overlap / 2)
 
 
@@ -138,7 +139,6 @@ class Puck:
 
             sound_vel = np.linalg.norm(relative_velocity)
             if sound_vel != 0:
-                sound_vel = np.abs(sound_vel)
                 g.sound_handler.play_sound(sound_vel / 4, self.pos[0], 'paddle')
                 g.sound_handler.play_sound(sound_vel, self.pos[0], 'table_hit')
 

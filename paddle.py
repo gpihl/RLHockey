@@ -69,6 +69,12 @@ class Paddle:
             average_speed = np.linalg.norm(self.average_velocity)
             # Apply the impulse
             self.vel += dash_direction * g.GAMEPLAY_PARAMS['dash_impulse'] * (average_speed / g.MAX_PADDLE_SPEED)
+            self.limit_speed()
+            
+    def limit_speed(self):
+        speed = np.linalg.norm(self.vel)
+        if speed > g.MAX_PUCK_SPEED:
+            self.vel = (self.vel / speed) * g.MAX_PUCK_SPEED
 
     def is_dashing(self):
         return time.time() - self.last_dash_time < g.GAMEPLAY_PARAMS['dash_duration']
@@ -236,7 +242,6 @@ class Paddle:
 
             sound_vel = np.linalg.norm(relative_velocity)
             if sound_vel != 0:
-                sound_vel = np.abs(sound_vel)
                 g.sound_handler.play_sound(sound_vel, self.pos[0], 'paddle')
 
     def draw(self, screen):
