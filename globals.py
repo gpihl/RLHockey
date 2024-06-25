@@ -14,16 +14,16 @@ sound_handler = SoundHandler()
 
 
 REWARD_POLICY = {   
-    'time_reward': -0.1,
-    'acc_reward': -0.05,
-    'player_1_goal': 50,
-    'player_2_goal': -50,
-    'ball_proximity': 0.15,
+    'time_reward': -0.05,
+    'acc_reward': -0.02,
+    'player_1_goal': 20,
+    'player_2_goal': -20,
+    'ball_proximity': 0.25,
     'ball_velocity': 0.5,
-    'ball_vel_2_goal': 1.0,
-    'center': -0.0,
-    'dist_to_player': 0.3,
-    'pointless_motion': 0.5,
+    'ball_vel_2_goal': 0.3,
+    'center': -0.01,
+    'dist_to_player': 0.01,
+    'pointless_motion': -0.4,
     'normalization': 1.0,    
 }
 
