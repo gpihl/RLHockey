@@ -2,13 +2,12 @@ import game
 import gymnasium as gym
 from gymnasium import spaces
 import numpy as np
-import globals as g
 
 class AirHockeyEnv(gym.Env):
     def __init__(self, training=True):
         super(AirHockeyEnv, self).__init__()
         if training:
-            self.game = game.Game(training=True)
+            self.game = game.Game()
 
         self.observation_space = spaces.Dict({
             "paddle_2_pos": spaces.Box(low=-1, high=1, shape=(2,), dtype=np.float32),

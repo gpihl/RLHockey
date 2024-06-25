@@ -8,30 +8,30 @@ class Paddle:
     def __init__(self, player):
         self.player = player
         self.color = g.PADDLE_COLOR_1 if self.player == 1 else g.PADDLE_COLOR_2
-        self.pos = np.array([0.0,0.0])
-        self.last_pos = np.array([0.0,0.0])
+        self.pos = np.zeros(2)
+        self.last_pos = np.zeros(2)
         self.magnetic_effect_active = False
         self.radius = g.PADDLE_RADIUS        
-        self.reset(training=False)
+        self.reset()
         self.last_dash_time = 0.0
         self.charging_dash = False
         self.charge_start_time = 0.0
         self.dash_charge_power = 0.0
         self.velocity_history = deque(maxlen=5)
-        self.average_velocity = np.array([0.0, 0.0])        
+        self.average_velocity = np.zeros(2)       
 
-    def reset(self, training):
-        if not training:
-            self.pos = self.get_starting_pos_regular()
-        else:
+    def reset(self):
+        if g.SETTINGS['is_training']:
             if g.TRAINING_PARAMS['random_starting_locations']:
                 self.pos = self.get_starting_pos_random()
             else:
-                self.pos = self.get_starting_pos_regular()           
+                self.pos = self.get_starting_pos_regular()              
+        else:
+            self.pos = self.get_starting_pos_regular()
 
         self.last_dash_time = 0
         self.charging_dash = False
-        self.vel = np.array([0.0, 0.0])
+        self.vel = np.zeros(2)
 
     def get_starting_pos_random(self):
         starting_pos = np.array([random.uniform(2*self.radius, g.WIDTH - 2*self.radius), 
@@ -46,11 +46,7 @@ class Paddle:
             starting_pos = np.array([g.WIDTH - self.radius*3.0, g.HEIGHT // 2])
 
         return starting_pos
-    
-    def update_velocity_history(self):
-        self.velocity_history.append(self.vel.copy())
-        self.average_velocity = np.mean(self.velocity_history, axis=0)  
-    
+      
     def dash(self, puck):
         if g.SETTINGS['is_training'] and not g.TRAINING_PARAMS['dash_enabled']:
             return
@@ -162,40 +158,11 @@ class Paddle:
             self.charging_dash = False
             self.dash(puck)
         
-        self.control(action['acceleration'])
+        self.apply_force(action['acceleration'])
 
-    def control(self, acc):
+    def apply_force(self, acc):
         self.vel += acc * g.DELTA_T * g.PADDLE_ACC
-
-    def get_relative_pos_of_paddle_obs(self, paddle):
-        relative_pos = paddle.pos - self.pos
-        return self.normalize_relative_pos(relative_pos)
-    
-    def get_relative_pos_of_puck_obs(self, puck):
-        relative_pos = puck.pos - self.pos
-        return self.normalize_relative_pos(relative_pos)
-
-    def get_relative_pos_of_goal_1_top(self):
-        relative_pos = np.array([0, (g.HEIGHT - g.GOAL_HEIGHT) / 2]) - self.pos
-        return self.normalize_relative_pos(relative_pos)
-    
-    def get_relative_pos_of_goal_1_bot(self):
-        relative_pos = np.array([0, g.HEIGHT - (g.HEIGHT - g.GOAL_HEIGHT) / 2]) - self.pos
-        return self.normalize_relative_pos(relative_pos)    
-    
-    def get_relative_pos_of_goal_2_top(self):
-        relative_pos = np.array([g.WIDTH, (g.HEIGHT - g.GOAL_HEIGHT) / 2]) - self.pos
-        return self.normalize_relative_pos(relative_pos)
-
-    def get_relative_pos_of_goal_2_bot(self):
-        relative_pos = np.array([g.WIDTH, g.HEIGHT - (g.HEIGHT - g.GOAL_HEIGHT) / 2]) - self.pos
-        return self.normalize_relative_pos(relative_pos)
-
-    def normalize_relative_pos(self, relative_pos):
-        relative_pos[0] /= g.WIDTH
-        relative_pos[1] /= g.HEIGHT
-        return relative_pos
-    
+  
     def update(self, puck, action):
         self.handle_controls(puck, action)
 
@@ -266,9 +233,8 @@ class Paddle:
             if sound_vel != 0:
                 g.sound_handler.play_sound(sound_vel, self.pos[0], 'paddle')
 
-    def draw(self, screen):
+    def draw(self):
         glow = max(0.0, 1.0 - (time.time() - self.last_dash_time) / g.GAMEPLAY_PARAMS['dash_duration'])
-        # glow 
         color = g.interpolate_color(self.color, (255,255,255), glow)
 
         if self.charging_dash:
@@ -276,6 +242,39 @@ class Paddle:
             charge_color_shift = min(1.0, charging_time / g.GAMEPLAY_PARAMS['dash_max_charge_time'])
             color = g.interpolate_color(color, (255,100,100), charge_color_shift)
 
-        g.draw_circle(self.pos, self.radius, color, screen)
-        g.draw_circle(self.pos, int(self.radius / 2), g.interpolate_color(color, (0,0,0), 0.3), screen)
-        g.draw_circle(self.pos, int(self.radius / 3), g.interpolate_color(color, (0,0,0), 0.1), screen)
+        g.framework.draw_circle(self.pos, self.radius, color)
+        g.framework.draw_circle(self.pos, int(self.radius / 2), g.interpolate_color(color, (0,0,0), 0.3))
+        g.framework.draw_circle(self.pos, int(self.radius / 3), g.interpolate_color(color, (0,0,0), 0.1))
+
+    def update_velocity_history(self):
+        self.velocity_history.append(self.vel.copy())
+        self.average_velocity = np.mean(self.velocity_history, axis=0)  
+
+    def get_relative_pos_of_paddle_obs(self, paddle):
+        relative_pos = paddle.pos - self.pos
+        return self.normalize_relative_pos(relative_pos)
+    
+    def get_relative_pos_of_puck_obs(self, puck):
+        relative_pos = puck.pos - self.pos
+        return self.normalize_relative_pos(relative_pos)
+
+    def get_relative_pos_of_goal_1_top(self):
+        relative_pos = np.array([0, (g.HEIGHT - g.GOAL_HEIGHT) / 2]) - self.pos
+        return self.normalize_relative_pos(relative_pos)
+    
+    def get_relative_pos_of_goal_1_bot(self):
+        relative_pos = np.array([0, g.HEIGHT - (g.HEIGHT - g.GOAL_HEIGHT) / 2]) - self.pos
+        return self.normalize_relative_pos(relative_pos)    
+    
+    def get_relative_pos_of_goal_2_top(self):
+        relative_pos = np.array([g.WIDTH, (g.HEIGHT - g.GOAL_HEIGHT) / 2]) - self.pos
+        return self.normalize_relative_pos(relative_pos)
+
+    def get_relative_pos_of_goal_2_bot(self):
+        relative_pos = np.array([g.WIDTH, g.HEIGHT - (g.HEIGHT - g.GOAL_HEIGHT) / 2]) - self.pos
+        return self.normalize_relative_pos(relative_pos)
+
+    def normalize_relative_pos(self, relative_pos):
+        relative_pos[0] /= g.WIDTH
+        relative_pos[1] /= g.HEIGHT
+        return relative_pos        

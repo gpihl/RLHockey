@@ -4,17 +4,17 @@ import torch
 import random
 import numpy as np
 from sound_handler import SoundHandler
+from framework import Framework
+from ui import UI
 
 device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 print(f"Using device: {device}")
 
-sound_handler = SoundHandler()
-
-
 # Training params
 
 SETTINGS = {
-    'is_training': False
+    'is_training': False,
+    'player_2_human': False,
 }
 
 REWARD_POLICY = {   
@@ -31,7 +31,6 @@ REWARD_POLICY = {
     'dash': -10.0,
     'normalization': 1.0,    
 }
-
 
 TRAINING_PARAMS = {
     'training_steps': 15000,
@@ -50,7 +49,7 @@ TRAINING_PARAMS = {
     'dash_enabled': False,
 }
 
-TRAINING_PARAMS['model_name'] += TRAINING_PARAMS['algorithm']
+TRAINING_PARAMS['model_name'] += "-" + TRAINING_PARAMS['algorithm']
 
 GAMEPLAY_PARAMS = {
     'dash_cooldown': 0.5,
@@ -83,7 +82,7 @@ LOW_FPS = 60
 REWARD_COLOR = (154, 120, 134)
 REWARD_FONT = None
 REWARD_FONT_SIZE = 30
-REWARD_POS = (25, 10)
+REWARD_POS = (20, 10)
 
 TIME_COLOR = (200, 160, 174)
 TIME_FONT = None
@@ -93,7 +92,7 @@ TIME_POS = (WIDTH/2, 30)
 STEPS_LEFT_COLOR = (154, 120, 134)
 STEPS_LEFT_FONT = None
 STEPS_LEFT_FONT_SIZE = 30
-STEPS_LEFT_POS = (WIDTH - 70, 30)
+STEPS_LEFT_POS = (WIDTH - 100, 30)
 
 # Paddle
 PADDLE_COLOR_1 = (51, 153, 255)
@@ -120,19 +119,12 @@ TIME_LIMIT = 60 * LOW_FPS
 # Physics
 DELTA_T = 0.80 * 120 / LOW_FPS
 
+# Singletons
+sound_handler = SoundHandler()
+framework = Framework()
+ui = UI()
+
 # Helper functions
-def draw_circle(pos, radius, color, screen, aa=True):
-    pygame.gfxdraw.filled_circle(screen, int(pos[0]), int(pos[1]), radius, color)
-    if aa:
-        pygame.gfxdraw.aacircle(screen, int(pos[0]), int(pos[1]), radius, (0,0,0))
-
-def interpolate_color(color1, color2, t):
-    return (
-        int(color1[0] + (color2[0] - color1[0]) * t),
-        int(color1[1] + (color2[1] - color1[1]) * t),
-        int(color1[2] + (color2[2] - color1[2]) * t)
-    )    
-
 def save_text_to_file(text, file_path):
     try:
         with open(file_path, 'a') as file:
@@ -243,5 +235,12 @@ def game_action_from_model_action(model_action):
         'dash': model_action[2] > 0.9,
         'magnet': False,
     }
+
+def interpolate_color(color1, color2, t):
+    return (
+        int(color1[0] + (color2[0] - color1[0]) * t),
+        int(color1[1] + (color2[1] - color1[1]) * t),
+        int(color1[2] + (color2[2] - color1[2]) * t)
+    )
 
 joystick = init_controls()

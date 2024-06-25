@@ -89,13 +89,8 @@ class SoundHandler:
                     print(f"Warning: Original sound {i} not found, skipping transposition")
 
     def pitch_shift(self, sound, pitch_shift):
-        # Convert pygame sound to numpy array
         array = pygame.sndarray.array(sound)
-        
-        # Resample the audio
         resampled = signal.resample(array, int(len(array) / pitch_shift))
-        
-        # Convert back to pygame sound
         return pygame.sndarray.make_sound(resampled.astype(np.int16))
     
     def play_goal_sound(self, x):

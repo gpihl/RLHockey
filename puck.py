@@ -1,7 +1,6 @@
 import numpy as np
 import random
 import globals as g
-import math
 
 class Puck: 
     def __init__(self):
@@ -9,10 +8,10 @@ class Puck:
         self.prev_puck_start_pos = self.pos
         self.shot_reward = 0
         self.shot_on_goal_reward = 0
-        self.reset(False, 2)
+        self.reset()
 
-    def reset(self, training, last_scorer):
-        if not training:
+    def reset(self, last_scorer=2):
+        if not g.SETTINGS['is_training']:
             self.pos = self.get_starting_pos_regular(last_scorer)
         else:
             if g.TRAINING_PARAMS['random_starting_locations']:
@@ -82,7 +81,6 @@ class Puck:
             sound_vel = self.vel[1]
 
         if sound_vel != 0:
-            # sound_vel = np.abs(sound_vel)
             sound_vel = np.linalg.norm(self.vel)
             g.sound_handler.play_sound(sound_vel, self.pos[0], 'table_hit')
 
@@ -102,9 +100,6 @@ class Puck:
         elif reward_type == 'ball_velocity':
             reward = self.shot_reward
             self.shot_reward = 0
-
-        # if reward != 0:
-        #     print(reward)
 
         return reward
     
@@ -142,10 +137,11 @@ class Puck:
                 g.sound_handler.play_sound(sound_vel / 4, self.pos[0], 'paddle')
                 g.sound_handler.play_sound(sound_vel, self.pos[0], 'table_hit')
 
-    def draw(self, screen):
+    def draw(self):
         red_level = np.linalg.norm(self.vel) / (g.MAX_PUCK_SPEED + 10)
         red_level = max(min(red_level, 1.0), 0.0)
         puck_color = g.interpolate_color(g.PUCK_COLOR, (255, 0, 0), red_level)
-        g.draw_circle(self.pos, g.PUCK_RADIUS, puck_color, screen)
-        g.draw_circle(self.pos, int(7*g.PUCK_RADIUS / 9), g.interpolate_color(puck_color, (0,0,0), 0.2), screen)
-        g.draw_circle(self.pos, int(8*g.PUCK_RADIUS / 9), g.interpolate_color(puck_color, (0,0,0), 0.05), screen)
+
+        g.framework.draw_circle(self.pos, g.PUCK_RADIUS, puck_color)
+        g.framework.draw_circle(self.pos, int(7*g.PUCK_RADIUS / 9), g.interpolate_color(puck_color, (0,0,0), 0.2))
+        g.framework.draw_circle(self.pos, int(8*g.PUCK_RADIUS / 9), g.interpolate_color(puck_color, (0,0,0), 0.05))
