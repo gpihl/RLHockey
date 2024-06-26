@@ -10,6 +10,7 @@ from stable_baselines3.common.env_util import make_vec_env
 import environment
 from paddle import Paddle
 from puck import Puck
+from framework import Framework
 
 class Game:
     _instance = None
@@ -158,7 +159,7 @@ class Game:
 
                 while g.current_time - goal_time < 1:
                     if g.current_time - goal_time > 0.75:
-                        g.framework.fill_screen_semiopaque_black()
+                        g.framework.fill_screen_semiopaque_black(50)
                     
 
                     g.framework.render()
@@ -298,6 +299,7 @@ class Game:
 def main():
     g.TRAINING_PARAMS['no_sound'] = False
     g.SETTINGS['is_training'] = False
+    g.framework = Framework()
     game = Game()
 
     if g.TRAINING_PARAMS['algorithm'] == 'PPO':
