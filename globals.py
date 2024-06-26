@@ -29,14 +29,14 @@ REWARD_POLICY = {
     'center': -0.01,
     'dist_to_player': 0.1,
     'pointless_motion': -0.4,
-    'dash': -10.0,
+    'dash': 0.0,
     'normalization': 1.0,    
 }
 
 TRAINING_PARAMS = {
     'training_steps': 15000,
     'learning_rate': 1.0e-4,
-    'model_name': 'hej',
+    'model_name': 'cool',
     'base_path': 'models',
     'training_iterations': 4000,
     'player_2_active': True,
@@ -94,13 +94,18 @@ WIDTH, HEIGHT = 1920, 960
 GOAL_HEIGHT = int(140 * WIDTH / 800)
 
 # Display
-RESOLUTION_W = 2560
-RESOLUTION_H = 1440
+# RESOLUTION_W = 2560
+# RESOLUTION_H = 1440
+# RESOLUTION_W = 1470
+# RESOLUTION_H = 956
+RESOLUTION_W = 800
+RESOLUTION_H = 400
 HIGH_FPS = 60000
-LOW_FPS = 120
+# LOW_FPS = 120
+LOW_FPS = 60
 
 # Fonts
-REWARD_COLOR = (154, 120, 134)
+REWARD_COLOR = (255, 255, 255)
 REWARD_FONT = None
 REWARD_FONT_SIZE = 30
 REWARD_POS = (20, 10)
@@ -110,7 +115,7 @@ TIME_FONT = None
 TIME_FONT_SIZE = 120
 TIME_POS = (WIDTH/2, 55)
 
-STEPS_LEFT_COLOR = (154, 120, 134)
+STEPS_LEFT_COLOR = (255, 255, 255)
 STEPS_LEFT_FONT = None
 STEPS_LEFT_FONT_SIZE = 30
 STEPS_LEFT_POS = (WIDTH - 100, 30)
@@ -149,7 +154,6 @@ DELTA_T = 0.80 * 120 / LOW_FPS
 
 # Singletons
 sound_handler = SoundHandler()
-framework = Framework()
 ui = UI()
 
 # Helper functions
@@ -245,11 +249,12 @@ def empty_action():
     }
 
 def game_action_from_model_action(model_action):
-    return {
+    action = {
         'acceleration': np.array([model_action[0], model_action[1]]),
-        'dash': model_action[2] > 0.9,
+        'dash': model_action[2] > 0.0,
         'magnet': False,
     }
+    return action
 
 # def interpolate_color(color1, color2, t):
 #     return (

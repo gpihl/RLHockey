@@ -2,8 +2,11 @@ import environment
 from stable_baselines3 import SAC, PPO
 from stable_baselines3.common.env_util import make_vec_env
 import globals as g
+from framework import Framework
 
 def main():
+    g.SETTINGS['is_training'] = True
+    g.framework = Framework()
     for i in range(g.TRAINING_PARAMS['training_iterations']):
         latest_model_path = g.get_latest_model_path(g.TRAINING_PARAMS['base_path'], g.TRAINING_PARAMS['model_name'])
         random_model_path = g.get_random_model_path(g.TRAINING_PARAMS['base_path'], g.TRAINING_PARAMS['model_name'])
@@ -12,7 +15,6 @@ def main():
         env = make_vec_env(lambda: environment.AirHockeyEnv(), n_envs=1)
 
         batch_size = 2048
-        g.SETTINGS['is_training'] = True
 
         model2 = None
         if g.TRAINING_PARAMS['algorithm'] == 'PPO':

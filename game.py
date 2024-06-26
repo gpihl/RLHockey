@@ -84,8 +84,8 @@ class Game:
         reward += self.puck.collect_shot_reward('ball_velocity') * g.REWARD_POLICY["ball_velocity"]
         reward /= g.REWARD_POLICY["normalization"]
 
-        dash_reward = action['dash'] * g.REWARD_POLICY['dash']
-        reward += dash_reward
+        # dash_reward = action['dash'] * g.REWARD_POLICY['dash']
+        # reward += dash_reward
 
         self.current_reward = reward
         self.round_reward += reward

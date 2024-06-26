@@ -21,6 +21,7 @@ class Framework():
         
         pygame.init()
         self.vsync = 0 if g.SETTINGS['is_training'] else 1
+        print(g.SETTINGS['is_training'])
         self.last_ui_input = 0
         self.screen = pygame.display.set_mode((g.RESOLUTION_W, g.RESOLUTION_H), flags = pygame.SCALED | pygame.HWSURFACE | pygame.DOUBLEBUF | pygame.RESIZABLE, vsync = self.vsync)
         # self.screen = pygame.display.set_mode((0, 0), pygame.FULLSCREEN)
@@ -154,7 +155,8 @@ class Framework():
 
     def draw_rotated_line(self, center_pos, length, angle, color, width=1):
         center_pos = self.world_to_screen_coord(center_pos)
-        
+        length = self.world_to_screen_length(length)
+        width = self.world_to_screen_length(width)
         line_surface = pygame.Surface((length, width), pygame.SRCALPHA)
         line_surface.fill(color)
         
@@ -164,19 +166,6 @@ class Framework():
         rect.center = center_pos
         
         self.screen.blit(rotated_surface, rect)
-        def draw_rotated_line(self, center_pos, length, angle, color, width=1):
-            center_pos = self.world_to_screen_coord(center_pos)
-            
-            half_length = length / 2
-            start_x = center_pos[0] - half_length * math.cos(math.radians(angle))
-            start_y = center_pos[1] + half_length * math.sin(math.radians(angle))
-            end_x = center_pos[0] + half_length * math.cos(math.radians(angle))
-            end_y = center_pos[1] - half_length * math.sin(math.radians(angle))
-            
-            start_pos = (int(start_x), int(start_y))
-            end_pos = (int(end_x), int(end_y))
-            
-            pygame.draw.line(self.screen, color, start_pos, end_pos, width)
 
     def close(self):
         pygame.joystick.quit()        

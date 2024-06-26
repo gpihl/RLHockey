@@ -167,5 +167,5 @@ class Puck:
         g.framework.draw_circle(self.pos, g.PUCK_RADIUS, puck_color)
         g.framework.draw_circle(self.pos, int(7*g.PUCK_RADIUS / 9), g.interpolate_color(puck_color, (0,0,0), 0.05))
         g.framework.draw_circle(self.pos, int(8*g.PUCK_RADIUS / 9), g.interpolate_color(puck_color, (0,0,0), 0.2))
-        g.framework.draw_rotated_line(self.pos, g.PUCK_RADIUS * 2.1, -self.rot, puck_color, int(g.PUCK_RADIUS / 2.5))
+        g.framework.draw_rotated_line(self.pos, g.PUCK_RADIUS * 1.5, -self.rot, puck_color, int(g.PUCK_RADIUS / 5.0))
         # g.framework.draw_text('RL', 'puck', g.PUCK_TEXT_COLOR, self.pos, True, self.rot)
