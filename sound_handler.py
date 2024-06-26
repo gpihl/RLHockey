@@ -34,6 +34,7 @@ class SoundHandler:
         self.create_scales()
         self.current_scale = 'maj9'
         self.scale_change_period = 5
+        self.last_played = dict.fromkeys(self.sounds, 0)
 
         print('Sound handler init done')
 
@@ -97,16 +98,22 @@ class SoundHandler:
         for sound_name in self.scales[self.current_scale]:
             self.play_sound(g.MAX_PUCK_SPEED / 4, x, sound_name)
 
-    def play_sound(self, velocity, x_coord, sound_name):
+    def play_sound(self, velocity, x_coord, sound_name): 
         if g.TRAINING_PARAMS['no_sound']:
             return
-        
+             
         if sound_name == 'paddle':
             sound_name = self.velocity_to_sound_index(velocity)
+
+        if time.time() - self.last_played[sound_name] < 0.05:
+            return            
 
         if sound_name in self.sounds:
             volume = velocity / ((g.MAX_PUCK_SPEED + g.MAX_PADDLE_SPEED) if sound_name == 'paddle' else (g.MAX_PUCK_SPEED))
             volume = min(0.8, volume)
+            if volume < 0.03:
+                return
+            
             left_vol = volume * (g.WIDTH - x_coord) / g.WIDTH
             right_vol = volume * x_coord / g.WIDTH
 
@@ -118,6 +125,7 @@ class SoundHandler:
             if channel:
                 channel.set_volume(left_vol, right_vol)
                 channel.play(sound)
+                self.last_played[sound_name] = time.time()
             else:
                 pass
                 # print("No free channel available to play sound")

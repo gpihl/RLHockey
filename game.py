@@ -34,6 +34,7 @@ class Game:
         self.round_reward = 0.0
         self.total_reward = 0.0
         self.player_2_model = None
+        self.score = [0, 0]
         self.create_objects()
         self.reset()
 
@@ -103,11 +104,12 @@ class Game:
         else:
             player_1_action = human_action
 
-        if self.player_2_model is not None:
-            player_2_model_action = self.player_2_model.predict(self.get_observation(2))[0]
-            player_2_action = g.game_action_from_model_action(player_2_model_action)
-        else:
-            player_2_action = human_action
+        if g.TRAINING_PARAMS['player_2_active']:
+            if self.player_2_model is not None:
+                player_2_model_action = self.player_2_model.predict(self.get_observation(2))[0]
+                player_2_action = g.game_action_from_model_action(player_2_model_action)
+            else:
+                player_2_action = human_action
 
         self.prev_t = self.curr_t
         self.curr_t = time.time()
@@ -124,8 +126,10 @@ class Game:
 
         if self.player_1_scored():
             self.last_scorer = 1
+            self.score[0] += 1
         elif self.player_2_scored():
             self.last_scorer = 2
+            self.score[1] += 1
 
         if not g.TRAINING_PARAMS['no_render']:
             self.render()
@@ -175,13 +179,24 @@ class Game:
         self.paddle1.draw()
         self.paddle2.draw()
         self.draw_goals()
-        g.ui.draw(self.total_training_steps_left(), self.current_reward, self.round_reward, self.seconds_left())
+        g.ui.draw(self.total_training_steps_left(), self.current_reward, self.round_reward, self.seconds_left(), self.score)
         g.framework.render()
 
     def draw_goals(self):
         goal1_color = g.interpolate_color(g.PADDLE_COLOR_1, g.BG_COLOR, 0.7)
         goal2_color = g.interpolate_color(g.PADDLE_COLOR_2, g.BG_COLOR, 0.7)
-        goal_width = int(16 * g.WIDTH / 800)
+
+        puck_to_goal_1_dist = np.linalg.norm(self.puck.pos - np.array([0, g.HEIGHT / 2]))
+        alpha = 1.0 - min(1.0, puck_to_goal_1_dist / g.WIDTH)
+        alpha = alpha ** 2
+        goal1_color = g.interpolate_color(goal1_color, g.PADDLE_COLOR_1, alpha)
+
+        puck_to_goal_2_dist = np.linalg.norm(self.puck.pos - np.array([g.WIDTH, g.HEIGHT / 2]))
+        alpha = 1.0 - min(1.0, puck_to_goal_2_dist / g.WIDTH)
+        alpha = alpha ** 2
+        goal2_color = g.interpolate_color(goal2_color, g.PADDLE_COLOR_2, alpha)
+
+        goal_width = 24
         goal1_pos = (0, (g.HEIGHT - g.GOAL_HEIGHT) / 2)
         goal1_size = (goal_width, g.GOAL_HEIGHT)
         goal2_pos = (g.WIDTH - goal_width, (g.HEIGHT - g.GOAL_HEIGHT) / 2)
@@ -192,11 +207,14 @@ class Game:
 
     def draw_field_lines(self):
         color = g.interpolate_color((255,255,255), g.BG_COLOR, 0.9)
-        line_thickness = int(18 * g.WIDTH / 800)
+        # line_thickness = int(18 * g.WIDTH / 800)
+        line_thickness = 40
 
         mid_circle_color = g.interpolate_color((255,255,255), g.BG_COLOR, 0.8)
-        mid_circle_radius = int(120 * g.WIDTH / 800)
-        mid_point_radius = int(40 * g.WIDTH / 800)
+        mid_circle_radius = 270
+        mid_point_radius = 85
+        # mid_circle_radius = int(120 * g.WIDTH / 800)
+        # mid_point_radius = int(40 * g.WIDTH / 800)        
         g.framework.draw_circle([g.WIDTH / 2, g.HEIGHT / 2], mid_circle_radius, color, False)
         g.framework.draw_circle([g.WIDTH / 2, g.HEIGHT / 2], mid_circle_radius - line_thickness, mid_circle_color, False)
         g.framework.draw_circle([g.WIDTH / 2, g.HEIGHT / 2], mid_point_radius, color, False)
@@ -249,10 +267,11 @@ def main():
     elif g.TRAINING_PARAMS['algorithm'] == 'SAC':
         algorithm = SAC
 
-    latest_model_path = g.get_latest_model_path(g.TRAINING_PARAMS['base_path'], g.TRAINING_PARAMS['model_name'])
-    if latest_model_path:
-        env = make_vec_env(lambda: environment.AirHockeyEnv(False), n_envs=1)
-        game.player_2_model = algorithm.load(latest_model_path, env=env)
+    if g.TRAINING_PARAMS['player_2_active']:
+        latest_model_path = g.get_latest_model_path(g.TRAINING_PARAMS['base_path'], g.TRAINING_PARAMS['model_name'])
+        if latest_model_path:
+            env = make_vec_env(lambda: environment.AirHockeyEnv(False), n_envs=1)
+            game.player_2_model = algorithm.load(latest_model_path, env=env)
 
     running = True
     while running:

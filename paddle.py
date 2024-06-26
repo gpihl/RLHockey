@@ -12,13 +12,13 @@ class Paddle:
         self.last_pos = np.zeros(2)
         self.magnetic_effect_active = False
         self.radius = g.PADDLE_RADIUS        
-        self.reset()
         self.last_dash_time = 0.0
         self.charging_dash = False
         self.charge_start_time = 0.0
         self.dash_charge_power = 0.0
         self.velocity_history = deque(maxlen=5)
-        self.average_velocity = np.zeros(2)       
+        self.average_velocity = np.zeros(2)
+        self.reset()
 
     def reset(self):
         if g.SETTINGS['is_training']:
@@ -148,6 +148,9 @@ class Paddle:
         return False
     
     def handle_controls(self, puck, action):
+        if action == None:
+            return
+        
         self.set_magnetic_effect(action['magnet'])
 
         if action['dash']:
@@ -171,6 +174,7 @@ class Paddle:
         if self.charging_dash:
             charging_time = time.time() - self.charge_start_time
             self.radius = int((1.0 + 0.3 * min(1.0, charging_time / g.GAMEPLAY_PARAMS['dash_max_charge_time'])) * g.PADDLE_RADIUS)
+            self.apply_force(np.random.normal(0, 0.7, 2))
         else:
             self.radius = g.PADDLE_RADIUS
 
