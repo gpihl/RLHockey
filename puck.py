@@ -11,6 +11,7 @@ class Puck:
         self.vel = np.zeros(2)
         self.rot_vel = 0.0
         self.rot = 0.0
+        self.last_collider = None
         self.reset()
 
     def reset(self, last_scorer=2):
@@ -118,6 +119,7 @@ class Puck:
     def handle_paddle_collision(self, paddle):
         dist = np.linalg.norm(self.pos - paddle.pos)
         if self.check_paddle_collision(paddle):
+            self.last_collider = paddle
             prev_vel = np.array([self.vel[0], self.vel[1]])
             normal = (self.pos - paddle.pos) / dist
             relative_velocity = self.vel - paddle.vel
@@ -157,11 +159,13 @@ class Puck:
                 g.sound_handler.play_sound(sound_vel, self.pos[0], 'table_hit')
 
     def draw(self):
+        themed_color = g.interpolate_color(g.PUCK_COLOR, g.sound_handler.current_color(), 0.3)
         red_level = np.linalg.norm(self.vel) / (g.MAX_PUCK_SPEED + 10)
         red_level = max(min(red_level, 1.0), 0.0)
-        puck_color = g.interpolate_color(g.PUCK_COLOR, (255, 0, 0), red_level)
-
+        puck_color = g.interpolate_color(themed_color, (255, 0, 0), red_level)
+        puck_color = g.modify_hsl(puck_color, 0, 0, 0.2)
         g.framework.draw_circle(self.pos, g.PUCK_RADIUS, puck_color)
-        g.framework.draw_circle(self.pos, int(7*g.PUCK_RADIUS / 9), g.interpolate_color(puck_color, (0,0,0), 0.2))
-        g.framework.draw_circle(self.pos, int(8*g.PUCK_RADIUS / 9), g.interpolate_color(puck_color, (0,0,0), 0.05))
-        g.framework.draw_text('RL', 'puck', g.PUCK_TEXT_COLOR, self.pos, True, self.rot)        
+        g.framework.draw_circle(self.pos, int(7*g.PUCK_RADIUS / 9), g.interpolate_color(puck_color, (0,0,0), 0.05))
+        g.framework.draw_circle(self.pos, int(8*g.PUCK_RADIUS / 9), g.interpolate_color(puck_color, (0,0,0), 0.2))
+        g.framework.draw_rotated_line(self.pos, g.PUCK_RADIUS * 2.1, -self.rot, puck_color, int(g.PUCK_RADIUS / 2.5))
+        # g.framework.draw_text('RL', 'puck', g.PUCK_TEXT_COLOR, self.pos, True, self.rot)

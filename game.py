@@ -35,6 +35,7 @@ class Game:
         self.total_reward = 0.0
         self.player_2_model = None
         self.score = [0, 0]
+        self.background_color = g.sound_handler.current_color
         self.create_objects()
         self.reset()
 
@@ -112,7 +113,7 @@ class Game:
                 player_2_action = human_action
 
         self.prev_t = self.curr_t
-        self.curr_t = time.time()
+        self.curr_t = g.current_time
         self.current_step += 1
         self.total_steps += 1
 
@@ -136,10 +137,32 @@ class Game:
 
         g.framework.tick()
 
-        if self.player_1_scored():
-            g.sound_handler.play_goal_sound(g.WIDTH)
-        elif self.player_2_scored():
-            g.sound_handler.play_goal_sound(0)
+        scored_1 = self.player_1_scored()
+        scored_2 = self.player_2_scored()
+
+        if scored_1 or scored_2:
+            if scored_1:
+                g.sound_handler.play_goal_sound(g.WIDTH)
+            elif scored_2:
+                g.sound_handler.play_goal_sound(0)
+
+            if not g.SETTINGS['is_training']:
+                goal_time = g.current_time
+                # scorer = self.puck.last_collider
+                scorer = self.paddle1 if scored_1 else self.paddle2
+                if scorer is not None:
+                    position = np.array([g.WIDTH / 2, g.HEIGHT / 2])
+                    radius = g.HEIGHT / 4
+                    color = self.paddle1.color if scored_1 else self.paddle2.color
+                    scorer.draw_paddle(position, radius, color)                    
+
+                while g.current_time - goal_time < 1:
+                    if g.current_time - goal_time > 0.75:
+                        g.framework.fill_screen_semiopaque_black()
+                    
+
+                    g.framework.render()
+                    g.framework.tick()
 
         return self.get_observation(1), self.get_reward(player_1_action), self.is_done(), { 'cumulative_reward': self.round_reward }
 
@@ -173,28 +196,41 @@ class Game:
         return {k: torch.tensor(v, device=g.device).cpu() for k, v in obs.items()}
 
     def render(self):
-        g.framework.draw_background()
+        self.draw_background()
         self.draw_field_lines()
         self.puck.draw()
         self.paddle1.draw()
         self.paddle2.draw()
         self.draw_goals()
-        g.ui.draw(self.total_training_steps_left(), self.current_reward, self.round_reward, self.seconds_left(), self.score)
+        self.draw_ui()
         g.framework.render()
 
+    def draw_background(self):
+        self.background_color = g.sound_handler.target_color()
+        # final_color = g.interpolate_color(g.BG_COLOR, target_color, 0.2)
+        
+        g.framework.fill_screen(self.background_color, (g.WIDTH, g.HEIGHT))
+
+    def draw_ui(self):
+        g.ui.draw_time_left(self.seconds_left())
+        g.ui.draw_score(self.score, self.paddle1, self.paddle2)
+        if g.SETTINGS['is_training']:
+            g.ui.draw_reward(self.current_reward, self.round_reward)
+            g.ui.draw_steps_left(str(self.total_training_steps_left()))        
+
     def draw_goals(self):
-        goal1_color = g.interpolate_color(g.PADDLE_COLOR_1, g.BG_COLOR, 0.7)
-        goal2_color = g.interpolate_color(g.PADDLE_COLOR_2, g.BG_COLOR, 0.7)
+        goal1_color = g.interpolate_color(self.paddle1.color, self.background_color, 0.7)
+        goal2_color = g.interpolate_color(self.paddle2.color, self.background_color, 0.7)
 
         puck_to_goal_1_dist = np.linalg.norm(self.puck.pos - np.array([0, g.HEIGHT / 2]))
         alpha = 1.0 - min(1.0, puck_to_goal_1_dist / g.WIDTH)
         alpha = alpha ** 2
-        goal1_color = g.interpolate_color(goal1_color, g.PADDLE_COLOR_1, alpha)
+        goal1_color = g.modify_hsl(goal1_color, 0, 0, 0.45 * alpha)
 
         puck_to_goal_2_dist = np.linalg.norm(self.puck.pos - np.array([g.WIDTH, g.HEIGHT / 2]))
         alpha = 1.0 - min(1.0, puck_to_goal_2_dist / g.WIDTH)
         alpha = alpha ** 2
-        goal2_color = g.interpolate_color(goal2_color, g.PADDLE_COLOR_2, alpha)
+        goal2_color = g.modify_hsl(goal2_color, 0, 0, 0.45 * alpha)        
 
         goal_width = 24
         goal1_pos = (0, (g.HEIGHT - g.GOAL_HEIGHT) / 2)
@@ -206,18 +242,20 @@ class Game:
         g.framework.draw_rectangle(goal2_color, goal2_pos, goal2_size)
 
     def draw_field_lines(self):
-        color = g.interpolate_color((255,255,255), g.BG_COLOR, 0.9)
-        # line_thickness = int(18 * g.WIDTH / 800)
+        color = g.interpolate_color((255,255,255), self.background_color, 0.9)
         line_thickness = 40
 
-        mid_circle_color = g.interpolate_color((255,255,255), g.BG_COLOR, 0.8)
+        puck_to_mid_dist = np.linalg.norm(self.puck.pos - np.array([g.WIDTH / 2, g.HEIGHT / 2]))
+        alpha = 1.0 - min(1.0, puck_to_mid_dist / g.WIDTH)
+        alpha = alpha ** 2
+        color = g.modify_hsl(color, 0, 0, 0.2 * alpha)
+
+        mid_circle_color = g.interpolate_color((255,255,255), self.background_color, 0.8)
         mid_circle_radius = 270
-        mid_point_radius = 85
-        # mid_circle_radius = int(120 * g.WIDTH / 800)
-        # mid_point_radius = int(40 * g.WIDTH / 800)        
-        g.framework.draw_circle([g.WIDTH / 2, g.HEIGHT / 2], mid_circle_radius, color, False)
-        g.framework.draw_circle([g.WIDTH / 2, g.HEIGHT / 2], mid_circle_radius - line_thickness, mid_circle_color, False)
-        g.framework.draw_circle([g.WIDTH / 2, g.HEIGHT / 2], mid_point_radius, color, False)
+        mid_point_radius = 85    
+        g.framework.draw_circle([g.WIDTH / 2, g.HEIGHT / 2], mid_circle_radius, color)
+        g.framework.draw_circle([g.WIDTH / 2, g.HEIGHT / 2], mid_circle_radius - line_thickness, mid_circle_color)
+        g.framework.draw_circle([g.WIDTH / 2, g.HEIGHT / 2], mid_point_radius, color)
 
         mid_line_size = (line_thickness, g.HEIGHT)
         mid_line_pos = (g.WIDTH / 2 - mid_line_size[0] / 2, 0)

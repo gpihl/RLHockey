@@ -15,26 +15,19 @@ class UI():
         
         self._initialized = True
 
-    def draw(self, steps_left, current_reward, round_reward, time_left, score):
-        self.draw_time_left(time_left)
-        self.draw_score(score)
-        if g.SETTINGS['is_training']:
-            self.draw_reward(current_reward, round_reward)
-            self.draw_steps_left(str(steps_left))
-
     def draw_steps_left(self, steps_left):
         text = f"steps left: {steps_left}"
         g.framework.draw_text(text, 'steps_left', g.STEPS_LEFT_COLOR, g.STEPS_LEFT_POS, centered=True)
 
-    def draw_score(self, score):
+    def draw_score(self, score, paddle1, paddle2):
         text1 = str(score[0])
         text2 = str(score[1])
         pos1 = (g.WIDTH / 2 - g.SCORE_POS[0], g.SCORE_POS[1])
         pos2 = (g.WIDTH / 2 + g.SCORE_POS[0], g.SCORE_POS[1])
         g.framework.draw_text(text1, 'score', g.SCORE_COLOR, pos1, centered=True)
         g.framework.draw_text(text2, 'score', g.SCORE_COLOR, pos2, centered=True)
-        g.framework.draw_circle((pos1[0] - 60, pos1[1] - 5), 20, g.PADDLE_COLOR_1)
-        g.framework.draw_circle((pos2[0] + 60, pos2[1] - 5), 20, g.PADDLE_COLOR_2)
+        g.framework.draw_circle((pos1[0] - 60, pos1[1] - 5), 20, paddle1.color)
+        g.framework.draw_circle((pos2[0] + 60, pos2[1] - 5), 20, paddle2.color)
 
     def draw_reward(self, current_reward, round_reward):
         current_reward = f"curr reward: {current_reward:.5}"

@@ -7,7 +7,8 @@ from collections import deque
 class Paddle:
     def __init__(self, player):
         self.player = player
-        self.color = g.PADDLE_COLOR_1 if self.player == 1 else g.PADDLE_COLOR_2
+        self.underlying_color = g.PADDLE_COLOR_1 if self.player == 1 else g.PADDLE_COLOR_2
+        self.color = self.underlying_color
         self.pos = np.zeros(2)
         self.last_pos = np.zeros(2)
         self.magnetic_effect_active = False
@@ -51,7 +52,7 @@ class Paddle:
         if g.SETTINGS['is_training'] and not g.TRAINING_PARAMS['dash_enabled']:
             return
 
-        current_time = time.time()
+        current_time = g.current_time
         if current_time - self.last_dash_time > g.GAMEPLAY_PARAMS['dash_cooldown']:
             self.last_dash_time = current_time
             self.charging_dash = False
@@ -84,7 +85,7 @@ class Paddle:
             self.vel = (self.vel / speed) * g.MAX_PUCK_SPEED
 
     def is_dashing(self):
-        return (time.time() - self.last_dash_time) < g.GAMEPLAY_PARAMS['dash_duration'] * self.dash_charge_power
+        return (g.current_time - self.last_dash_time) < g.GAMEPLAY_PARAMS['dash_duration'] * self.dash_charge_power
 
     def apply_aim_assist(self, puck, max_assist_strength=0.4):
         future_time = 0.3  # Look 0.5 seconds ahead
@@ -155,7 +156,7 @@ class Paddle:
 
         if action['dash']:
             if not self.charging_dash:
-                self.charge_start_time = time.time()
+                self.charge_start_time = g.current_time
             self.charging_dash = True
         elif self.charging_dash:
             self.charging_dash = False
@@ -166,13 +167,13 @@ class Paddle:
     def apply_force(self, acc):
         self.vel += acc * g.DELTA_T * g.PADDLE_ACC
   
-    def update(self, puck, action):
+    def update(self, puck, action=None):
         self.handle_controls(puck, action)
 
         self.last_pos = self.pos.copy()
 
         if self.charging_dash:
-            charging_time = time.time() - self.charge_start_time
+            charging_time = g.current_time - self.charge_start_time
             self.radius = int((1.0 + 0.3 * min(1.0, charging_time / g.GAMEPLAY_PARAMS['dash_max_charge_time'])) * g.PADDLE_RADIUS)
             self.apply_force(np.random.normal(0, 0.7, 2))
         else:
@@ -217,19 +218,19 @@ class Paddle:
 
     def handle_collision(self, paddle):
         dist = np.linalg.norm(self.pos - paddle.pos)
-        if dist < self.radius + self.radius:
+        if dist < self.radius + paddle.radius:
             normal = (self.pos - paddle.pos) / dist
             relative_velocity = self.vel - paddle.vel
             velocity_along_normal = np.dot(relative_velocity, normal)
             if velocity_along_normal > 0:
                 return
 
-            impulse_scalar = -(2) * velocity_along_normal
-            impulse_scalar /= (1 / self.radius + 1 / self.radius)
+            impulse_scalar = -(3.5) * velocity_along_normal
+            impulse_scalar /= (1 / self.radius + 1 / paddle.radius)
             impulse = impulse_scalar * normal
             self.vel += (impulse / self.radius)
-            paddle.vel -= (impulse / self.radius)
-            overlap = self.radius + self.radius - dist
+            paddle.vel -= (impulse / paddle.radius)
+            overlap = self.radius + paddle.radius - dist
             self.pos += (normal * overlap) / 2
             paddle.pos -= (normal * overlap) / 2
 
@@ -238,17 +239,25 @@ class Paddle:
                 g.sound_handler.play_sound(sound_vel, self.pos[0], 'paddle')
 
     def draw(self):
-        glow = max(0.0, 1.0 - (time.time() - self.last_dash_time) / g.GAMEPLAY_PARAMS['dash_duration'])
-        color = g.interpolate_color(self.color, (255,255,255), glow)
+        theme_color = g.sound_handler.target_color()
+        self.color = g.interpolate_color(self.underlying_color, theme_color, 0.5)
+        self.color = g.modify_hsl(self.color, 0, 0, 0.2)
+
+        glow = max(0.0, 1.0 - (g.current_time - self.last_dash_time) / g.GAMEPLAY_PARAMS['dash_duration'])
+        color = g.modify_hsl(self.color, 0, 0, glow*0.5)
 
         if self.charging_dash:
-            charging_time = time.time() - self.charge_start_time
-            charge_color_shift = min(1.0, charging_time / g.GAMEPLAY_PARAMS['dash_max_charge_time'])
+            charging_time = g.current_time - self.charge_start_time
+            charge_color_shift = min(0.5, charging_time * 0.5 / g.GAMEPLAY_PARAMS['dash_max_charge_time'])
             color = g.interpolate_color(color, (255,100,100), charge_color_shift)
+        
+        self.draw_paddle(self.pos, self.radius, color)
 
-        g.framework.draw_circle(self.pos, self.radius, color)
-        g.framework.draw_circle(self.pos, int(self.radius / 2), g.interpolate_color(color, (0,0,0), 0.3))
-        g.framework.draw_circle(self.pos, int(self.radius / 3), g.interpolate_color(color, (0,0,0), 0.1))
+    def draw_paddle(self, position, radius, color):
+        g.framework.draw_circle(position, radius, color)
+        g.framework.draw_circle(position, int(8*radius / 9), g.interpolate_color(color, (0,0,0), 0.05))
+        g.framework.draw_circle(position, int(radius / 2), g.interpolate_color(color, (0,0,0), 0.3))
+        g.framework.draw_circle(position, int(radius / 3), g.interpolate_color(color, (0,0,0), 0.1))        
 
     def update_velocity_history(self):
         self.velocity_history.append(self.vel.copy())

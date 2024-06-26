@@ -4,7 +4,7 @@ import numpy as np
 from scipy import signal
 import globals as g
 import threading
-import time
+import random
 from collections import deque
 
 class SoundHandler:
@@ -31,19 +31,62 @@ class SoundHandler:
         self.load_sounds()
         self.create_octave_up_sounds()
         self.scales = {}
+        self.chords = {}
+        self.colors = {}
+        self.scale_order = []
         self.create_scales()
         self.current_scale = 'maj9'
-        self.scale_change_period = 5
+        self.scale_change_period = 40
         self.last_played = dict.fromkeys(self.sounds, 0)
 
         print('Sound handler init done')
 
     def update(self):
-        time_segment = int(time.time() / self.scale_change_period)
-        scale_name = list(self.scales.keys())[time_segment % len(self.scales.keys())]
+        id = self.current_scale_id()
+        scale_name = self.scale_id_to_name(id)
         self.current_scale = scale_name
 
+    def scale_id_to_name(self, id):
+        scale_name = self.scale_order[id]
+        return scale_name
+
+    def current_scale_id(self):
+        current_scale_id = int(g.current_time / self.scale_change_period) % len(self.scales.keys())
+        return current_scale_id
+    
+    def current_color(self):
+        id = self.current_scale_id()
+        color = self.colors[self.scale_id_to_name(id)]
+        return color
+    
+    def next_color(self):
+        id = (self.current_scale_id() + 1) % len(self.colors.keys())
+        color = self.colors[self.scale_id_to_name(id)]
+        return color
+    
+    def theme_alpha(self):
+        alpha = (g.current_time % self.scale_change_period) / self.scale_change_period
+        theme_alpha = g.smoothstep(alpha)
+        return theme_alpha
+    
+    def target_color(self):
+        target_color = g.interpolate_color(self.current_color(), self.next_color(), self.theme_alpha())
+        return target_color
+    
     def create_scales(self):
+        self.scale_order = [
+            'maj9', 
+            'major', 
+            'lydian', 
+            'mixolydian', 
+            'dorian', 
+            'phrygian', 
+            'chromatic', 
+            'minor', 
+            'm_pentatonic',
+            'M_pentatonic',
+            ]
+
         self.scales = {
             'm_pentatonic': [1, 4, 6, 8, 11],
             'M_pentatonic': [1, 5, 6, 8, 10],
@@ -55,6 +98,32 @@ class SoundHandler:
             'maj9': [1,3,5,8,12],
             'phrygian': [1,2,4,6,8,9,11],            
             'chromatic': [1,2,3,4,5,6,7,8,9,10,11],
+        }
+
+        self.chords = {
+            'm_pentatonic': [1, 4, 6, 8, 11, 16],
+            'M_pentatonic': [1, 6, 8, 10, 17],
+            'minor': [1,8,14,23],
+            'dorian': [1,4,8,10,11],
+            'mixolydian': [1,8,17,23],
+            'lydian': [1,7,8,17,24],
+            'major': [1,8,17,24],
+            'maj9': [1,3,5,8,12],
+            'phrygian': [1,8,16,23],
+            'chromatic': [1,7,16,22],
+        }
+
+        self.colors = {
+            'm_pentatonic': (59, 120, 63),
+            'M_pentatonic': (171, 171, 51),
+            'minor': (80, 50, 168),
+            'dorian': (12, 35, 168),
+            'mixolydian': (204, 121, 27),
+            'lydian': (27, 198, 204),
+            'major': (97, 242, 109),
+            'maj9': (230, 90, 90),
+            'phrygian': (50, 47, 138),
+            'chromatic': (7, 6, 43),
         }
 
         for k, _ in self.scales.items():
@@ -95,7 +164,9 @@ class SoundHandler:
         return pygame.sndarray.make_sound(resampled.astype(np.int16))
     
     def play_goal_sound(self, x):
-        for sound_name in self.scales[self.current_scale]:
+        selected_notes = random.choices(self.scales[self.current_scale], k=4)
+        # selected_notes = self.chords[self.current_scale]
+        for sound_name in selected_notes:
             self.play_sound(g.MAX_PUCK_SPEED / 4, x, sound_name)
 
     def play_sound(self, velocity, x_coord, sound_name): 
@@ -105,7 +176,7 @@ class SoundHandler:
         if sound_name == 'paddle':
             sound_name = self.velocity_to_sound_index(velocity)
 
-        if time.time() - self.last_played[sound_name] < 0.05:
+        if g.current_time - self.last_played[sound_name] < 0.05:
             return            
 
         if sound_name in self.sounds:
@@ -125,7 +196,7 @@ class SoundHandler:
             if channel:
                 channel.set_volume(left_vol, right_vol)
                 channel.play(sound)
-                self.last_played[sound_name] = time.time()
+                self.last_played[sound_name] = g.current_time
             else:
                 pass
                 # print("No free channel available to play sound")

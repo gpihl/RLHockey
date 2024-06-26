@@ -1,7 +1,7 @@
 import pygame.gfxdraw
 import os
 import torch
-import random
+import time
 import numpy as np
 from sound_handler import SoundHandler
 from framework import Framework
@@ -9,6 +9,7 @@ from ui import UI
 
 device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 print(f"Using device: {device}")
+current_time = time.time()
 
 # Training params
 
@@ -70,16 +71,31 @@ PS5_CONTROLLER = {
 
 controller = PS5_CONTROLLER
 
+def init_controls():
+    pygame.joystick.init()
+
+    if pygame.joystick.get_count() == 0:
+        print("No joystick connected")
+        return
+
+    joystick = pygame.joystick.Joystick(0)
+    joystick.init()
+
+    print(f"Joystick name: {joystick.get_name()}")
+    return joystick
+
+joystick = init_controls()
+
 # Colors
 BG_COLOR = (43, 50, 80)
 
 # Field
-WIDTH, HEIGHT = 2000, 1000
+WIDTH, HEIGHT = 1920, 960
 GOAL_HEIGHT = int(140 * WIDTH / 800)
 
 # Display
-RESOLUTION_W = 2000
-RESOLUTION_H = 1000
+RESOLUTION_W = 2560
+RESOLUTION_H = 1440
 HIGH_FPS = 60000
 LOW_FPS = 120
 
@@ -89,7 +105,7 @@ REWARD_FONT = None
 REWARD_FONT_SIZE = 30
 REWARD_POS = (20, 10)
 
-TIME_COLOR = (200, 210, 220)
+TIME_COLOR = (255, 255, 255)
 TIME_FONT = None
 TIME_FONT_SIZE = 120
 TIME_POS = (WIDTH/2, 55)
@@ -99,7 +115,7 @@ STEPS_LEFT_FONT = None
 STEPS_LEFT_FONT_SIZE = 30
 STEPS_LEFT_POS = (WIDTH - 100, 30)
 
-SCORE_COLOR = (200, 210, 220)
+SCORE_COLOR = (255, 255, 255)
 SCORE_FONT = None
 SCORE_FONT_SIZE = 85
 SCORE_POS = (180, 45)
@@ -221,19 +237,6 @@ def apply_non_linear_response(input_vector, exponent=1.5):
 def get_keys():
     return pygame.key.get_pressed()
 
-def init_controls():
-    pygame.joystick.init()
-
-    if pygame.joystick.get_count() == 0:
-        print("No joystick connected")
-        return
-
-    joystick = pygame.joystick.Joystick(0)
-    joystick.init()
-
-    print(f"Joystick name: {joystick.get_name()}")
-    return joystick
-
 def empty_action():
     return {
         'acceleration': np.array([0.0, 0.0]),
@@ -248,11 +251,154 @@ def game_action_from_model_action(model_action):
         'magnet': False,
     }
 
-def interpolate_color(color1, color2, t):
-    return (
-        int(color1[0] + (color2[0] - color1[0]) * t),
-        int(color1[1] + (color2[1] - color1[1]) * t),
-        int(color1[2] + (color2[2] - color1[2]) * t)
-    )
+# def interpolate_color(color1, color2, t):
+#     return (
+#         int(color1[0] + (color2[0] - color1[0]) * t),
+#         int(color1[1] + (color2[1] - color1[1]) * t),
+#         int(color1[2] + (color2[2] - color1[2]) * t)
+#     )
 
-joystick = init_controls()
+def smoothstep(x):
+    x = np.clip(x, 0, 1)
+    return x * x * (3 - 2 * x)
+
+# def interpolate_color(color1, color2, t):
+#     r1, g1, b1 = color1
+#     r2, g2, b2 = color2
+
+#     # Convert RGB to HSL without using colorsys
+#     def rgb_to_hsl(r, g, b):
+#         r, g, b = r/255.0, g/255.0, b/255.0
+#         max_val = max(r, g, b)
+#         min_val = min(r, g, b)
+#         l = (max_val + min_val) / 2
+
+#         if max_val == min_val:
+#             h = s = 0
+#         else:
+#             d = max_val - min_val
+#             s = d / (2 - max_val - min_val) if l > 0.5 else d / (max_val + min_val)
+#             if max_val == r:
+#                 h = (g - b) / d + (6 if g < b else 0)
+#             elif max_val == g:
+#                 h = (b - r) / d + 2
+#             else:
+#                 h = (r - g) / d + 4
+#             h /= 6
+
+#         return h, s, l
+
+#     # Convert HSL to RGB without using colorsys
+#     def hsl_to_rgb(h, s, l):
+#         if s == 0:
+#             r = g = b = l
+#         else:
+#             def hue_to_rgb(p, q, t):
+#                 t += 1 if t < 0 else 0
+#                 t -= 1 if t > 1 else 0
+#                 if t < 1/6: return p + (q - p) * 6 * t
+#                 if t < 1/2: return q
+#                 if t < 2/3: return p + (q - p) * (2/3 - t) * 6
+#                 return p
+
+#             q = l * (1 + s) if l < 0.5 else l + s - l * s
+#             p = 2 * l - q
+#             r = hue_to_rgb(p, q, h + 1/3)
+#             g = hue_to_rgb(p, q, h)
+#             b = hue_to_rgb(p, q, h - 1/3)
+
+#         return int(r * 255), int(g * 255), int(b * 255)
+
+#     # Convert to HSL
+#     h1, s1, l1 = rgb_to_hsl(r1, g1, b1)
+#     h2, s2, l2 = rgb_to_hsl(r2, g2, b2)
+
+#     # Interpolate in HSL space
+#     h = h1 + (h2 - h1) * t
+#     s = s1 + (s2 - s1) * t
+#     l = l1 + (l2 - l1) * t
+
+#     # Handle hue wrapping
+#     if abs(h2 - h1) > 0.5:
+#         if h2 > h1:
+#             h1 += 1.0
+#         else:
+#             h2 += 1.0
+#         h = h1 + (h2 - h1) * t
+#         h = h - 1.0 if h > 1.0 else h
+
+#     # Convert back to RGB
+#     return hsl_to_rgb(h, s, l)
+
+def rgb_to_hsl(r, g, b):
+    r, g, b = r/255.0, g/255.0, b/255.0
+    max_val = max(r, g, b)
+    min_val = min(r, g, b)
+    l = (max_val + min_val) / 2
+
+    if max_val == min_val:
+        h = s = 0
+    else:
+        d = max_val - min_val
+        s = d / (2 - max_val - min_val) if l > 0.5 else d / (max_val + min_val)
+        if max_val == r:
+            h = (g - b) / d + (6 if g < b else 0)
+        elif max_val == g:
+            h = (b - r) / d + 2
+        else:
+            h = (r - g) / d + 4
+        h /= 6
+
+    return h, s, l
+
+def hsl_to_rgb(h, s, l):
+    if s == 0:
+        r = g = b = l
+    else:
+        def hue_to_rgb(p, q, t):
+            t += 1 if t < 0 else 0
+            t -= 1 if t > 1 else 0
+            if t < 1/6: return p + (q - p) * 6 * t
+            if t < 1/2: return q
+            if t < 2/3: return p + (q - p) * (2/3 - t) * 6
+            return p
+
+        q = l * (1 + s) if l < 0.5 else l + s - l * s
+        p = 2 * l - q
+        r = hue_to_rgb(p, q, h + 1/3)
+        g = hue_to_rgb(p, q, h)
+        b = hue_to_rgb(p, q, h - 1/3)
+
+    return int(r * 255), int(g * 255), int(b * 255)
+
+def interpolate_color(color1, color2, t):
+    r1, g1, b1 = color1
+    r2, g2, b2 = color2
+
+    h1, s1, l1 = rgb_to_hsl(r1, g1, b1)
+    h2, s2, l2 = rgb_to_hsl(r2, g2, b2)
+
+    h = h1 + (h2 - h1) * t
+    s = s1 + (s2 - s1) * t
+    l = l1 + (l2 - l1) * t
+
+    if abs(h2 - h1) > 0.5:
+        if h2 > h1:
+            h1 += 1.0
+        else:
+            h2 += 1.0
+        h = h1 + (h2 - h1) * t
+        h = h - 1.0 if h > 1.0 else h
+
+    return hsl_to_rgb(h, s, l)
+
+def modify_hsl(rgb, h_mod=0, s_mod=0, l_mod=0):
+    r, g, b = rgb
+
+    h, s, l = rgb_to_hsl(r, g, b)
+
+    h = (h + h_mod) % 1.0
+    s = max(0, min(1, s + s_mod))
+    l = max(0, min(1, l + l_mod))
+
+    return hsl_to_rgb(h, s, l)

@@ -1,4 +1,5 @@
 import pygame
+import math
 import numpy as np
 import time
 import globals as g
@@ -19,9 +20,10 @@ class Framework():
         self._initialized = True
         
         pygame.init()
-        vsync = 0 if g.SETTINGS['is_training'] else 1
+        self.vsync = 0 if g.SETTINGS['is_training'] else 1
         self.last_ui_input = 0
-        self.screen = pygame.display.set_mode((g.RESOLUTION_W, g.RESOLUTION_H), flags = pygame.SCALED | pygame.HWSURFACE | pygame.DOUBLEBUF | pygame.RESIZABLE, vsync = vsync)
+        self.screen = pygame.display.set_mode((g.RESOLUTION_W, g.RESOLUTION_H), flags = pygame.SCALED | pygame.HWSURFACE | pygame.DOUBLEBUF | pygame.RESIZABLE, vsync = self.vsync)
+        # self.screen = pygame.display.set_mode((0, 0), pygame.FULLSCREEN)
         self.clock = pygame.time.Clock()
         self.scaling_factor, self.shift = self.calculate_scaling_and_shift()
 
@@ -52,10 +54,10 @@ class Framework():
     def handle_keyboard_input(self):
         events = pygame.event.get()
 
-        if np.abs(time.time() - self.last_ui_input) < 0.5:
+        if np.abs(g.current_time - self.last_ui_input) < 0.5:
             return
         
-        self.last_ui_input = time.time()
+        self.last_ui_input = g.current_time
 
         keys = g.get_keys()
         if keys[pygame.K_e]:
@@ -70,6 +72,21 @@ class Framework():
         elif keys[pygame.K_t]:
             g.SETTINGS['player_2_human'] = not g.TRAINING_PARAMS['player_2_human']
             print(f"Setting player 2 human to {not g.TRAINING_PARAMS['player_2_human']}")
+        elif keys[pygame.K_y]:
+            self.toggle_fullscreen()
+            print(f"Toggling to fullscreen")
+
+    def toggle_fullscreen(self):
+        pygame.display.toggle_fullscreen()
+        # current_flags = self.screen.get_flags()
+        # if current_flags & pygame.FULLSCREEN:
+        #     # Switch to windowed mode
+        #     self.screen = pygame.display.set_mode((g.RESOLUTION_W, g.RESOLUTION_H), 
+        #                                         flags=pygame.SCALED | pygame.HWSURFACE | pygame.DOUBLEBUF | pygame.RESIZABLE, 
+        #                                         vsync=self.vsync)
+        # else:
+        #     # Switch to fullscreen mode
+        #     self.screen = pygame.display.set_mode((0, 0), pygame.FULLSCREEN)
 
     def handle_events(self):
         running = True
@@ -86,22 +103,31 @@ class Framework():
         return running
 
     def tick(self):
+        g.current_time = time.time()
         self.clock.tick(self.fps)
 
     def render(self):
         pygame.display.flip()
+
+    def fill_screen(self, color, dimensions):
+        self.screen.fill((0,0,0))
+        self.draw_rectangle(color, (0,0), dimensions)
+
+    def fill_screen_semiopaque_black(self, opacity=10):
+        overlay = pygame.Surface(self.screen.get_size(), pygame.SRCALPHA)
+        overlay.fill((0, 0, 0, opacity))
+        self.screen.blit(overlay, (0, 0))
         
     def draw_rectangle(self, color, pos, size):
         pos = self.world_to_screen_coord(pos)
         size = (self.world_to_screen_length(size[0]), self.world_to_screen_length(size[1]))
         pygame.draw.rect(self.screen, color, (*pos, *size))
 
-    def draw_circle(self, pos, radius, color, aa=True):
+    def draw_circle(self, pos, radius, color):
         pos = self.world_to_screen_coord(pos)
         radius = self.world_to_screen_length(radius)
         pygame.gfxdraw.filled_circle(self.screen, int(pos[0]), int(pos[1]), radius, color)
-        if aa:
-            pygame.gfxdraw.aacircle(self.screen, int(pos[0]), int(pos[1]), radius, (0,0,0))
+        pygame.gfxdraw.aacircle(self.screen, int(pos[0]), int(pos[1]), radius, color)
 
     def world_to_screen_coord(self, coord):
         x = int(coord[0] * self.scaling_factor) + self.shift[0]
@@ -126,9 +152,31 @@ class Framework():
         else:
             self.screen.blit(surface, position)
 
-    def draw_background(self):
-        self.screen.fill((0,0,0))
-        self.draw_rectangle(g.BG_COLOR, (0,0), (g.WIDTH, g.HEIGHT))
+    def draw_rotated_line(self, center_pos, length, angle, color, width=1):
+        center_pos = self.world_to_screen_coord(center_pos)
+        
+        line_surface = pygame.Surface((length, width), pygame.SRCALPHA)
+        line_surface.fill(color)
+        
+        rotated_surface = pygame.transform.rotate(line_surface, angle)
+        
+        rect = rotated_surface.get_rect()
+        rect.center = center_pos
+        
+        self.screen.blit(rotated_surface, rect)
+        def draw_rotated_line(self, center_pos, length, angle, color, width=1):
+            center_pos = self.world_to_screen_coord(center_pos)
+            
+            half_length = length / 2
+            start_x = center_pos[0] - half_length * math.cos(math.radians(angle))
+            start_y = center_pos[1] + half_length * math.sin(math.radians(angle))
+            end_x = center_pos[0] + half_length * math.cos(math.radians(angle))
+            end_y = center_pos[1] - half_length * math.sin(math.radians(angle))
+            
+            start_pos = (int(start_x), int(start_y))
+            end_pos = (int(end_x), int(end_y))
+            
+            pygame.draw.line(self.screen, color, start_pos, end_pos, width)
 
     def close(self):
         pygame.joystick.quit()        
