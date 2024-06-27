@@ -25,27 +25,48 @@ class SoundHandler:
         pygame.mixer.pre_init(44100, -16, 2, 256)
         pygame.mixer.init()
         pygame.mixer.set_num_channels(36)  # Increase number of channels
+        self.scales = {}
+        self.chords = {}
+        self.colors = {}
+        self.scale_order = []        
+        self.create_scales()
 
         self.sounds = {}
         self.active_sounds = deque(maxlen=36)
         self.sound_lock = threading.Lock()
+
         self.load_sounds()
         self.create_octave_up_sounds()
-        self.scales = {}
-        self.chords = {}
-        self.colors = {}
-        self.scale_order = []
-        self.create_scales()
+
+        self.pitch_buckets_per_octave = 50
+        self.scale_change_period = 20
+        self.bg_music_period = 15
+        self.bg_music_last_played = 0
+        self.pitch_octaves = 3
+
+        self.active_channels = { 'overload1': None, 'overload2': None, 'ambience': None }
+
         self.current_scale = 'maj9'
-        self.scale_change_period = 10
+        
         self.last_played = dict.fromkeys(self.sounds, 0)
+        self.play_ambience()
 
         print('Sound handler init done')
+
+    def pitch_hash(self, shift_amount):
+        idx = int(self.pitch_buckets_per_octave * shift_amount)
+        return idx
+    
+    def reset(self):
+        self.bg_music_last_played = g.current_time
 
     def update(self):
         id = self.current_scale_id()
         scale_name = self.scale_id_to_name(id)
         self.current_scale = scale_name
+        
+        if g.current_time - self.bg_music_last_played > self.bg_music_period:
+            self.play_bg_music()
 
     def scale_id_to_name(self, id):
         scale_name = self.scale_order[id]
@@ -61,7 +82,8 @@ class SoundHandler:
         return color
     
     def current_color_id(self):
-        id = round(self.current_scale_id() + (g.current_time % self.scale_change_period) / self.scale_change_period)
+        id = self.current_scale_id()
+        id = round(self.current_scale_id() + (g.current_time % self.scale_change_period) / self.scale_change_period) - 1
         return id % len(self.colors.keys())
     
     def next_color(self):
@@ -89,13 +111,13 @@ class SoundHandler:
             'phrygian', 
             'chromatic', 
             'minor', 
-            'm_pentatonic',
-            'M_pentatonic',
+            'minor-pentatonic',
+            'major-pentatonic',
             ]
 
         self.scales = {
-            'm_pentatonic': [1, 4, 6, 8, 11],
-            'M_pentatonic': [1, 5, 6, 8, 10],
+            'minor-pentatonic': [1, 4, 6, 8, 11],
+            'major-pentatonic': [1, 5, 6, 8, 10],
             'minor': [1,3,4,6,8,9,11],
             'dorian': [1,3,4,6,8,10,11],
             'mixolydian': [1,3,5,6,8,10,11],
@@ -107,8 +129,8 @@ class SoundHandler:
         }
 
         self.chords = {
-            'm_pentatonic': [1, 4, 6, 8, 11, 16],
-            'M_pentatonic': [1, 6, 8, 10, 17],
+            'minor-pentatonic': [1, 4, 6, 8, 11, 16],
+            'major-pentatonic': [1, 6, 8, 10, 17],
             'minor': [1,8,14,23],
             'dorian': [1,4,8,10,11],
             'mixolydian': [1,8,17,23],
@@ -120,8 +142,8 @@ class SoundHandler:
         }
 
         self.colors = {
-            'm_pentatonic': (59, 120, 63),
-            'M_pentatonic': (171, 171, 51),
+            'minor-pentatonic': (59, 120, 63),
+            'major-pentatonic': (171, 171, 51),
             'minor': (80, 50, 168),
             'dorian': (12, 35, 168),
             'mixolydian': (204, 121, 27),
@@ -132,19 +154,52 @@ class SoundHandler:
             'chromatic': (7, 6, 43),
         }
 
+        for k, _ in self.colors.items():
+            color = self.colors[k]
+            color = g.set_h(color, 0.5)
+            color = g.set_s(color, 0.5)
+
         for k, _ in self.scales.items():
             self.scales[k] += [n+12 for n in self.scales[k]]
 
+    def play_bg_music(self):
+        self.bg_music_last_played = g.current_time
+        scale = self.current_scale
+
+        clip_names = self.get_scale_clip_names(scale)
+        if len(clip_names) == 0:
+            print(f"Tried to play a {scale} clip but found none.")
+            return
+        
+        clip_name = random.choice(clip_names)
+        x_coord = int(np.clip(np.random.normal(g.WIDTH / 2, g.WIDTH / 4, 1), 0, g.WIDTH))
+        self.play_sound(30, x_coord, clip_name)
+
+    def get_scale_clip_names(self, scale):
+        clips_names = list(filter(lambda name: name.rsplit('-', 1)[0] == scale, self.sounds))
+        return clips_names
+
     def map_to_scale(self, number, scale):
         return self.scales[scale][(number - 1) % len(self.scales[scale])]
+    
+    def get_wav_files(self, folder_path):
+        return [os.path.splitext(f)[0] for f in os.listdir(folder_path) if f.endswith('.wav')]
 
-    def load_sounds(self):
-        filenames = [i for i in range(1, 13)] + ['table_hit']
+    def play_ambience(self):
+        self.play_sound(40, g.WIDTH / 2, 'ambience', -1)
+
+    def load_sounds(self):        
+        # paddle_files = [i for i in range(1, 13)]
+        # other_sounds = ['table_hit']
+        # scale_clips = [f"{scale}-{clip_number}" for scale in self.scales.keys() for clip_number in range(self.clips_per_scale)]
+        # filenames = paddle_files + other_sounds + scale_clips
+        filenames = self.get_wav_files("sounds/")
+        print(filenames)
         
-        for i in range(len(filenames)):
-            path = f"sounds/{filenames[i]}.wav"
+        for filename in filenames:
+            path = f"sounds/{filename}.wav"
             if os.path.exists(path):
-                self.sounds[filenames[i]] = pygame.mixer.Sound(path)
+                self.sounds[filename] = pygame.mixer.Sound(path)
             else:
                 print(f"Warning: Sound file {path} not found.")
 
@@ -152,56 +207,93 @@ class SoundHandler:
         velocity = max(0, min(velocity, g.MAX_PUCK_SPEED + g.MAX_PADDLE_SPEED))
         index = int((1 - (velocity / (g.MAX_PUCK_SPEED + g.MAX_PADDLE_SPEED))) * len(self.scales[self.current_scale])) + 1
         scale_index = self.map_to_scale(index, self.current_scale)
-        return scale_index
-
+        return str(scale_index)
+    
     def create_octave_up_sounds(self):
         for octave in [2]:
             for i in range(1, 13):
-                if i in self.sounds:
-                    original_sound = self.sounds[i]
+                if str(i) in self.sounds:
+                    original_sound = self.sounds[str(i)]
                     transposed_sound = self.pitch_shift(original_sound, octave)
-                    self.sounds[i + 12 * (octave - 1)] = transposed_sound
+                    self.sounds[str(i + 12 * (octave - 1))] = transposed_sound
                 else:
                     print(f"Warning: Original sound {i} not found, skipping transposition")
 
-    def pitch_shift(self, sound, pitch_shift):
+    def pitch_shift(self, sound, shift_amount):
         array = pygame.sndarray.array(sound)
-        resampled = signal.resample(array, int(len(array) / pitch_shift))
-        return pygame.sndarray.make_sound(resampled.astype(np.int16))
+        resampled = signal.resample(array, int(len(array) / shift_amount))
+        pitched_sound = pygame.sndarray.make_sound(resampled.astype(np.int16))
+
+        return pitched_sound
     
+    def pitch_shift_hashed(self, sound, sound_name, shift_amount):
+        hashed_name = f"{sound_name}-{self.pitch_hash(shift_amount)}"        
+        if hashed_name in self.sounds:
+            pitched_sound = self.sounds[hashed_name]
+        else:
+            pitched_sound = self.pitch_shift(sound, shift_amount)
+            self.sounds[hashed_name] = pitched_sound
+
+        return pitched_sound
+    
+    def set_pan(self, channel, volume, x_coord):
+        left_vol = volume * (g.WIDTH - x_coord) / g.WIDTH
+        right_vol = volume * x_coord / g.WIDTH
+        channel.set_volume(left_vol, right_vol)
+
+    def change_pan(self, channel, x_coord):
+        current_volume = channel.get_volume()
+        self.set_pan(channel, current_volume, x_coord)
+        
+    def update_paddle_sound(self, paddle):
+        sound_name = f"overload{paddle.player}"
+        channel = self.active_channels[sound_name]
+        if paddle.is_overloaded():
+            if channel is not None:
+                self.change_pan(channel, paddle.pos[0])
+            else:
+                self.play_sound(15, paddle.pos[0], sound_name)
+        elif channel is not None:
+            self.stop_sound(sound_name)
+            self.active_channels[sound_name] = None
+        
     def play_goal_sound(self, x):
         selected_notes = random.choices(self.scales[self.current_scale], k=4)
         # selected_notes = self.chords[self.current_scale]
         for sound_name in selected_notes:
-            self.play_sound(g.MAX_PUCK_SPEED / 4, x, sound_name)
+            self.play_sound(g.MAX_PUCK_SPEED / 4, x, str(sound_name))
 
-    def play_sound(self, velocity, x_coord, sound_name): 
-        if g.TRAINING_PARAMS['no_sound']:
+    def stop_sound(self, sound_name):
+        channel = self.active_channels[sound_name]
+        if channel is not None:
+            channel.fadeout(30)
+
+    def play_sound(self, velocity, x_coord, sound_name, loops=0, pitch_shift=False):
+        if g.SETTINGS['is_training'] and g.TRAINING_PARAMS['no_sound']:
             return
-             
+        
         if sound_name == 'paddle':
             sound_name = self.velocity_to_sound_index(velocity)
 
-        if g.current_time - self.last_played[sound_name] < 0.05:
-            return            
-
         if sound_name in self.sounds:
+            if g.current_time - self.last_played[sound_name] < 0.05:
+                return            
+
             volume = velocity / ((g.MAX_PUCK_SPEED + g.MAX_PADDLE_SPEED) if sound_name == 'paddle' else (g.MAX_PUCK_SPEED))
             volume = min(0.8, volume)
             if volume < 0.03:
                 return
             
-            left_vol = volume * (g.WIDTH - x_coord) / g.WIDTH
-            right_vol = volume * x_coord / g.WIDTH
-
             sound = self.sounds[sound_name]
-            if sound_name == 'table_hit':
-                sound = self.pitch_shift(sound, 1 + volume)
+            if pitch_shift:
+                sound = self.pitch_shift_hashed(sound, sound_name, 1 + volume)
 
             channel = pygame.mixer.find_channel()
             if channel:
-                channel.set_volume(left_vol, right_vol)
-                channel.play(sound)
+                self.set_pan(channel, volume, x_coord)
+                self.active_channels[sound_name] = channel
+                channel.play(sound, loops=loops)
+
                 self.last_played[sound_name] = g.current_time
             else:
                 pass

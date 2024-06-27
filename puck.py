@@ -11,6 +11,8 @@ class Puck:
         self.vel = np.zeros(2)
         self.rot_vel = 0.0
         self.rot = 0.0
+        self.homing = False
+        self.homing_target = 1
         self.last_collider = None
         self.reset()
 
@@ -28,6 +30,7 @@ class Puck:
         self.vel = np.zeros(2)
         self.rot_vel = 10.0
         self.rot = 0.0
+        self.homing = False
 
     def get_starting_pos_random(self):
         starting_pos = np.array([random.uniform(2*g.PUCK_RADIUS, g.WIDTH - 2*g.PUCK_RADIUS), 
@@ -55,6 +58,9 @@ class Puck:
         self.vel *= (g.PUCK_FRICTION ** g.DELTA_T)
         self.vel += np.random.normal(0, 0.005, 2) * g.DELTA_T
 
+        if self.homing:
+            self.vel += self.homing_acceleration()
+
         magnus_coefficient = 0.001
         magnus_force = magnus_coefficient * np.array([-self.vel[1], self.vel[0]]) * self.rot_vel
         self.vel += magnus_force * g.DELTA_T
@@ -72,30 +78,53 @@ class Puck:
 
         self.handle_wall_collision()
 
+    def homing_acceleration(self):
+        # if np.linalg.norm(self.vel) < 5:
+        #     return np.zeros(2)
+        
+        goal_pos = g.goal_pos(self.homing_target)
+        # if self.vel[0] < 1:
+        #     goal_pos = g.goal_pos(1)
+        # else:
+        #     goal_pos = g.goal_pos(2)
+        
+        target_vel = goal_pos - self.pos
+        delta_vel = target_vel - self.vel
+        epsilon = 0.0025
+        return delta_vel * epsilon
+
     def handle_wall_collision(self):
         sound_vel = 0
 
+        collision = False
         if self.pos[1] < g.PUCK_RADIUS:
+            collision = True
             self.pos[1] = g.PUCK_RADIUS
             self.vel[1] = -self.vel[1]
             sound_vel = self.vel[1]
         elif self.pos[1] > g.HEIGHT - g.PUCK_RADIUS:
+            collision = True
             self.pos[1] = g.HEIGHT - g.PUCK_RADIUS
             self.vel[1] = -self.vel[1]
             sound_vel = self.vel[1]
 
         if self.pos[0] < g.PUCK_RADIUS:
+            collision = True
             self.pos[0] = g.PUCK_RADIUS
             self.vel[0] = -self.vel[0]
             sound_vel = self.vel[1]
         elif self.pos[0] > g.WIDTH - g.PUCK_RADIUS:
+            collision = True
             self.pos[0] = g.WIDTH - g.PUCK_RADIUS
             self.vel[0] = -self.vel[0]
             sound_vel = self.vel[1]
 
+        # if collision:
+        #     self.homing = False
+
         if sound_vel != 0:
             sound_vel = np.linalg.norm(self.vel)
-            g.sound_handler.play_sound(sound_vel, self.pos[0], 'table_hit')
+            g.sound_handler.play_sound(sound_vel, self.pos[0], 'table_hit', pitch_shift=True)
 
     def limit_speed(self):
         speed = np.linalg.norm(self.vel)
@@ -120,6 +149,10 @@ class Puck:
         dist = np.linalg.norm(self.pos - paddle.pos)
         if self.check_paddle_collision(paddle):
             self.last_collider = paddle
+
+            if self.homing and self.homing_target == paddle.player:
+                self.homing = False
+
             prev_vel = np.array([self.vel[0], self.vel[1]])
             normal = (self.pos - paddle.pos) / dist
             relative_velocity = self.vel - paddle.vel
@@ -147,6 +180,11 @@ class Puck:
             paddle.limit_speed()
             self.pos += normal * (overlap / 2)
 
+            if paddle.is_power_dashing():
+                g.sound_handler.play_sound(30, self.pos[0], 'power')
+                self.homing = True
+                self.homing_target = 2 if paddle.player == 1 else 1
+
             self.shot_on_goal_rewardl = self.vel[0] - prev_vel[0]            
             self.shot_reward = np.linalg.norm(relative_velocity)
             
@@ -156,15 +194,21 @@ class Puck:
             sound_vel = np.linalg.norm(relative_velocity)
             if sound_vel != 0:
                 g.sound_handler.play_sound(sound_vel / 4, self.pos[0], 'paddle')
-                g.sound_handler.play_sound(sound_vel, self.pos[0], 'table_hit')
+                g.sound_handler.play_sound(sound_vel, self.pos[0], 'table_hit', pitch_shift=True)
 
     def draw(self):
-        intensity = np.linalg.norm(self.vel) * 1.5 / (g.MAX_PUCK_SPEED)
+        intensity = np.linalg.norm(self.vel) * 1.3 / (g.MAX_PUCK_SPEED)
         intensity = max(min(intensity, 1.0), 0.0)
-        puck_color = g.interpolate_color_rgb(g.sound_handler.target_color(), (255, 0, 0), intensity)
-        puck_color = g.modify_hsl(puck_color, 0.05, 0, 0.1 * intensity + 0.2)
+        puck_color = g.sound_handler.target_color()
+        puck_color = g.modify_hsl(puck_color, 0.05, 0, 0.3 * intensity + 0.2)
 
-        g.framework.draw_circle(self.pos, g.PUCK_RADIUS, puck_color)
-        g.framework.draw_circle(self.pos, int(7*g.PUCK_RADIUS / 9), g.interpolate_color_rgb(puck_color, (0,0,0), 0.05))
-        g.framework.draw_circle(self.pos, int(8*g.PUCK_RADIUS / 9), g.interpolate_color_rgb(puck_color, (0,0,0), 0.2))
-        g.framework.draw_rotated_line(self.pos, g.PUCK_RADIUS * 1.5, -self.rot, puck_color, int(g.PUCK_RADIUS / 5.0))
+        if self.homing:
+            puck_color = g.set_l(puck_color, 0.9)
+            puck_color = g.set_s(puck_color, 1.0)
+            color_change_speed = 6
+            puck_color = g.modify_hsl(puck_color, 0.5 + 0.5 * np.sin(g.current_time * color_change_speed), 0, 0)
+
+        g.framework.draw_circle(self.pos, g.PUCK_RADIUS, g.modify_hsl(puck_color, 0, 0, 0.2))
+        g.framework.draw_circle(self.pos, int(7*g.PUCK_RADIUS / 9), g.modify_hsl(puck_color, 0, 0, 0))
+        g.framework.draw_circle(self.pos, int(8*g.PUCK_RADIUS / 9), g.modify_hsl(puck_color, 0, 0, -0.2))
+        g.framework.draw_rotated_line_centered(self.pos, g.PUCK_RADIUS * 1.5, -self.rot, puck_color, int(g.PUCK_RADIUS / 5.0))

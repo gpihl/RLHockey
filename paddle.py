@@ -17,6 +17,7 @@ class Paddle:
         self.charging_dash = False
         self.charge_start_time = 0.0
         self.dash_charge_power = 0.0
+        self.charge_flash_period = 0.2
         self.velocity_history = deque(maxlen=5)
         self.average_velocity = np.zeros(2)
         self.reset()
@@ -56,29 +57,28 @@ class Paddle:
         if current_time - self.last_dash_time > g.GAMEPLAY_PARAMS['dash_cooldown']:
             self.last_dash_time = current_time
             self.charging_dash = False
-            charge_time = current_time - self.charge_start_time
-            self.dash_charge_power = min(1.0, charge_time / g.GAMEPLAY_PARAMS['dash_max_charge_time'])
-
-            # Apply impulse in the direction of current movement
-            if np.linalg.norm(self.average_velocity) > 0:
-                puck_direction = (puck.pos - self.pos) / np.linalg.norm(puck.pos - self.pos)
-                velocity_direction = self.average_velocity / np.linalg.norm(self.average_velocity)
-
-                epsilon = 0.3
-                dash_direction = epsilon * puck_direction + (1 - epsilon) * velocity_direction
-                dash_direction = dash_direction / np.linalg.norm(dash_direction)
-            else:
-                # If not moving, dash in the direction the paddle is facing
-                dash_direction = np.array([1, 0]) if self.player == 1 else np.array([-1, 0])
+            self.dash_charge_power = self.charging_alpha()
+            dash_direction = self.dash_direction(puck) 
 
             average_speed = np.linalg.norm(self.average_velocity)
-
-
             self.vel += dash_direction * self.dash_charge_power * g.GAMEPLAY_PARAMS['dash_impulse'] * (average_speed / g.MAX_PADDLE_SPEED)
             self.limit_speed()
             
-            g.sound_handler.play_sound(g.MAX_PADDLE_SPEED * self.dash_charge_power / 2, self.pos[0], 1)
+            g.sound_handler.play_sound(g.MAX_PADDLE_SPEED * self.dash_charge_power / 2, self.pos[0], 'dash', pitch_shift=True)
             
+    def dash_direction(self, puck):
+        if np.linalg.norm(self.average_velocity) > 0:        
+            puck_direction = (puck.pos - self.pos) / np.linalg.norm(puck.pos - self.pos)
+            velocity_direction = self.average_velocity / np.linalg.norm(self.average_velocity)
+
+            epsilon = 0.3
+            dash_direction = epsilon * puck_direction + (1 - epsilon) * velocity_direction
+            dash_direction = dash_direction / np.linalg.norm(dash_direction)
+        else:
+            dash_direction = np.linalg.norm(puck.pos - self.pos)            
+        
+        return dash_direction
+
     def limit_speed(self):
         speed = np.linalg.norm(self.vel)
         if speed > g.MAX_PUCK_SPEED:
@@ -86,6 +86,13 @@ class Paddle:
 
     def is_dashing(self):
         return (g.current_time - self.last_dash_time) < g.GAMEPLAY_PARAMS['dash_duration'] * self.dash_charge_power
+    
+    def is_power_dashing(self):
+        return self.is_dashing() and self.charging_alpha() == 1.0
+    
+    def full_charge_alpha(self):
+        res = min(1.0, max(0.0, (self.charging_time() / g.GAMEPLAY_PARAMS['dash_max_charge_time'] - 1)) * 2)
+        return res
 
     def apply_aim_assist(self, puck, max_assist_strength=0.4):
         future_time = 0.3  # Look 0.5 seconds ahead
@@ -174,10 +181,13 @@ class Paddle:
 
         if self.charging_dash:
             charging_time = g.current_time - self.charge_start_time
-            self.radius = int((1.0 + 0.3 * min(1.0, charging_time / g.GAMEPLAY_PARAMS['dash_max_charge_time'])) * g.PADDLE_RADIUS)
-            self.apply_force(np.random.normal(0, 0.7, 2))
+            self.radius = int((1.0 + 0.3 * self.charging_alpha()) * g.PADDLE_RADIUS)
+            self.apply_force(np.random.normal(0, (self.charging_alpha() ** 4) * 0.7, 2))
         else:
             self.radius = g.PADDLE_RADIUS
+
+        
+        g.sound_handler.update_paddle_sound(self)
                 
         if self.is_dashing():
             self.apply_aim_assist(puck)
@@ -238,28 +248,59 @@ class Paddle:
             if sound_vel != 0:
                 g.sound_handler.play_sound(sound_vel, self.pos[0], 'paddle')
 
-    def draw(self):
+    def draw(self, puck):
         theme_color = g.sound_handler.target_color()
         # self.color = g.interpolate_color(self.underlying_color, theme_color, 0.5)
         hue_change = 0.15 if self.player == 1 else -0.15
         self.color = g.modify_hsl(theme_color, hue_change, 0, 0.2)
 
-        glow = max(0.0, 1.0 - (g.current_time - self.last_dash_time) / g.GAMEPLAY_PARAMS['dash_duration'])
-        color = g.modify_hsl(self.color, 0, 0, glow*0.5)
+        if self.is_power_dashing():
+            glow = max(0.0, 1.0 - (g.current_time - self.last_dash_time) / g.GAMEPLAY_PARAMS['dash_duration'])
+            self.color = g.modify_hsl(self.color, 0, 0, glow*0.5)
 
         if self.charging_dash:
-            charging_time = g.current_time - self.charge_start_time
-            charge_color_shift = min(0.9, charging_time * 0.5 / g.GAMEPLAY_PARAMS['dash_max_charge_time'])
-            color = g.interpolate_color_rgb(color, (255,0,0), charge_color_shift)
-            color = g.modify_hsl(color, 0, charge_color_shift * 0.5, charge_color_shift * 0.2)
+            charge_color_shift = min(0.9, self.charging_alpha() * 0.5)
+            self.color = g.interpolate_color_rgb(self.color, (255,0,0), charge_color_shift)
+            self.color = g.modify_hsl(self.color, 0, charge_color_shift * 0.5, charge_color_shift * 0.2)
+            self.draw_dash_line(puck)
         
-        self.draw_paddle(self.pos, self.radius, color)
+        self.draw_paddle(self.pos, self.radius, self.color)
+
+    def charging_time(self):
+        return g.current_time - self.charge_start_time
+    
+    def charging_alpha(self):
+        charging_time = self.charging_time()
+        return min(1.0, charging_time / g.GAMEPLAY_PARAMS['dash_max_charge_time']) ** (1/2)
+    
+    def is_overloaded(self):
+        return self.charging_dash and self.full_charge_alpha() > 0
 
     def draw_paddle(self, position, radius, color):
-        g.framework.draw_circle(position, radius, color)
+        if self.is_overloaded():
+            # glow = (1.0 - full_charge_alpha) ** 4
+            # color = g.modify_hsl(color, 0, 0, glow * 0.5)
+            color = g.modify_hsl(color, 0, 0, 0.1 + 0.1 * np.sin(2 * np.pi * g.current_time / self.charge_flash_period))
+
+        g.framework.draw_circle(position, radius, g.set_l(color, 0.75))
         g.framework.draw_circle(position, int(8*radius / 9), g.interpolate_color_rgb(color, (0,0,0), 0.05))
         g.framework.draw_circle(position, int(radius / 2), g.interpolate_color_rgb(color, (0,0,0), 0.3))
         g.framework.draw_circle(position, int(radius / 3), g.interpolate_color_rgb(color, (0,0,0), 0.1))
+
+    def draw_dash_line(self, puck):
+        dash_direction = self.dash_direction(puck)
+        angle = g.signed_angle_between(self.dash_direction(puck), np.array([1,0]))
+        max_length = self.radius * 2.5
+        size_alpha = self.charging_alpha() ** (1/2)
+        length = max_length * size_alpha
+        position = self.pos
+        thickness = 14 * size_alpha
+        color = g.modify_hsl(self.color, 0, 0, 0.05)
+        g.framework.draw_rotated_line(position, length, -angle, color, thickness)
+        arrow_head_pos = self.pos + (dash_direction / np.linalg.norm(dash_direction)) * length
+        g.framework.draw_rotated_line(arrow_head_pos, 35, -angle + 180 - 40, color, thickness)
+        g.framework.draw_rotated_line(arrow_head_pos, 35, -angle + 180 + 40, color, thickness)
+
 
     def update_velocity_history(self):
         self.velocity_history.append(self.vel.copy())

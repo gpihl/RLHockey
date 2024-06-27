@@ -124,6 +124,15 @@ class Framework():
         size = (self.world_to_screen_length(size[0]), self.world_to_screen_length(size[1]))
         pygame.draw.rect(self.screen, color, (*pos, *size))
 
+    def draw_transparent_rectangle(self, color, pos, size, opacity):
+        pos = self.world_to_screen_coord(pos)
+        size = (self.world_to_screen_length(size[0]), self.world_to_screen_length(size[1]))
+        rect_surface = pygame.Surface(size, pygame.SRCALPHA)
+        alpha = int(opacity * 255)
+        transparent_color = (*color, alpha)
+        rect_surface.fill(transparent_color)
+        self.screen.blit(rect_surface, pos)
+
     def draw_circle(self, pos, radius, color):
         pos = self.world_to_screen_coord(pos)
         radius = self.world_to_screen_length(radius)
@@ -153,19 +162,58 @@ class Framework():
         else:
             self.screen.blit(surface, position)
 
-    def draw_rotated_line(self, center_pos, length, angle, color, width=1):
-        center_pos = self.world_to_screen_coord(center_pos)
+    def draw_rotated_line_centered(self, pos, length, angle, color, width=1):
+        pos = self.world_to_screen_coord(pos)
         length = self.world_to_screen_length(length)
         width = self.world_to_screen_length(width)
         line_surface = pygame.Surface((length, width), pygame.SRCALPHA)
         line_surface.fill(color)
-        
+
         rotated_surface = pygame.transform.rotate(line_surface, angle)
-        
+
         rect = rotated_surface.get_rect()
-        rect.center = center_pos
-        
+        rect.center = pos
+
         self.screen.blit(rotated_surface, rect)
+
+    # def draw_rotated_line(self, pos, length, angle, color, centered=True, width=1):
+    #     pos = self.world_to_screen_coord(pos)
+    #     length = self.world_to_screen_length(length)
+    #     width = self.world_to_screen_length(width)
+    #     line_surface = pygame.Surface((length, width), pygame.SRCALPHA)
+    #     line_surface.fill(color)
+        
+    #     rotated_surface = pygame.transform.rotate(line_surface, angle)
+        
+    #     rect = rotated_surface.get_rect()
+    #     if centered:
+    #         rect.center = pos
+    #     else:
+    #         # Calculate the position for non-centered line
+    #         angle_rad = math.radians(angle)
+    #         offset_x = rect.height * 0.5 * math.cos(angle_rad)
+    #         offset_y = rect.height * 0.5 * math.sin(angle_rad)
+    #         rect.centerx = pos[0] + offset_x
+    #         rect.centery = pos[1] - offset_y
+        
+    #     self.screen.blit(rotated_surface, rect)
+
+    def draw_rotated_line(self, pos, length, angle, color, width=1):
+        pos = self.world_to_screen_coord(pos)
+        length = self.world_to_screen_length(length)
+        width = self.world_to_screen_length(width)
+        
+        angle_rad = math.radians(angle)
+        cos_angle = math.cos(angle_rad)
+        sin_angle = math.sin(angle_rad)
+        
+        start_x = pos[0]
+        start_y = pos[1]
+        
+        end_x = start_x + length * cos_angle
+        end_y = start_y + length * sin_angle
+        
+        pygame.draw.line(self.screen, color, (start_x, start_y), (end_x, end_y), int(width))        
 
     def close(self):
         pygame.joystick.quit()        

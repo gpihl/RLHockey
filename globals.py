@@ -59,7 +59,7 @@ GAMEPLAY_PARAMS = {
     'dash_cooldown': 0.5,
     'dash_impulse': 700,
     'dash_duration': 0.22,
-    'dash_max_charge_time': 0.5,
+    'dash_max_charge_time': 2.0,
 }
 
 CONTROLS_PARAMS = {
@@ -101,8 +101,14 @@ WIDTH, HEIGHT = 1920, 960
 GOAL_HEIGHT = int(140 * WIDTH / 800)
 
 # Display
-# RESOLUTION_W = 2560
-# RESOLUTION_H = 1440
+RESOLUTION_W = 2560
+RESOLUTION_H = 1440
+
+# RESOLUTION_W = 1920
+# RESOLUTION_H = 1080
+
+# RESOLUTION_W = 1280
+# RESOLUTION_H = 720
 
 # RESOLUTION_W = 1470
 # RESOLUTION_H = 956
@@ -110,15 +116,15 @@ GOAL_HEIGHT = int(140 * WIDTH / 800)
 # RESOLUTION_W = 800
 # RESOLUTION_H = 400
 
-RESOLUTION_W = 200
-RESOLUTION_H = 100
+# RESOLUTION_W = 200
+# RESOLUTION_H = 100
 
 # RESOLUTION_W = 128
 # RESOLUTION_H = 64
 
 HIGH_FPS = 60000
-# LOW_FPS = 120
-LOW_FPS = 60
+LOW_FPS = 120
+# LOW_FPS = 60
 
 # Fonts
 REWARD_COLOR = (255, 255, 255)
@@ -163,10 +169,106 @@ PUCK_FRICTION = 0.996
 PUCK_RESTITUTION = 0.95
 
 # Match
-TIME_LIMIT = 10 * LOW_FPS
+TIME_LIMIT = 60 * LOW_FPS
 
 # Physics
 DELTA_T = 0.80 * 120 / LOW_FPS
+
+def interpolate_color_rgb(color1, color2, t):
+    return (
+        int(color1[0] + (color2[0] - color1[0]) * t),
+        int(color1[1] + (color2[1] - color1[1]) * t),
+        int(color1[2] + (color2[2] - color1[2]) * t)
+    )
+
+def rgb_to_hsl(r, g, b):
+    r, g, b = r/255.0, g/255.0, b/255.0
+    max_val = max(r, g, b)
+    min_val = min(r, g, b)
+    l = (max_val + min_val) / 2
+
+    if max_val == min_val:
+        h = s = 0
+    else:
+        d = max_val - min_val
+        s = d / (2 - max_val - min_val) if l > 0.5 else d / (max_val + min_val)
+        if max_val == r:
+            h = (g - b) / d + (6 if g < b else 0)
+        elif max_val == g:
+            h = (b - r) / d + 2
+        else:
+            h = (r - g) / d + 4
+        h /= 6
+
+    return h, s, l
+
+def hsl_to_rgb(h, s, l):
+    if s == 0:
+        r = g = b = l
+    else:
+        def hue_to_rgb(p, q, t):
+            t += 1 if t < 0 else 0
+            t -= 1 if t > 1 else 0
+            if t < 1/6: return p + (q - p) * 6 * t
+            if t < 1/2: return q
+            if t < 2/3: return p + (q - p) * (2/3 - t) * 6
+            return p
+
+        q = l * (1 + s) if l < 0.5 else l + s - l * s
+        p = 2 * l - q
+        r = hue_to_rgb(p, q, h + 1/3)
+        g = hue_to_rgb(p, q, h)
+        b = hue_to_rgb(p, q, h - 1/3)
+
+    return int(r * 255), int(g * 255), int(b * 255)
+
+def interpolate_color(color1, color2, t):
+    r1, g1, b1 = color1
+    r2, g2, b2 = color2
+
+    h1, s1, l1 = rgb_to_hsl(r1, g1, b1)
+    h2, s2, l2 = rgb_to_hsl(r2, g2, b2)
+
+    h = h1 + (h2 - h1) * t
+    s = s1 + (s2 - s1) * t
+    l = l1 + (l2 - l1) * t
+
+    if abs(h2 - h1) > 0.5:
+        if h2 > h1:
+            h1 += 1.0
+        else:
+            h2 += 1.0
+        h = h1 + (h2 - h1) * t
+        h = h - 1.0 if h > 1.0 else h
+
+    return hsl_to_rgb(h, s, l)
+
+def modify_hsl(rgb, h_mod=0, s_mod=0, l_mod=0):
+    r, g, b = rgb
+
+    h, s, l = rgb_to_hsl(r, g, b)
+
+    h = (h + h_mod) % 1.0
+    s = max(0, min(1, s + s_mod))
+    l = max(0, min(1, l + l_mod))
+
+    return hsl_to_rgb(h, s, l)
+
+def set_h(rgb, h):
+    r, g, b = rgb
+    _, s, l = rgb_to_hsl(r, g, b)
+    return hsl_to_rgb(h, s, l)
+
+def set_s(rgb, s):
+    r, g, b = rgb
+    h, _, l = rgb_to_hsl(r, g, b)
+    return hsl_to_rgb(h, s, l)
+
+def set_l(rgb, l):
+    r, g, b = rgb
+    h, s, _ = rgb_to_hsl(r, g, b)
+    return hsl_to_rgb(h, s, l)
+
 
 # Singletons
 sound_handler = SoundHandler()
@@ -272,154 +374,36 @@ def game_action_from_model_action(model_action):
     }
     return action
 
-def interpolate_color_rgb(color1, color2, t):
-    return (
-        int(color1[0] + (color2[0] - color1[0]) * t),
-        int(color1[1] + (color2[1] - color1[1]) * t),
-        int(color1[2] + (color2[2] - color1[2]) * t)
-    )
 
 def smoothstep(x):
     x = np.clip(x, 0, 1)
     return x * x * (3 - 2 * x)
 
-# def interpolate_color(color1, color2, t):
-#     r1, g1, b1 = color1
-#     r2, g2, b2 = color2
+def angle_between(v1, v2):
+    dot_product = np.dot(v1, v2)
+    magnitudes = np.linalg.norm(v1) * np.linalg.norm(v2)
+    return np.arccos(dot_product / magnitudes) * 360 / (2 * np.pi)
 
-#     # Convert RGB to HSL without using colorsys
-#     def rgb_to_hsl(r, g, b):
-#         r, g, b = r/255.0, g/255.0, b/255.0
-#         max_val = max(r, g, b)
-#         min_val = min(r, g, b)
-#         l = (max_val + min_val) / 2
+def signed_angle_between(v1, v2):
+    # Ensure we're working with unit vectors
+    v1_u = v1 / np.linalg.norm(v1)
+    v2_u = v2 / np.linalg.norm(v2)
+    
+    # Calculate the angle using atan2
+    angle = np.arctan2(np.cross(v1_u, v2_u), np.dot(v1_u, v2_u))
+    
+    # Convert to degrees and ensure the angle is positive
+    angle_deg = np.degrees(angle)
+    if angle_deg < 0:
+        angle_deg += 360
+    
+    return angle_deg
 
-#         if max_val == min_val:
-#             h = s = 0
-#         else:
-#             d = max_val - min_val
-#             s = d / (2 - max_val - min_val) if l > 0.5 else d / (max_val + min_val)
-#             if max_val == r:
-#                 h = (g - b) / d + (6 if g < b else 0)
-#             elif max_val == g:
-#                 h = (b - r) / d + 2
-#             else:
-#                 h = (r - g) / d + 4
-#             h /= 6
-
-#         return h, s, l
-
-#     # Convert HSL to RGB without using colorsys
-#     def hsl_to_rgb(h, s, l):
-#         if s == 0:
-#             r = g = b = l
-#         else:
-#             def hue_to_rgb(p, q, t):
-#                 t += 1 if t < 0 else 0
-#                 t -= 1 if t > 1 else 0
-#                 if t < 1/6: return p + (q - p) * 6 * t
-#                 if t < 1/2: return q
-#                 if t < 2/3: return p + (q - p) * (2/3 - t) * 6
-#                 return p
-
-#             q = l * (1 + s) if l < 0.5 else l + s - l * s
-#             p = 2 * l - q
-#             r = hue_to_rgb(p, q, h + 1/3)
-#             g = hue_to_rgb(p, q, h)
-#             b = hue_to_rgb(p, q, h - 1/3)
-
-#         return int(r * 255), int(g * 255), int(b * 255)
-
-#     # Convert to HSL
-#     h1, s1, l1 = rgb_to_hsl(r1, g1, b1)
-#     h2, s2, l2 = rgb_to_hsl(r2, g2, b2)
-
-#     # Interpolate in HSL space
-#     h = h1 + (h2 - h1) * t
-#     s = s1 + (s2 - s1) * t
-#     l = l1 + (l2 - l1) * t
-
-#     # Handle hue wrapping
-#     if abs(h2 - h1) > 0.5:
-#         if h2 > h1:
-#             h1 += 1.0
-#         else:
-#             h2 += 1.0
-#         h = h1 + (h2 - h1) * t
-#         h = h - 1.0 if h > 1.0 else h
-
-#     # Convert back to RGB
-#     return hsl_to_rgb(h, s, l)
-
-def rgb_to_hsl(r, g, b):
-    r, g, b = r/255.0, g/255.0, b/255.0
-    max_val = max(r, g, b)
-    min_val = min(r, g, b)
-    l = (max_val + min_val) / 2
-
-    if max_val == min_val:
-        h = s = 0
+def goal_pos(goal_idx):
+    if goal_idx == 1:
+        goal_pos = np.array([0, HEIGHT / 2])
     else:
-        d = max_val - min_val
-        s = d / (2 - max_val - min_val) if l > 0.5 else d / (max_val + min_val)
-        if max_val == r:
-            h = (g - b) / d + (6 if g < b else 0)
-        elif max_val == g:
-            h = (b - r) / d + 2
-        else:
-            h = (r - g) / d + 4
-        h /= 6
+        goal_pos = np.array([WIDTH, HEIGHT / 2])
+    
+    return goal_pos
 
-    return h, s, l
-
-def hsl_to_rgb(h, s, l):
-    if s == 0:
-        r = g = b = l
-    else:
-        def hue_to_rgb(p, q, t):
-            t += 1 if t < 0 else 0
-            t -= 1 if t > 1 else 0
-            if t < 1/6: return p + (q - p) * 6 * t
-            if t < 1/2: return q
-            if t < 2/3: return p + (q - p) * (2/3 - t) * 6
-            return p
-
-        q = l * (1 + s) if l < 0.5 else l + s - l * s
-        p = 2 * l - q
-        r = hue_to_rgb(p, q, h + 1/3)
-        g = hue_to_rgb(p, q, h)
-        b = hue_to_rgb(p, q, h - 1/3)
-
-    return int(r * 255), int(g * 255), int(b * 255)
-
-def interpolate_color(color1, color2, t):
-    r1, g1, b1 = color1
-    r2, g2, b2 = color2
-
-    h1, s1, l1 = rgb_to_hsl(r1, g1, b1)
-    h2, s2, l2 = rgb_to_hsl(r2, g2, b2)
-
-    h = h1 + (h2 - h1) * t
-    s = s1 + (s2 - s1) * t
-    l = l1 + (l2 - l1) * t
-
-    if abs(h2 - h1) > 0.5:
-        if h2 > h1:
-            h1 += 1.0
-        else:
-            h2 += 1.0
-        h = h1 + (h2 - h1) * t
-        h = h - 1.0 if h > 1.0 else h
-
-    return hsl_to_rgb(h, s, l)
-
-def modify_hsl(rgb, h_mod=0, s_mod=0, l_mod=0):
-    r, g, b = rgb
-
-    h, s, l = rgb_to_hsl(r, g, b)
-
-    h = (h + h_mod) % 1.0
-    s = max(0, min(1, s + s_mod))
-    l = max(0, min(1, l + l_mod))
-
-    return hsl_to_rgb(h, s, l)

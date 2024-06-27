@@ -1,15 +1,16 @@
 import torch
-import pygame.gfxdraw
 import numpy as np
 import time
 import math
 import globals as g
+import argparse
 from stable_baselines3 import SAC, PPO, TD3
 from stable_baselines3.common.env_util import make_vec_env
 import environment
 from paddle import Paddle
 from puck import Puck
 from framework import Framework
+import cProfile
 
 class Game:
     _instance = None
@@ -53,6 +54,7 @@ class Game:
         self.paddle1.reset()
         self.paddle2.reset()
         self.puck.reset(self.last_scorer)
+        g.sound_handler.reset()
 
     def get_reward(self, action):
         acceleration = action['acceleration']
@@ -192,7 +194,7 @@ class Game:
                 "paddle_2_vel": self.scale(self.paddle1.vel, g.MAX_PADDLE_SPEED, g.MAX_PADDLE_SPEED),
                 "puck_vel":     self.scale(self.puck.vel, g.MAX_PUCK_SPEED, g.MAX_PUCK_SPEED),
                 "goal_1_top_pos":     self.paddle2.get_relative_pos_of_goal_2_top(),
-                "goal_1_bot_pos":     self.paddle2.get_relative_pos_of_goal_2_bot(),                
+                "goal_1_bot_pos":     self.paddle2.get_relative_pos_of_goal_2_bot(),
                 "goal_2_top_pos":     self.paddle2.get_relative_pos_of_goal_1_top(),
                 "goal_2_bot_pos":     self.paddle2.get_relative_pos_of_goal_1_bot(),
             }
@@ -204,8 +206,8 @@ class Game:
         self.draw_background()
         self.draw_field_lines()
         self.puck.draw()
-        self.paddle1.draw()
-        self.paddle2.draw()
+        self.paddle1.draw(self.puck)
+        self.paddle2.draw(self.puck)
         self.draw_goals()
         self.draw_ui()
         g.framework.render()
@@ -237,14 +239,14 @@ class Game:
         alpha = alpha ** 2
         goal2_color = g.modify_hsl(goal2_color, 0, 0, 0.45 * alpha)        
 
-        goal_width = 24
+        goal_width = 40
         goal1_pos = (0, (g.HEIGHT - g.GOAL_HEIGHT) / 2)
-        goal1_size = (goal_width, g.GOAL_HEIGHT)
+        goal1_size = (goal_width + 4, g.GOAL_HEIGHT)
         goal2_pos = (g.WIDTH - goal_width, (g.HEIGHT - g.GOAL_HEIGHT) / 2)
-        goal2_size = (goal_width, g.GOAL_HEIGHT)
+        goal2_size = (goal_width + 4, g.GOAL_HEIGHT)
 
-        g.framework.draw_rectangle(goal1_color, goal1_pos, goal1_size)
-        g.framework.draw_rectangle(goal2_color, goal2_pos, goal2_size)
+        g.framework.draw_transparent_rectangle(goal1_color, goal1_pos, goal1_size, 0.7)
+        g.framework.draw_transparent_rectangle(goal2_color, goal2_pos, goal2_size, 0.7)
 
     def draw_field_lines(self):
         color = g.interpolate_color_rgb((255,255,255), self.background_color, 0.95)
@@ -255,7 +257,7 @@ class Game:
         alpha = alpha ** 2
         color = g.modify_hsl(color, 0, 0, 0.2 * alpha)
 
-        mid_circle_color = g.interpolate_color_rgb((255,255,255), self.background_color, 0.85)
+        mid_circle_color = g.modify_hsl(self.background_color, 0.05, 0, -0.04)
         mid_circle_radius = 270
         mid_point_radius = 85    
         g.framework.draw_circle([g.WIDTH / 2, g.HEIGHT / 2], mid_circle_radius, color)
@@ -284,7 +286,7 @@ class Game:
     
     def goal_bottom(self):
         return g.GOAL_HEIGHT + (g.HEIGHT - g.GOAL_HEIGHT) / 2
-
+    
     def player_1_scored(self):
         if g.TRAINING_PARAMS['blocked_goals']:
             return False
@@ -330,4 +332,14 @@ def main():
     game.close()
 
 if __name__ == "__main__":
-    main()
+    parser = argparse.ArgumentParser(description="Run the game with optional profiling.")
+    parser.add_argument("-p", "--profile", action="store_true", help="Run the game with profiling enabled")
+    args = parser.parse_args()
+
+    if args.profile:
+        print("Running game with profiling...")
+        cProfile.run('main()', 'profile_output.prof')
+        print("Profiling complete. Results saved to 'profile_output.prof'")
+        print("You can visualize the results using snakeviz: snakeviz profile_output.prof")
+    else:
+        main()
