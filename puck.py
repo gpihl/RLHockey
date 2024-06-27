@@ -151,7 +151,7 @@ class Puck:
             self.last_collider = paddle
 
             if self.homing and self.homing_target == paddle.player:
-                self.homing = False
+                self.homing_target = 1 if paddle.player == 2 else 2
 
             prev_vel = np.array([self.vel[0], self.vel[1]])
             normal = (self.pos - paddle.pos) / dist
@@ -181,7 +181,7 @@ class Puck:
             self.pos += normal * (overlap / 2)
 
             if paddle.is_power_dashing():
-                g.sound_handler.play_sound(30, self.pos[0], 'power')
+                g.sound_handler.play_sound(23, self.pos[0], 'power')
                 self.homing = True
                 self.homing_target = 2 if paddle.player == 1 else 1
 

@@ -15,6 +15,7 @@ class Paddle:
         self.radius = g.PADDLE_RADIUS        
         self.last_dash_time = 0.0
         self.charging_dash = False
+        self.charging_dash_initial = False
         self.charge_start_time = 0.0
         self.dash_charge_power = 0.0
         self.charge_flash_period = 0.2
@@ -33,6 +34,7 @@ class Paddle:
 
         self.last_dash_time = 0
         self.charging_dash = False
+        self.charging_dash_initial = False
         self.vel = np.zeros(2)
 
     def get_starting_pos_random(self):
@@ -57,6 +59,7 @@ class Paddle:
         if current_time - self.last_dash_time > g.GAMEPLAY_PARAMS['dash_cooldown']:
             self.last_dash_time = current_time
             self.charging_dash = False
+            self.charging_dash_initial = False
             self.dash_charge_power = self.charging_alpha()
             dash_direction = self.dash_direction(puck) 
 
@@ -164,9 +167,12 @@ class Paddle:
         if action['dash']:
             if not self.charging_dash:
                 self.charge_start_time = g.current_time
+                self.charging_dash_initial = True
+                # g.sound_handler.play_sound(20, self.pos[0], f"charge{self.player}")
             self.charging_dash = True
         elif self.charging_dash:
             self.charging_dash = False
+            self.charging_dash_initial = False
             self.dash(puck)
 
         self.apply_force(action['acceleration'])
@@ -179,13 +185,17 @@ class Paddle:
 
         self.last_pos = self.pos.copy()
 
+        charging_alpha = self.charging_alpha()
         if self.charging_dash:
-            charging_time = g.current_time - self.charge_start_time
-            self.radius = int((1.0 + 0.3 * self.charging_alpha()) * g.PADDLE_RADIUS)
+            self.radius = int((1.0 + 0.3 * charging_alpha) * g.PADDLE_RADIUS)
             self.apply_force(np.random.normal(0, (self.charging_alpha() ** 4) * 0.7, 2))
         else:
             self.radius = g.PADDLE_RADIUS
 
+        if self.charging_dash_initial:
+            if charging_alpha >= 1.0:
+                self.charging_dash_initial = False
+                g.sound_handler.play_sound(30, self.pos[0], 'full-charge')
         
         g.sound_handler.update_paddle_sound(self)
                 
@@ -294,7 +304,7 @@ class Paddle:
         size_alpha = self.charging_alpha() ** (1/2)
         length = max_length * size_alpha
         position = self.pos
-        thickness = 14 * size_alpha
+        thickness = 18 * size_alpha
         color = g.modify_hsl(self.color, 0, 0, 0.05)
         g.framework.draw_rotated_line(position, length, -angle, color, thickness)
         arrow_head_pos = self.pos + (dash_direction / np.linalg.norm(dash_direction)) * length

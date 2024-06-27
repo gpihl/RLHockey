@@ -32,7 +32,7 @@ class SoundHandler:
         self.create_scales()
 
         self.sounds = {}
-        self.active_sounds = deque(maxlen=36)
+        self.active_sounds = deque(maxlen=64)
         self.sound_lock = threading.Lock()
 
         self.load_sounds()
@@ -40,13 +40,14 @@ class SoundHandler:
 
         self.pitch_buckets_per_octave = 50
         self.scale_change_period = 20
-        self.bg_music_period = 15
+        self.bg_music_period = 12
         self.bg_music_last_played = 0
         self.pitch_octaves = 3
 
-        self.active_channels = { 'overload1': None, 'overload2': None, 'ambience': None }
+        self.active_channels = { 'overload1': None, 'overload2': None, 'ambience': None, 'charge1': None, 'charge2': None }
+        self.active_volumes = { 'overload1': None, 'overload2': None, 'ambience': None, 'charge1': None, 'charge2': None }
 
-        self.current_scale = 'maj9'
+        self.current_scale = ''
         
         self.last_played = dict.fromkeys(self.sounds, 0)
         self.play_ambience()
@@ -189,12 +190,7 @@ class SoundHandler:
         self.play_sound(40, g.WIDTH / 2, 'ambience', -1)
 
     def load_sounds(self):        
-        # paddle_files = [i for i in range(1, 13)]
-        # other_sounds = ['table_hit']
-        # scale_clips = [f"{scale}-{clip_number}" for scale in self.scales.keys() for clip_number in range(self.clips_per_scale)]
-        # filenames = paddle_files + other_sounds + scale_clips
         filenames = self.get_wav_files("sounds/")
-        print(filenames)
         
         for filename in filenames:
             path = f"sounds/{filename}.wav"
@@ -241,18 +237,35 @@ class SoundHandler:
         right_vol = volume * x_coord / g.WIDTH
         channel.set_volume(left_vol, right_vol)
 
-    def change_pan(self, channel, x_coord):
-        current_volume = channel.get_volume()
-        self.set_pan(channel, current_volume, x_coord)
+    def change_pan(self, channel, x_coord, volume=None):
+        if volume is not None:
+            self.set_pan(channel, volume, x_coord)
+        else:
+            volume = channel.get_volume()
+
+        self.set_pan(channel, volume, x_coord)
         
     def update_paddle_sound(self, paddle):
         sound_name = f"overload{paddle.player}"
         channel = self.active_channels[sound_name]
+        volume = self.active_volumes[sound_name]
         if paddle.is_overloaded():
             if channel is not None:
-                self.change_pan(channel, paddle.pos[0])
+                self.change_pan(channel, paddle.pos[0], volume)
             else:
-                self.play_sound(15, paddle.pos[0], sound_name)
+                self.play_sound(15, paddle.pos[0], sound_name, active=True)
+        elif channel is not None:
+            self.stop_sound(sound_name)
+            self.active_channels[sound_name] = None
+
+        sound_name = f"charge{paddle.player}"
+        channel = self.active_channels[sound_name]
+        volume = self.active_volumes[sound_name]
+        if paddle.charging_dash_initial:
+            if channel is not None:
+                self.change_pan(channel, paddle.pos[0], volume)
+            else:
+                self.play_sound(18, paddle.pos[0], sound_name, active=True)
         elif channel is not None:
             self.stop_sound(sound_name)
             self.active_channels[sound_name] = None
@@ -263,12 +276,16 @@ class SoundHandler:
         for sound_name in selected_notes:
             self.play_sound(g.MAX_PUCK_SPEED / 4, x, str(sound_name))
 
+        for sound_name in self.active_channels.keys():
+            self.stop_sound(sound_name)
+
     def stop_sound(self, sound_name):
         channel = self.active_channels[sound_name]
         if channel is not None:
+            self.active_channels[sound_name] = None
             channel.fadeout(30)
 
-    def play_sound(self, velocity, x_coord, sound_name, loops=0, pitch_shift=False):
+    def play_sound(self, velocity, x_coord, sound_name, loops=0, pitch_shift=False, active=False):
         if g.SETTINGS['is_training'] and g.TRAINING_PARAMS['no_sound']:
             return
         
@@ -280,10 +297,7 @@ class SoundHandler:
                 return            
 
             volume = velocity / ((g.MAX_PUCK_SPEED + g.MAX_PADDLE_SPEED) if sound_name == 'paddle' else (g.MAX_PUCK_SPEED))
-            volume = min(0.8, volume)
-            if volume < 0.03:
-                return
-            
+            volume = min(0.8, volume)          
             sound = self.sounds[sound_name]
             if pitch_shift:
                 sound = self.pitch_shift_hashed(sound, sound_name, 1 + volume)
@@ -291,13 +305,13 @@ class SoundHandler:
             channel = pygame.mixer.find_channel()
             if channel:
                 self.set_pan(channel, volume, x_coord)
-                self.active_channels[sound_name] = channel
+                if active:
+                    self.active_channels[sound_name] = channel
+                    self.active_volumes[sound_name] = volume
+                channel.set_volume(volume)
                 channel.play(sound, loops=loops)
 
                 self.last_played[sound_name] = g.current_time
-            else:
-                pass
-                # print("No free channel available to play sound")
         else:
             print(f"Warning: No sound file for name {sound_name}")
 

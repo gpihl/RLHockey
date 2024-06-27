@@ -164,8 +164,8 @@ class Game:
                     scorer.draw_paddle(position, radius, color)                    
 
                 while g.current_time - goal_time < 1:
-                    if g.current_time - goal_time > 0.75:
-                        g.framework.fill_screen_semiopaque_black(50)
+                    if g.current_time - goal_time > 0.7:
+                        g.framework.fill_screen_semiopaque_black(20)
                     
 
                     g.framework.render()
@@ -252,10 +252,10 @@ class Game:
         color = g.interpolate_color_rgb((255,255,255), self.background_color, 0.95)
         line_thickness = 40
 
-        puck_to_mid_dist = np.linalg.norm(self.puck.pos - np.array([g.WIDTH / 2, g.HEIGHT / 2]))
+        puck_to_mid_dist = np.abs(self.puck.pos[0] - g.WIDTH / 2)
         alpha = 1.0 - min(1.0, puck_to_mid_dist / g.WIDTH)
         alpha = alpha ** 2
-        color = g.modify_hsl(color, 0, 0, 0.2 * alpha)
+        color = g.modify_hsl(color, 0, 0, 0.15 * alpha)
 
         mid_circle_color = g.modify_hsl(self.background_color, 0.05, 0, -0.04)
         mid_circle_radius = 270
