@@ -19,35 +19,38 @@ SETTINGS = {
 }
 
 REWARD_POLICY = {   
-    'time_reward': -0.05,
+    'time_reward': -0.1,
     'acc_reward': -0.02,
     'player_1_goal': 20,
     'player_2_goal': -20,
-    'ball_proximity': 0.25,
-    'ball_velocity': 0.5,
+    'ball_proximity': 0.2,
+    'ball_velocity': 0.3,
     'ball_vel_2_goal': 0.3,
-    'center': -0.01,
+    'center': -0.0,
     'dist_to_player': 0.1,
     'pointless_motion': -0.4,
     'dash': 0.0,
-    'normalization': 1.0,    
+    'wall_acc': -1.0,
+    'normalization': 1.0,
 }
 
 TRAINING_PARAMS = {
     'training_steps': 15000,
     'learning_rate': 1.0e-4,
-    'model_name': 'cool',
+    'model_name': 'cool-next',
     'base_path': 'models',
     'training_iterations': 4000,
     'player_2_active': True,
     'blocked_goals': False,
-    'random_starting_locations': True,
+    'random_starting_locations': False,
     'no_render': False,
     'no_sound': True,
     'field_split': False,
     'device': 'cpu',
-    'algorithm': 'PPO',
-    'dash_enabled': False,
+    'algorithm': 'TD3',    
+    # 'algorithm': 'SAC',
+    # 'algorithm': 'PPO',
+    'dash_enabled': True,
 }
 
 TRAINING_PARAMS['model_name'] += "-" + TRAINING_PARAMS['algorithm']
@@ -71,18 +74,22 @@ PS5_CONTROLLER = {
 
 controller = PS5_CONTROLLER
 
+joystick = None
+
 def init_controls():
     pygame.joystick.init()
 
     if pygame.joystick.get_count() == 0:
         print("No joystick connected")
         return
+    
+    stick = pygame.joystick.Joystick(0)
+    stick.init()
+    print(f"Joystick name: {stick.get_name()}")
 
-    joystick = pygame.joystick.Joystick(0)
-    joystick.init()
-
-    print(f"Joystick name: {joystick.get_name()}")
-    return joystick
+    global joystick
+    joystick = stick
+    return stick
 
 joystick = init_controls()
 
@@ -96,10 +103,19 @@ GOAL_HEIGHT = int(140 * WIDTH / 800)
 # Display
 # RESOLUTION_W = 2560
 # RESOLUTION_H = 1440
+
 # RESOLUTION_W = 1470
 # RESOLUTION_H = 956
-RESOLUTION_W = 800
-RESOLUTION_H = 400
+
+# RESOLUTION_W = 800
+# RESOLUTION_H = 400
+
+RESOLUTION_W = 200
+RESOLUTION_H = 100
+
+# RESOLUTION_W = 128
+# RESOLUTION_H = 64
+
 HIGH_FPS = 60000
 # LOW_FPS = 120
 LOW_FPS = 60
@@ -147,7 +163,7 @@ PUCK_FRICTION = 0.996
 PUCK_RESTITUTION = 0.95
 
 # Match
-TIME_LIMIT = 60 * LOW_FPS
+TIME_LIMIT = 10 * LOW_FPS
 
 # Physics
 DELTA_T = 0.80 * 120 / LOW_FPS
@@ -256,12 +272,12 @@ def game_action_from_model_action(model_action):
     }
     return action
 
-# def interpolate_color(color1, color2, t):
-#     return (
-#         int(color1[0] + (color2[0] - color1[0]) * t),
-#         int(color1[1] + (color2[1] - color1[1]) * t),
-#         int(color1[2] + (color2[2] - color1[2]) * t)
-#     )
+def interpolate_color_rgb(color1, color2, t):
+    return (
+        int(color1[0] + (color2[0] - color1[0]) * t),
+        int(color1[1] + (color2[1] - color1[1]) * t),
+        int(color1[2] + (color2[2] - color1[2]) * t)
+    )
 
 def smoothstep(x):
     x = np.clip(x, 0, 1)

@@ -1,11 +1,10 @@
-import pygame
 import torch
 import pygame.gfxdraw
 import numpy as np
 import time
 import math
 import globals as g
-from stable_baselines3 import SAC, PPO
+from stable_baselines3 import SAC, PPO, TD3
 from stable_baselines3.common.env_util import make_vec_env
 import environment
 from paddle import Paddle
@@ -36,7 +35,7 @@ class Game:
         self.total_reward = 0.0
         self.player_2_model = None
         self.score = [0, 0]
-        self.background_color = g.sound_handler.current_color
+        self.background_color = g.sound_handler.current_color()
         self.create_objects()
         self.reset()
 
@@ -88,6 +87,8 @@ class Game:
         # dash_reward = action['dash'] * g.REWARD_POLICY['dash']
         # reward += dash_reward
 
+        reward += self.paddle1.wall_collision_factor(acceleration) * g.REWARD_POLICY["wall_acc"]
+
         self.current_reward = reward
         self.round_reward += reward
         self.total_reward += reward
@@ -95,6 +96,9 @@ class Game:
         return reward
     
     def step(self, action=None):
+        # print(self.background_color)
+        # print(g.rgb_to_hsl(self.background_color[0], self.background_color[1], self.background_color[2]))
+
         player_1_model_action = action
         player_1_action = None
         player_2_action = None
@@ -243,7 +247,7 @@ class Game:
         g.framework.draw_rectangle(goal2_color, goal2_pos, goal2_size)
 
     def draw_field_lines(self):
-        color = g.interpolate_color((255,255,255), self.background_color, 0.9)
+        color = g.interpolate_color_rgb((255,255,255), self.background_color, 0.95)
         line_thickness = 40
 
         puck_to_mid_dist = np.linalg.norm(self.puck.pos - np.array([g.WIDTH / 2, g.HEIGHT / 2]))
@@ -251,7 +255,7 @@ class Game:
         alpha = alpha ** 2
         color = g.modify_hsl(color, 0, 0, 0.2 * alpha)
 
-        mid_circle_color = g.interpolate_color((255,255,255), self.background_color, 0.8)
+        mid_circle_color = g.interpolate_color_rgb((255,255,255), self.background_color, 0.85)
         mid_circle_radius = 270
         mid_point_radius = 85    
         g.framework.draw_circle([g.WIDTH / 2, g.HEIGHT / 2], mid_circle_radius, color)
@@ -306,6 +310,8 @@ def main():
         algorithm = PPO
     elif g.TRAINING_PARAMS['algorithm'] == 'SAC':
         algorithm = SAC
+    elif g.TRAINING_PARAMS['algorithm'] == 'TD3':
+            algorithm = TD3        
 
     if g.TRAINING_PARAMS['player_2_active']:
         latest_model_path = g.get_latest_model_path(g.TRAINING_PARAMS['base_path'], g.TRAINING_PARAMS['model_name'])

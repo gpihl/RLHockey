@@ -1,4 +1,5 @@
 import pygame
+import math
 import os
 import numpy as np
 from scipy import signal
@@ -36,7 +37,7 @@ class SoundHandler:
         self.scale_order = []
         self.create_scales()
         self.current_scale = 'maj9'
-        self.scale_change_period = 40
+        self.scale_change_period = 10
         self.last_played = dict.fromkeys(self.sounds, 0)
 
         print('Sound handler init done')
@@ -55,17 +56,22 @@ class SoundHandler:
         return current_scale_id
     
     def current_color(self):
-        id = self.current_scale_id()
+        id = self.current_color_id()
         color = self.colors[self.scale_id_to_name(id)]
         return color
     
+    def current_color_id(self):
+        id = round(self.current_scale_id() + (g.current_time % self.scale_change_period) / self.scale_change_period)
+        return id % len(self.colors.keys())
+    
     def next_color(self):
-        id = (self.current_scale_id() + 1) % len(self.colors.keys())
+        id = (self.current_color_id() + 1) % len(self.colors.keys())
         color = self.colors[self.scale_id_to_name(id)]
         return color
     
     def theme_alpha(self):
         alpha = (g.current_time % self.scale_change_period) / self.scale_change_period
+        alpha = (alpha + 0.5) % 1
         theme_alpha = g.smoothstep(alpha)
         return theme_alpha
     

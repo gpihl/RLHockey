@@ -1,5 +1,5 @@
 import environment
-from stable_baselines3 import SAC, PPO
+from stable_baselines3 import SAC, PPO, TD3
 from stable_baselines3.common.env_util import make_vec_env
 import globals as g
 from framework import Framework
@@ -21,6 +21,8 @@ def main():
             algorithm = PPO
         elif g.TRAINING_PARAMS['algorithm'] == 'SAC':
             algorithm = SAC
+        elif g.TRAINING_PARAMS['algorithm'] == 'TD3':
+            algorithm = TD3
 
         if latest_model_path:
             print(f"Loading model {latest_model_path}")

@@ -39,7 +39,7 @@ class Paddle:
                                  random.uniform(2*self.radius, g.HEIGHT - 2*self.radius)], 
                                  dtype=np.float32)
         return starting_pos
-    
+        
     def get_starting_pos_regular(self):
         if self.player == 1:
             starting_pos = np.array([self.radius*3.0, g.HEIGHT // 2])
@@ -153,7 +153,7 @@ class Paddle:
             return
         
         self.set_magnetic_effect(action['magnet'])
-
+        
         if action['dash']:
             if not self.charging_dash:
                 self.charge_start_time = g.current_time
@@ -161,7 +161,7 @@ class Paddle:
         elif self.charging_dash:
             self.charging_dash = False
             self.dash(puck)
-        
+
         self.apply_force(action['acceleration'])
 
     def apply_force(self, acc):
@@ -178,7 +178,7 @@ class Paddle:
             self.apply_force(np.random.normal(0, 0.7, 2))
         else:
             self.radius = g.PADDLE_RADIUS
-
+                
         if self.is_dashing():
             self.apply_aim_assist(puck)
         else:
@@ -240,24 +240,26 @@ class Paddle:
 
     def draw(self):
         theme_color = g.sound_handler.target_color()
-        self.color = g.interpolate_color(self.underlying_color, theme_color, 0.5)
-        self.color = g.modify_hsl(self.color, 0, 0, 0.2)
+        # self.color = g.interpolate_color(self.underlying_color, theme_color, 0.5)
+        hue_change = 0.15 if self.player == 1 else -0.15
+        self.color = g.modify_hsl(theme_color, hue_change, 0, 0.2)
 
         glow = max(0.0, 1.0 - (g.current_time - self.last_dash_time) / g.GAMEPLAY_PARAMS['dash_duration'])
         color = g.modify_hsl(self.color, 0, 0, glow*0.5)
 
         if self.charging_dash:
             charging_time = g.current_time - self.charge_start_time
-            charge_color_shift = min(0.5, charging_time * 0.5 / g.GAMEPLAY_PARAMS['dash_max_charge_time'])
-            color = g.interpolate_color(color, (255,100,100), charge_color_shift)
+            charge_color_shift = min(0.9, charging_time * 0.5 / g.GAMEPLAY_PARAMS['dash_max_charge_time'])
+            color = g.interpolate_color_rgb(color, (255,0,0), charge_color_shift)
+            color = g.modify_hsl(color, 0, charge_color_shift * 0.5, charge_color_shift * 0.2)
         
         self.draw_paddle(self.pos, self.radius, color)
 
     def draw_paddle(self, position, radius, color):
         g.framework.draw_circle(position, radius, color)
-        g.framework.draw_circle(position, int(8*radius / 9), g.interpolate_color(color, (0,0,0), 0.05))
-        g.framework.draw_circle(position, int(radius / 2), g.interpolate_color(color, (0,0,0), 0.3))
-        g.framework.draw_circle(position, int(radius / 3), g.interpolate_color(color, (0,0,0), 0.1))        
+        g.framework.draw_circle(position, int(8*radius / 9), g.interpolate_color_rgb(color, (0,0,0), 0.05))
+        g.framework.draw_circle(position, int(radius / 2), g.interpolate_color_rgb(color, (0,0,0), 0.3))
+        g.framework.draw_circle(position, int(radius / 3), g.interpolate_color_rgb(color, (0,0,0), 0.1))
 
     def update_velocity_history(self):
         self.velocity_history.append(self.vel.copy())
@@ -290,4 +292,33 @@ class Paddle:
     def normalize_relative_pos(self, relative_pos):
         relative_pos[0] /= g.WIDTH
         relative_pos[1] /= g.HEIGHT
-        return relative_pos        
+        return relative_pos
+
+    def wall_collision_factor(self, acceleration):
+        left_wall_normal = np.array([1, 0])
+        right_wall_normal = np.array([-1, 0])
+        top_wall_normal = np.array([0, 1])
+        bottom_wall_normal = np.array([0, -1])
+
+        dist_to_left = self.pos[0] - g.PADDLE_RADIUS
+        dist_to_right = g.WIDTH - self.pos[0] - g.PADDLE_RADIUS
+        dist_to_top = self.pos[1] - g.PADDLE_RADIUS
+        dist_to_bottom = g.HEIGHT - self.pos[1] - g.PADDLE_RADIUS
+
+        total_factor = 0.0
+
+        walls = [
+            (left_wall_normal, dist_to_left),
+            (right_wall_normal, dist_to_right),
+            (top_wall_normal, dist_to_top),
+            (bottom_wall_normal, dist_to_bottom)
+        ]
+
+        for wall_normal, dist in walls:
+            if dist < g.PADDLE_RADIUS * 2:
+                dot_product = -np.dot(acceleration, wall_normal)
+                factor = max(0, dot_product / np.linalg.norm(acceleration))
+                total_factor += factor
+        
+        return total_factor
+
