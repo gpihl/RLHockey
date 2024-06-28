@@ -122,8 +122,11 @@ class Game:
             if self.player_2_model is not None and not g.SETTINGS['player_2_human']:
                 player_2_model_action = self.player_2_model.predict(self.get_observation(2))[0]
                 player_2_action = g.game_action_from_model_action(player_2_model_action)
-            else:
+            elif g.SETTINGS['is_training']:
                 player_2_action = human_action
+
+        if player_2_action is None:
+            player_2_action = g.empty_action()
 
         self.prev_t = self.curr_t
         self.curr_t = g.current_time
@@ -228,8 +231,12 @@ class Game:
         self.puck.draw()
         # self.paddle1.draw(self.puck, self.running_stats if g.SETTINGS['is_training'] else None)
         # self.paddle2.draw(self.puck, self.running_stats if g.SETTINGS['is_training'] else None)
-        self.paddle1.draw(self.puck, reward_alpha=self.get_reward_alpha(self.paddle1, self.paddle2))
-        self.paddle2.draw(self.puck, reward_alpha=self.get_reward_alpha(self.paddle2, self.paddle1))
+        if g.SETTINGS['is_training']:
+            self.paddle1.draw(self.puck, reward_alpha=self.get_reward_alpha(self.paddle1, self.paddle2))
+            self.paddle2.draw(self.puck, reward_alpha=self.get_reward_alpha(self.paddle2, self.paddle1))
+        else:
+            self.paddle1.draw(self.puck, None)
+            self.paddle2.draw(self.puck, None)
         self.draw_goals()
         self.draw_ui()
         g.framework.render()
