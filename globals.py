@@ -372,6 +372,8 @@ def get_human_action():
         action['acceleration'][0] = -PADDLE_ACC
     if keys[pygame.K_d]:
         action['acceleration'][0] = PADDLE_ACC
+    if keys[pygame.K_LSHIFT] or keys[pygame.K_SPACE] or keys[pygame.K_RSHIFT]:
+        action['dash'] = True
     
     return action
 
