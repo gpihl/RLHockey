@@ -21,6 +21,7 @@ class Paddle:
         self.charge_flash_period = 0.2
         self.velocity_history = deque(maxlen=5)
         self.average_velocity = np.zeros(2)
+        self.current_reward = 0.0
         self.reset()
 
     def reset(self):
@@ -174,8 +175,13 @@ class Paddle:
             self.charging_dash = False
             self.charging_dash_initial = False
             self.dash(puck)
-
-        self.apply_force(action['acceleration'])
+        
+        if g.SETTINGS['is_training'] and self.player == 2:
+            acc = action['acceleration']
+            reversed_x_acc = np.array([-acc[0], acc[1]])
+            self.apply_force(reversed_x_acc)
+        else:
+            self.apply_force(action['acceleration'])
 
     def apply_force(self, acc):
         self.vel += acc * g.DELTA_T * g.PADDLE_ACC
@@ -258,7 +264,7 @@ class Paddle:
             if sound_vel != 0:
                 g.sound_handler.play_sound(sound_vel, self.pos[0], 'paddle')
 
-    def draw(self, puck):
+    def draw(self, puck, reward_alpha=None):        
         theme_color = g.sound_handler.target_color()
         # self.color = g.interpolate_color(self.underlying_color, theme_color, 0.5)
         hue_change = 0.15 if self.player == 1 else -0.15
@@ -274,7 +280,7 @@ class Paddle:
             self.color = g.modify_hsl(self.color, 0, charge_color_shift * 0.5, charge_color_shift * 0.2)
             self.draw_dash_line(puck)
         
-        self.draw_paddle(self.pos, self.radius, self.color)
+        self.draw_paddle(self.pos, self.radius, self.color, reward_alpha)
 
     def charging_time(self):
         return g.current_time - self.charge_start_time
@@ -286,13 +292,19 @@ class Paddle:
     def is_overloaded(self):
         return self.charging_dash and self.full_charge_alpha() > 0
 
-    def draw_paddle(self, position, radius, color):
+    def draw_paddle(self, position, radius, color, reward_alpha=None):
         if self.is_overloaded():
             # glow = (1.0 - full_charge_alpha) ** 4
             # color = g.modify_hsl(color, 0, 0, glow * 0.5)
-            color = g.modify_hsl(color, 0, 0, 0.1 + 0.1 * np.sin(2 * np.pi * g.current_time / self.charge_flash_period))
+            color = g.modify_hsl(color, 0, 0, 0.1 + 0.1 * np.sin(2 * np.pi * g.current_time / self.charge_flash_period))            
+       
+        if reward_alpha is not None:
 
-        g.framework.draw_circle(position, radius, g.set_l(color, 0.75))
+            outer_color = g.interpolate_color_rgb((255,0,0), (0,255,0), reward_alpha)
+        else:
+            outer_color = g.set_l(color, 0.75)
+
+        g.framework.draw_circle(position, radius, outer_color)
         g.framework.draw_circle(position, int(8*radius / 9), g.interpolate_color_rgb(color, (0,0,0), 0.05))
         g.framework.draw_circle(position, int(radius / 2), g.interpolate_color_rgb(color, (0,0,0), 0.3))
         g.framework.draw_circle(position, int(radius / 3), g.interpolate_color_rgb(color, (0,0,0), 0.1))

@@ -135,7 +135,7 @@ class Puck:
         dist = np.linalg.norm(self.pos - paddle.pos)
         return dist < g.PUCK_RADIUS + paddle.radius
     
-    def collect_shot_reward(self, reward_type):
+    def collect_shot_reward(self, reward_type, player):
         if reward_type == 'vel_2_goal':
             reward = self.shot_on_goal_reward
             self.shot_on_goal_reward = 0
@@ -185,7 +185,7 @@ class Puck:
                 self.homing = True
                 self.homing_target = 2 if paddle.player == 1 else 1
 
-            self.shot_on_goal_rewardl = self.vel[0] - prev_vel[0]            
+            self.shot_on_goal_reward = self.vel[0] - prev_vel[0]            
             self.shot_reward = np.linalg.norm(relative_velocity)
             
             if paddle.player == 2:

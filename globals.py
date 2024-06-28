@@ -6,6 +6,8 @@ import numpy as np
 from sound_handler import SoundHandler
 from framework import Framework
 from ui import UI
+from pathlib import Path
+import random
 
 device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 print(f"Using device: {device}")
@@ -18,12 +20,29 @@ SETTINGS = {
     'player_2_human': False,
 }
 
+
+# REWARD_POLICY = {   
+#     'time_reward': 0.0,
+#     'acc_reward': 0.0,
+#     'goal': 20,
+#     'ball_proximity': 0.0,
+#     'goal_proximity': 0.0,
+#     'ball_velocity': 0.0,
+#     'ball_vel_2_goal': 0.0,
+#     'center': -0.0,
+#     'dist_to_player': 0.0,
+#     'pointless_motion': -0.0,
+#     'dash': 0.0,
+#     'wall_acc': 0.0,
+#     'normalization': 1.0,
+# }
+
 REWARD_POLICY = {   
-    'time_reward': -0.1,
-    'acc_reward': -0.02,
-    'player_1_goal': 20,
-    'player_2_goal': -20,
-    'ball_proximity': 0.2,
+    'time_reward': -0.2,
+    'acc_reward': -0.005,
+    'goal': 20,
+    'ball_proximity': 1.2,
+    'goal_proximity': 0.8,
     'ball_velocity': 0.3,
     'ball_vel_2_goal': 0.3,
     'center': -0.0,
@@ -35,9 +54,9 @@ REWARD_POLICY = {
 }
 
 TRAINING_PARAMS = {
-    'training_steps': 15000,
+    'training_steps': 8000,
     'learning_rate': 1.0e-4,
-    'model_name': 'cool-next-next',
+    'model_name': 'cool-next-next-next',
     'base_path': 'models',
     'training_iterations': 4000,
     'player_2_active': True,
@@ -47,8 +66,8 @@ TRAINING_PARAMS = {
     'no_sound': True,
     'field_split': False,
     'device': 'cpu',
-    'algorithm': 'TD3',    
-    # 'algorithm': 'SAC',
+    # 'algorithm': 'TD3',    
+    'algorithm': 'SAC',
     # 'algorithm': 'PPO',
     'dash_enabled': True,
 }
@@ -123,8 +142,8 @@ RESOLUTION_H = 400
 # RESOLUTION_H = 64
 
 HIGH_FPS = 60000
-LOW_FPS = 120
-# LOW_FPS = 60
+# LOW_FPS = 120
+LOW_FPS = 60
 
 # Fonts
 REWARD_COLOR = (255, 255, 255)
@@ -173,6 +192,7 @@ TIME_LIMIT = 60 * LOW_FPS
 
 # Physics
 DELTA_T = 0.80 * 120 / LOW_FPS
+# DELTA_T = 0.40 * 120 / LOW_FPS
 
 def interpolate_color_rgb(color1, color2, t):
     return (
@@ -290,6 +310,18 @@ def get_latest_model_path(base_path, prefix):
     latest_model = max(models, key=lambda x: int(x.split('_')[-1].split('.')[0]))
     return os.path.join(base_path, latest_model)
 
+def get_latest_model_path_with_algorithm(base_path, algorithm=None):
+    if algorithm is None:
+        algorithm = random.choice(['PPO', 'SAC', 'TD3'])
+        
+    models = [f for f in os.listdir(base_path) if f.startswith(algorithm) and f.endswith('.zip')]
+    if not models:
+        return None, algorithm
+    latest_model = max(models, key=lambda x: int(x.split('_')[-1].split('.')[0]))
+
+    return os.path.join(base_path, latest_model), algorithm
+
+
 def get_random_model_path(base_path, prefix):
     models = [f for f in os.listdir(base_path) if f.startswith(prefix) and f.endswith('.zip')]
     if not models:
@@ -301,15 +333,25 @@ def get_random_model_path(base_path, prefix):
     random_model = models[random_index]
     return os.path.join(base_path, random_model)
 
-def get_next_model_path(base_path, prefix):
-    models = [f for f in os.listdir(base_path) if f.startswith(prefix) and f.endswith('.zip')]
+# def get_next_model_path(base_path, prefix):
+#     models = [f for f in os.listdir(base_path) if f.startswith(prefix) and f.endswith('.zip')]
+#     if not models:
+#         next_model_number = 1
+#     else:
+#         latest_model = max(models, key=lambda x: int(x.split('_')[-1].split('.')[0]))
+#         latest_number = int(latest_model.split('_')[-1].split('.')[0])
+#         next_model_number = latest_number + 1
+#     return os.path.join(base_path, f"{prefix}_{next_model_number}.zip")
+
+def get_next_model_path(base_path, algorithm):
+    models = [f for f in os.listdir(base_path) if f.startswith(algorithm) and f.endswith('.zip')]
     if not models:
         next_model_number = 1
     else:
         latest_model = max(models, key=lambda x: int(x.split('_')[-1].split('.')[0]))
         latest_number = int(latest_model.split('_')[-1].split('.')[0])
         next_model_number = latest_number + 1
-    return os.path.join(base_path, f"{prefix}_{next_model_number}.zip")
+    return os.path.join(base_path, f"{algorithm}_{next_model_number}.zip")
 
 def button_pressed(action_name):
     button_idx = controller[CONTROLS_PARAMS[action_name]]
@@ -407,3 +449,42 @@ def goal_pos(goal_idx):
     
     return goal_pos
 
+def get_sorted_zip_files(directory):
+    dir_path = Path(directory).resolve()
+    zip_files = [f for f in dir_path.glob('*.zip') if f.is_file()]
+    sorted_files = sorted(zip_files, key=lambda x: x.stat().st_mtime, reverse=True)
+    return [f.name for f in sorted_files]
+
+def get_random_model_with_algorithm():
+    models = get_sorted_zip_files('models')
+    if len(models) == 0:
+        return None, None
+    
+    random_index = max(0, len(models) - int(np.abs(np.random.normal(0, 0.25, 1)[0]) * len(models)) - 1)
+    random_model = models[random_index]
+    algorithm = get_model_algorithm(random_model)
+    path = os.path.join('models', random_model)
+    return path, algorithm
+
+def get_model_algorithm(file_name):
+    return file_name.split('_')[0].strip()
+
+class RunningStats:
+    def __init__(self):
+        self.n = 0
+        self.mean = 0
+        self.M2 = 0
+
+    def update(self, x):
+        self.n += 1
+        delta = x - self.mean
+        self.mean += delta / self.n
+        delta2 = x - self.mean
+        self.M2 += delta * delta2
+
+    def get_stats(self):
+        if self.n < 2:
+            return self.mean, 0
+        else:
+            variance = self.M2 / (self.n - 1)
+            return self.mean, np.sqrt(variance)

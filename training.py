@@ -8,33 +8,44 @@ def main():
     g.SETTINGS['is_training'] = True
     g.framework = Framework()
     for i in range(g.TRAINING_PARAMS['training_iterations']):
-        latest_model_path = g.get_latest_model_path(g.TRAINING_PARAMS['base_path'], g.TRAINING_PARAMS['model_name'])
-        random_model_path = g.get_random_model_path(g.TRAINING_PARAMS['base_path'], g.TRAINING_PARAMS['model_name'])
-        next_model_path = g.get_next_model_path(g.TRAINING_PARAMS['base_path'], g.TRAINING_PARAMS['model_name'])
+        latest_model_path, training_algorithm = g.get_latest_model_path_with_algorithm(g.TRAINING_PARAMS['base_path'])
+        player_2_model_path, opponent_algorithm = g.get_random_model_with_algorithm()
 
+        next_model_path = g.get_next_model_path(g.TRAINING_PARAMS['base_path'], training_algorithm)
         env = make_vec_env(lambda: environment.AirHockeyEnv(), n_envs=1)
 
         batch_size = 2048
 
         model2 = None
-        if g.TRAINING_PARAMS['algorithm'] == 'PPO':
-            algorithm = PPO
-        elif g.TRAINING_PARAMS['algorithm'] == 'SAC':
-            algorithm = SAC
-        elif g.TRAINING_PARAMS['algorithm'] == 'TD3':
-            algorithm = TD3
+        if training_algorithm == 'PPO':
+            training_algorithm = PPO
+        elif training_algorithm == 'SAC':
+            training_algorithm = SAC
+        elif training_algorithm == 'TD3':
+            training_algorithm = TD3
+
+        if opponent_algorithm == 'PPO':
+            opponent_algorithm = PPO
+        elif opponent_algorithm == 'SAC':
+            opponent_algorithm = SAC
+        elif opponent_algorithm == 'TD3':
+            opponent_algorithm = TD3
+
+        print(f"training_algorithm {training_algorithm}")
+        print(f"opponent_algorithm {opponent_algorithm}")           
 
         if latest_model_path:
-            print(f"Loading model {latest_model_path}")
-            model1 = algorithm.load(latest_model_path, env=env, device=g.TRAINING_PARAMS['device'], batch_size=batch_size)
+            print(f"Loading model for player 1: {latest_model_path}")
+            model1 = training_algorithm.load(latest_model_path, env=env, device=g.TRAINING_PARAMS['device'], batch_size=batch_size)
 
             if g.TRAINING_PARAMS['player_2_active']:
-                model2 = algorithm.load(latest_model_path, env=env, device=g.device, batch_size=batch_size)
+                print(f"Loading model for player 2: {player_2_model_path}")
+                model2 = opponent_algorithm.load(player_2_model_path, env=env, device=g.device, batch_size=batch_size)
         else:
             print(f"Creating new model {latest_model_path}")
-            model1 = algorithm("MultiInputPolicy", env, learning_rate=g.TRAINING_PARAMS['learning_rate'], verbose=1, device=g.TRAINING_PARAMS['device'], batch_size=batch_size)
+            model1 = training_algorithm("MultiInputPolicy", env, learning_rate=g.TRAINING_PARAMS['learning_rate'], verbose=1, device=g.TRAINING_PARAMS['device'], batch_size=batch_size)
             if g.TRAINING_PARAMS['player_2_active']:            
-                model2 = algorithm("MultiInputPolicy", env, learning_rate=g.TRAINING_PARAMS['learning_rate'], verbose=1, device=g.device, batch_size=batch_size)
+                model2 = training_algorithm("MultiInputPolicy", env, learning_rate=g.TRAINING_PARAMS['learning_rate'], verbose=1, device=g.device, batch_size=batch_size)
 
         game = env.envs[0].get_wrapper_attr('game')
         game.player_2_model = model2

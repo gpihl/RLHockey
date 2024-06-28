@@ -37,8 +37,10 @@ class Game:
         self.player_2_model = None
         self.score = [0, 0]
         self.background_color = g.sound_handler.current_color()
+        self.running_stats = g.RunningStats()
         self.create_objects()
         self.reset()
+        
 
         print("Game initialization done")
 
@@ -54,47 +56,51 @@ class Game:
         self.paddle1.reset()
         self.paddle2.reset()
         self.puck.reset(self.last_scorer)
+        self.running_stats = g.RunningStats()
         g.sound_handler.reset()
 
-    def get_reward(self, action):
+    def get_reward(self, paddle, action):
         acceleration = action['acceleration']
         reward = g.REWARD_POLICY["time_reward"]
         reward += np.linalg.norm(acceleration) * g.REWARD_POLICY["acc_reward"]
 
-        if self.player_1_scored():
-            reward += g.REWARD_POLICY["player_1_goal"]
-        elif self.player_2_scored():
-            reward += g.REWARD_POLICY["player_2_goal"]
+        if (self.player_1_scored() and paddle.player == 1) or (self.player_2_scored() and paddle.player == 2):
+            reward += g.REWARD_POLICY["goal"]
 
-        relative_pos = self.puck.pos - self.paddle1.pos
+        relative_pos = self.puck.pos - paddle.pos
         dist_to_puck = np.linalg.norm(relative_pos)
-        side_multiplier = np.dot(relative_pos / dist_to_puck, np.array([1.0, 0.0]))
+        # side_multiplier = np.dot(relative_pos / dist_to_puck, np.array([1.0, 0.0]))
+        side_multiplier = 1.0
         proximity_reward = ((g.WIDTH - dist_to_puck) / g.WIDTH) * side_multiplier * g.REWARD_POLICY["ball_proximity"]
         reward += proximity_reward
 
-        dist_to_center = np.abs(self.paddle1.pos[0] - g.WIDTH/2)
-        center_reward = ((g.WIDTH / 2 - dist_to_center) / (g.WIDTH / 2)) * g.REWARD_POLICY["center"]
-        reward += center_reward
+        if paddle.player == 1:
+            goal_pos = np.array([g.WIDTH, g.HEIGHT / 2])
+        else:
+            goal_pos = np.array([0, g.HEIGHT / 2])
 
-        dist_to_player = np.linalg.norm(self.paddle1.pos - self.paddle2.pos) / g.WIDTH
-        reward += dist_to_player * g.REWARD_POLICY['dist_to_player']
+        puck_to_goal_dist = np.linalg.norm(goal_pos - self.puck.pos)
+        puck_to_goal_reward = ((g.WIDTH - puck_to_goal_dist) / g.WIDTH) * g.REWARD_POLICY["goal_proximity"]
+        reward += puck_to_goal_reward
 
-        pointless_reward = self.paddle1.pointless_motion(acceleration) * g.REWARD_POLICY["pointless_motion"]
+        # dist_to_center = np.abs(paddle.pos[0] - g.WIDTH/2)
+        # center_reward = ((g.WIDTH / 2 - dist_to_center) / (g.WIDTH / 2)) * g.REWARD_POLICY["center"]
+        # reward += center_reward
+
+        # dist_to_player = np.linalg.norm(paddle.pos - self.paddle2.pos) / g.WIDTH
+        # reward += dist_to_player * g.REWARD_POLICY['dist_to_player']
+
+        pointless_reward = paddle.pointless_motion(acceleration) * g.REWARD_POLICY["pointless_motion"]
         reward += pointless_reward
 
-        reward += self.puck.collect_shot_reward('vel_2_goal') * g.REWARD_POLICY["ball_vel_2_goal"]
-        reward += self.puck.collect_shot_reward('ball_velocity') * g.REWARD_POLICY["ball_velocity"]
+        reward += self.puck.collect_shot_reward('vel_2_goal', player=paddle.player) * g.REWARD_POLICY["ball_vel_2_goal"]
+        reward += self.puck.collect_shot_reward('ball_velocity', player=paddle.player) * g.REWARD_POLICY["ball_velocity"]
         reward /= g.REWARD_POLICY["normalization"]
 
         # dash_reward = action['dash'] * g.REWARD_POLICY['dash']
         # reward += dash_reward
 
-        reward += self.paddle1.wall_collision_factor(acceleration) * g.REWARD_POLICY["wall_acc"]
-
-        self.current_reward = reward
-        self.round_reward += reward
-        self.total_reward += reward
-
+        # reward += paddle.wall_collision_factor(acceleration) * g.REWARD_POLICY["wall_acc"]
         return reward
     
     def step(self, action=None):
@@ -171,7 +177,21 @@ class Game:
                     g.framework.render()
                     g.framework.tick()
 
-        return self.get_observation(1), self.get_reward(player_1_action), self.is_done(), { 'cumulative_reward': self.round_reward }
+        self.paddle1.current_reward = self.get_reward(self.paddle1, player_1_action)
+        self.paddle2.current_reward = self.get_reward(self.paddle2, player_2_action)
+        reward = self.paddle1.current_reward - self.paddle2.current_reward 
+        self.current_reward = reward
+        self.round_reward += reward
+        self.total_reward += reward
+        self.running_stats.update(self.paddle1.current_reward - self.paddle2.current_reward)
+        self.running_stats.update(self.paddle2.current_reward - self.paddle1.current_reward)
+
+        # if self.current_step % 15 == 0:
+        #     mean, std = self.running_stats.get_stats()
+        #     print(f"mean: {mean}, std: {std}")
+        #     print(f"player1 reward: {self.paddle1.current_reward}, player2 reward: {self.paddle2.current_reward}")
+
+        return self.get_observation(1), reward, self.is_done(), { 'cumulative_reward': self.round_reward }
 
     def get_observation(self, player):
         if player == 1:
@@ -206,11 +226,25 @@ class Game:
         self.draw_background()
         self.draw_field_lines()
         self.puck.draw()
-        self.paddle1.draw(self.puck)
-        self.paddle2.draw(self.puck)
+        # self.paddle1.draw(self.puck, self.running_stats if g.SETTINGS['is_training'] else None)
+        # self.paddle2.draw(self.puck, self.running_stats if g.SETTINGS['is_training'] else None)
+        self.paddle1.draw(self.puck, reward_alpha=self.get_reward_alpha(self.paddle1, self.paddle2))
+        self.paddle2.draw(self.puck, reward_alpha=self.get_reward_alpha(self.paddle2, self.paddle1))
         self.draw_goals()
         self.draw_ui()
         g.framework.render()
+
+    def get_reward_alpha(self, paddle, other_paddle):
+        mean, std = self.running_stats.get_stats()
+        if std == 0:
+            return
+        
+        p = ((paddle.current_reward - other_paddle.current_reward) - mean) / std
+        # print(f"player {paddle.player} p: {p}")
+        alpha = (p / 4)  + 0.5
+        alpha = max(0.0, min(1.0, p))
+        return alpha
+            
 
     def draw_background(self):
         self.background_color = g.sound_handler.target_color()
@@ -302,24 +336,25 @@ class Game:
     def close(self):
         g.framework.close()
 
+
 def main():
     g.TRAINING_PARAMS['no_sound'] = False
     g.SETTINGS['is_training'] = False
     g.framework = Framework()
     game = Game()
 
-    if g.TRAINING_PARAMS['algorithm'] == 'PPO':
-        algorithm = PPO
-    elif g.TRAINING_PARAMS['algorithm'] == 'SAC':
-        algorithm = SAC
-    elif g.TRAINING_PARAMS['algorithm'] == 'TD3':
-            algorithm = TD3        
+    latest_model_path, opponent_algorithm = g.get_latest_model_path_with_algorithm(g.TRAINING_PARAMS['base_path'], 'PPO')
 
-    if g.TRAINING_PARAMS['player_2_active']:
-        latest_model_path = g.get_latest_model_path(g.TRAINING_PARAMS['base_path'], g.TRAINING_PARAMS['model_name'])
-        if latest_model_path:
-            env = make_vec_env(lambda: environment.AirHockeyEnv(False), n_envs=1)
-            game.player_2_model = algorithm.load(latest_model_path, env=env)
+    if opponent_algorithm == 'PPO':
+        opponent_algorithm = PPO
+    elif opponent_algorithm == 'SAC':
+        opponent_algorithm = SAC
+    elif opponent_algorithm == 'TD3':
+        opponent_algorithm = TD3
+
+    if latest_model_path:
+        env = make_vec_env(lambda: environment.AirHockeyEnv(False), n_envs=1)
+        game.player_2_model = opponent_algorithm.load(latest_model_path, env=env)
 
     running = True
     while running:
