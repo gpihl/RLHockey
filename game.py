@@ -113,7 +113,7 @@ class Game:
             player_1_action = human_action
 
         if g.TRAINING_PARAMS['player_2_active']:
-            if self.player_2_model is not None:
+            if self.player_2_model is not None and not g.SETTINGS['player_2_human']:
                 player_2_model_action = self.player_2_model.predict(self.get_observation(2))[0]
                 player_2_action = g.game_action_from_model_action(player_2_model_action)
             else:
@@ -226,8 +226,8 @@ class Game:
             g.ui.draw_steps_left(str(self.total_training_steps_left()))        
 
     def draw_goals(self):
-        goal1_color = g.interpolate_color(self.paddle1.color, self.background_color, 0.7)
-        goal2_color = g.interpolate_color(self.paddle2.color, self.background_color, 0.7)
+        goal1_color = g.modify_hsl(self.background_color, 0.15, 0, 0)
+        goal2_color = g.modify_hsl(self.background_color, -0.15, 0, 0)
 
         puck_to_goal_1_dist = np.linalg.norm(self.puck.pos - np.array([0, g.HEIGHT / 2]))
         alpha = 1.0 - min(1.0, puck_to_goal_1_dist / g.WIDTH)

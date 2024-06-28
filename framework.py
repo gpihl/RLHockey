@@ -71,8 +71,8 @@ class Framework():
             g.TRAINING_PARAMS['no_sound'] = not g.TRAINING_PARAMS['no_sound']
             print(f"Setting sound to {not g.TRAINING_PARAMS['no_sound']}")
         elif keys[pygame.K_t]:
-            g.SETTINGS['player_2_human'] = not g.TRAINING_PARAMS['player_2_human']
-            print(f"Setting player 2 human to {not g.TRAINING_PARAMS['player_2_human']}")
+            g.SETTINGS['player_2_human'] = not g.SETTINGS['player_2_human']
+            print(f"Setting player 2 human to {not g.SETTINGS['player_2_human']}")
         elif keys[pygame.K_y]:
             self.toggle_fullscreen()
             print(f"Toggling to fullscreen")

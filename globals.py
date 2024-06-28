@@ -37,7 +37,7 @@ REWARD_POLICY = {
 TRAINING_PARAMS = {
     'training_steps': 15000,
     'learning_rate': 1.0e-4,
-    'model_name': 'cool-next',
+    'model_name': 'cool-next-next',
     'base_path': 'models',
     'training_iterations': 4000,
     'player_2_active': True,
@@ -101,20 +101,20 @@ WIDTH, HEIGHT = 1920, 960
 GOAL_HEIGHT = int(140 * WIDTH / 800)
 
 # Display
-RESOLUTION_W = 2560
-RESOLUTION_H = 1440
+# RESOLUTION_W = 2560
+# RESOLUTION_H = 1440
 
 # RESOLUTION_W = 1920
 # RESOLUTION_H = 1080
 
-# RESOLUTION_W = 1280
-# RESOLUTION_H = 720
-
 # RESOLUTION_W = 1470
 # RESOLUTION_H = 956
 
-# RESOLUTION_W = 800
-# RESOLUTION_H = 400
+# RESOLUTION_W = 1280
+# RESOLUTION_H = 720
+
+RESOLUTION_W = 800
+RESOLUTION_H = 400
 
 # RESOLUTION_W = 200
 # RESOLUTION_H = 100

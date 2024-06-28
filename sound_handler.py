@@ -59,7 +59,7 @@ class SoundHandler:
         return idx
     
     def reset(self):
-        self.bg_music_last_played = g.current_time
+        pass
 
     def update(self):
         id = self.current_scale_id()
@@ -67,6 +67,7 @@ class SoundHandler:
         self.current_scale = scale_name
         
         if g.current_time - self.bg_music_last_played > self.bg_music_period:
+            self.bg_music_last_played = g.current_time
             self.play_bg_music()
 
     def scale_id_to_name(self, id):
@@ -166,14 +167,14 @@ class SoundHandler:
     def play_bg_music(self):
         self.bg_music_last_played = g.current_time
         scale = self.current_scale
-
         clip_names = self.get_scale_clip_names(scale)
+
         if len(clip_names) == 0:
             print(f"Tried to play a {scale} clip but found none.")
             return
         
         clip_name = random.choice(clip_names)
-        x_coord = int(np.clip(np.random.normal(g.WIDTH / 2, g.WIDTH / 4, 1), 0, g.WIDTH))
+        x_coord = int(np.clip(np.random.normal(g.WIDTH / 2, g.WIDTH / 4, 1), 0, g.WIDTH))        
         self.play_sound(30, x_coord, clip_name)
 
     def get_scale_clip_names(self, scale):
