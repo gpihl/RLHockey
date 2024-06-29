@@ -1,6 +1,0 @@
-{'time_reward': -0.1, 'acc_reward': -0.05, 'player_1_goal': 50, 'player_2_goal': -50, 'ball_proximity': 0.15, 'ball_velocity': 0.5, 'ball_vel_2_goal': 1.0, 'center': -0.0, 'dist_to_player': 0.3, 'pointless_motion': 0.5, 'normalization': 1.0}
-
-{'training_steps': 15000, 'learning_rate': 0.0001, 'model_name': 'new-observationsPPO', 'base_path': 'models', 'training_iterations': 4000, 'player_2_active': True, 'blocked_goals': False, 'random_starting_locations': False, 'no_render': False, 'no_sound': True, 'field_split': False, 'device': 'cpu', 'algorithm': 'PPO'}
-
-Total reward: -907.8240959425077
-
