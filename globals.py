@@ -38,12 +38,15 @@ SETTINGS = {
 # }
 
 REWARD_POLICY = {   
-    'time_reward': -0.2,
+    'time_reward': -0.4,
     'acc_reward': -0.005,
-    'goal': 20,
-    'ball_proximity': 1.2,
+    # 'goal': 20,
+    'goal': 110,    
+    # 'ball_proximity': 1.2,
+    'ball_proximity': 0.0,    
     'goal_proximity': 0.8,
-    'ball_velocity': 0.3,
+    # 'ball_velocity': 0.3,
+    'ball_velocity': 0.0,    
     'ball_vel_2_goal': 0.3,
     'center': -0.0,
     'dist_to_player': 0.1,

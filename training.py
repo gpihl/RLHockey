@@ -3,6 +3,8 @@ from stable_baselines3 import SAC, PPO, TD3
 from stable_baselines3.common.env_util import make_vec_env
 import globals as g
 from framework import Framework
+import sys
+sys.setrecursionlimit(10000)  # Increase as needed
 
 def main():
     g.SETTINGS['is_training'] = True
