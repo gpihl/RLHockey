@@ -120,8 +120,10 @@ class Game:
 
         if g.TRAINING_PARAMS['player_2_active']:
             if self.player_2_model is not None and not g.SETTINGS['player_2_human']:
-                player_2_model_action = self.player_2_model.predict(self.get_observation(2))[0]
+                observation = self.get_observation(2)
+                player_2_model_action = self.player_2_model.predict(observation)[0]
                 player_2_action = g.game_action_from_model_action(player_2_model_action)
+
             elif g.SETTINGS['is_training']:
                 player_2_action = human_action
 
@@ -223,7 +225,7 @@ class Game:
             }
             obs = {k: np.array([-v[0], v[1]]) for k, v in obs.items()}
 
-        return {k: torch.tensor(v, device=g.device).cpu() for k, v in obs.items()}
+        return {k: torch.tensor(v, device=g.device) for k, v in obs.items()}
 
     def render(self):
         self.draw_background()
@@ -358,9 +360,10 @@ def main():
         opponent_algorithm = SAC
     elif opponent_algorithm == 'TD3':
         opponent_algorithm = TD3
-
+    
     if latest_model_path:
         env = make_vec_env(lambda: environment.AirHockeyEnv(False), n_envs=1)
+        print(f"loading model: {latest_model_path}")
         game.player_2_model = opponent_algorithm.load(latest_model_path, env=env)
 
     running = True

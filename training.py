@@ -36,16 +36,16 @@ def main():
 
         if latest_model_path:
             print(f"Loading model for player 1: {latest_model_path}")
-            model1 = training_algorithm.load(latest_model_path, env=env, device=g.TRAINING_PARAMS['device'], batch_size=batch_size)
+            model1 = training_algorithm.load(latest_model_path, env=env, device=g.device, batch_size=batch_size)
 
             if g.TRAINING_PARAMS['player_2_active']:
                 print(f"Loading model for player 2: {player_2_model_path}")
-                model2 = opponent_algorithm.load(player_2_model_path, env=env, device=g.device, batch_size=batch_size)
+                model2 = opponent_algorithm.load(player_2_model_path, env=env, device='cpu', batch_size=batch_size)
         else:
             print(f"Creating new model {latest_model_path}")
-            model1 = training_algorithm("MultiInputPolicy", env, learning_rate=g.TRAINING_PARAMS['learning_rate'], verbose=1, device=g.TRAINING_PARAMS['device'], batch_size=batch_size)
+            model1 = training_algorithm("MultiInputPolicy", env, learning_rate=g.TRAINING_PARAMS['learning_rate'], verbose=1, device=g.device, batch_size=batch_size)
             if g.TRAINING_PARAMS['player_2_active']:            
-                model2 = training_algorithm("MultiInputPolicy", env, learning_rate=g.TRAINING_PARAMS['learning_rate'], verbose=1, device=g.device, batch_size=batch_size)
+                model2 = training_algorithm("MultiInputPolicy", env, learning_rate=g.TRAINING_PARAMS['learning_rate'], verbose=1, device='cpu', batch_size=batch_size)
 
         game = env.envs[0].get_wrapper_attr('game')
         game.player_2_model = model2

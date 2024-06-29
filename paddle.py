@@ -83,6 +83,40 @@ class Paddle:
         
         return dash_direction
 
+    # def dash_direction(self, puck):
+    #     alpha = 0.1
+    #     N = 4
+
+    #     if np.linalg.norm(self.average_velocity) > 0:
+    #         r1 = self.pos
+    #         v1 = self.average_velocity
+    #         r2 = puck.pos
+    #         v2 = np.zeros_like(v1)  # Assuming puck is stationary
+
+    #         # Calculate the line-of-sight vector
+    #         d = r2 - r1
+
+    #         # Calculate the relative velocity
+    #         v_rel = v2 - v1
+
+    #         # Calculate the angular rate of the line-of-sight
+    #         d_norm = np.linalg.norm(d)
+    #         if d_norm == 0:
+    #             dash_direction = np.zeros_like(d)  # Avoid division by zero
+    #         else:
+    #             # Angular rate of LOS (using 2D cross product equivalent)
+    #             lambda_dot = np.cross(d, v_rel) / d_norm**2
+
+    #             # Compute the proportional navigation acceleration direction
+    #             a_direction = N * lambda_dot * np.array([-d[1], d[0]]) / d_norm  # Rotate vector by 90 degrees
+
+    #             # Scale the acceleration to the fixed magnitude
+    #             dash_direction = alpha * a_direction / np.linalg.norm(a_direction)
+    #     else:
+    #         dash_direction = (puck.pos - self.pos) / np.linalg.norm(puck.pos - self.pos)
+        
+    #     return dash_direction
+   
     def limit_speed(self):
         speed = np.linalg.norm(self.vel)
         if speed > g.MAX_PUCK_SPEED:
@@ -176,7 +210,7 @@ class Paddle:
             self.charging_dash_initial = False
             self.dash(puck)
         
-        if g.SETTINGS['is_training'] and self.player == 2:
+        if (self.player == 2 and not g.SETTINGS['player_2_human']):
             acc = action['acceleration']
             reversed_x_acc = np.array([-acc[0], acc[1]])
             self.apply_force(reversed_x_acc)
@@ -187,6 +221,9 @@ class Paddle:
         self.vel += acc * g.DELTA_T * g.PADDLE_ACC
   
     def update(self, puck, action=None):
+
+        # if self.player == 2:
+        #     print(action)
         self.handle_controls(puck, action)
 
         self.last_pos = self.pos.copy()

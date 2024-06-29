@@ -21,37 +21,37 @@ SETTINGS = {
 }
 
 
-# REWARD_POLICY = {   
-#     'time_reward': 0.0,
-#     'acc_reward': 0.0,
-#     'goal': 20,
-#     'ball_proximity': 0.0,
-#     'goal_proximity': 0.0,
-#     'ball_velocity': 0.0,
-#     'ball_vel_2_goal': 0.0,
-#     'center': -0.0,
-#     'dist_to_player': 0.0,
-#     'pointless_motion': -0.0,
-#     'dash': 0.0,
-#     'wall_acc': 0.0,
-#     'normalization': 1.0,
-# }
-
 REWARD_POLICY = {   
-    'time_reward': -0.2,
-    'acc_reward': -0.005,
+    'time_reward': 0.0,
+    'acc_reward': 0.0,
     'goal': 20,
-    'ball_proximity': 1.2,
-    'goal_proximity': 0.8,
-    'ball_velocity': 0.3,
-    'ball_vel_2_goal': 0.3,
+    'ball_proximity': 0.0,
+    'goal_proximity': 0.0,
+    'ball_velocity': 0.0,
+    'ball_vel_2_goal': 0.0,
     'center': -0.0,
-    'dist_to_player': 0.1,
-    'pointless_motion': -0.4,
+    'dist_to_player': 0.0,
+    'pointless_motion': -0.0,
     'dash': 0.0,
-    'wall_acc': -1.0,
+    'wall_acc': 0.0,
     'normalization': 1.0,
 }
+
+# REWARD_POLICY = {   
+#     'time_reward': -0.2,
+#     'acc_reward': -0.005,
+#     'goal': 20,
+#     'ball_proximity': 1.2,
+#     'goal_proximity': 0.8,
+#     'ball_velocity': 0.3,
+#     'ball_vel_2_goal': 0.3,
+#     'center': -0.0,
+#     'dist_to_player': 0.1,
+#     'pointless_motion': -0.4,
+#     'dash': 0.0,
+#     'wall_acc': -1.0,
+#     'normalization': 1.0,
+# }
 
 TRAINING_PARAMS = {
     'training_steps': 8000,
@@ -65,7 +65,7 @@ TRAINING_PARAMS = {
     'no_render': False,
     'no_sound': True,
     'field_split': False,
-    'device': 'cpu',
+    # 'device': 'cpu',
     # 'algorithm': 'TD3',    
     'algorithm': 'SAC',
     # 'algorithm': 'PPO',
@@ -142,8 +142,9 @@ RESOLUTION_H = 400
 # RESOLUTION_H = 64
 
 HIGH_FPS = 60000
-# LOW_FPS = 120
+# LOW_FPS = 165
 LOW_FPS = 60
+
 
 # Fonts
 REWARD_COLOR = (255, 255, 255)
@@ -312,7 +313,9 @@ def get_latest_model_path(base_path, prefix):
 
 def get_latest_model_path_with_algorithm(base_path, algorithm=None):
     if algorithm is None:
-        algorithm = random.choice(['PPO', 'SAC', 'TD3'])
+        # algorithm = random.choice(['PPO', 'SAC', 'TD3'])
+        algorithm = random.choice(['PPO'])
+        # algorithm = random.choice(['PPO', 'SAC'])
         
     models = [f for f in os.listdir(base_path) if f.startswith(algorithm) and f.endswith('.zip')]
     if not models:
@@ -454,7 +457,7 @@ def goal_pos(goal_idx):
 def get_sorted_zip_files(directory):
     dir_path = Path(directory).resolve()
     zip_files = [f for f in dir_path.glob('*.zip') if f.is_file()]
-    sorted_files = sorted(zip_files, key=lambda x: x.stat().st_mtime, reverse=True)
+    sorted_files = sorted(zip_files, key=lambda x: x.stat().st_mtime)
     return [f.name for f in sorted_files]
 
 def get_random_model_with_algorithm():
