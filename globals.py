@@ -21,37 +21,37 @@ SETTINGS = {
 }
 
 
-REWARD_POLICY = {   
-    'time_reward': 0.0,
-    'acc_reward': 0.0,
-    'goal': 20,
-    'ball_proximity': 0.0,
-    'goal_proximity': 0.0,
-    'ball_velocity': 0.0,
-    'ball_vel_2_goal': 0.0,
-    'center': -0.0,
-    'dist_to_player': 0.0,
-    'pointless_motion': -0.0,
-    'dash': 0.0,
-    'wall_acc': 0.0,
-    'normalization': 1.0,
-}
-
 # REWARD_POLICY = {   
-#     'time_reward': -0.2,
-#     'acc_reward': -0.005,
+#     'time_reward': 0.0,
+#     'acc_reward': 0.0,
 #     'goal': 20,
-#     'ball_proximity': 1.2,
-#     'goal_proximity': 0.8,
-#     'ball_velocity': 0.3,
-#     'ball_vel_2_goal': 0.3,
+#     'ball_proximity': 0.0,
+#     'goal_proximity': 0.0,
+#     'ball_velocity': 0.0,
+#     'ball_vel_2_goal': 0.0,
 #     'center': -0.0,
-#     'dist_to_player': 0.1,
-#     'pointless_motion': -0.4,
+#     'dist_to_player': 0.0,
+#     'pointless_motion': -0.0,
 #     'dash': 0.0,
-#     'wall_acc': -1.0,
+#     'wall_acc': 0.0,
 #     'normalization': 1.0,
 # }
+
+REWARD_POLICY = {   
+    'time_reward': -0.2,
+    'acc_reward': -0.005,
+    'goal': 20,
+    'ball_proximity': 1.2,
+    'goal_proximity': 0.8,
+    'ball_velocity': 0.3,
+    'ball_vel_2_goal': 0.3,
+    'center': -0.0,
+    'dist_to_player': 0.1,
+    'pointless_motion': -0.4,
+    'dash': 0.0,
+    'wall_acc': -1.0,
+    'normalization': 1.0,
+}
 
 TRAINING_PARAMS = {
     'training_steps': 8000,
