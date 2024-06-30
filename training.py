@@ -4,7 +4,8 @@ from stable_baselines3.common.env_util import make_vec_env
 import globals as g
 from framework import Framework
 import sys
-sys.setrecursionlimit(10000)  # Increase as needed
+import torch
+sys.setrecursionlimit(1000000)
 
 def main():
     g.SETTINGS['is_training'] = True
@@ -57,6 +58,11 @@ def main():
         print("Finished training.")
 
         print(f"Saving model {next_model_path}")
+        def simple_clip_range(progress_remaining):
+            return 0.2 * (1 - progress_remaining)
+
+        model1.clip_range = simple_clip_range
+
         model1.save(next_model_path)
         g.save_text_to_file(str(g.REWARD_POLICY), next_model_path + '.txt')
         g.save_text_to_file(str(g.TRAINING_PARAMS), next_model_path + '.txt')
