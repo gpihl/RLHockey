@@ -35,6 +35,7 @@ class Game:
         self.round_reward = 0.0
         self.total_reward = 0.0
         self.player_2_model = None
+        self.player_1_model = None
         self.score = [0, 0]
         self.background_color = g.sound_handler.current_color()
         self.running_stats = g.RunningStats()
@@ -106,8 +107,12 @@ class Game:
     def step(self, action=None):
         # print(self.background_color)
         # print(g.rgb_to_hsl(self.background_color[0], self.background_color[1], self.background_color[2]))
+        if self.player_1_model is not None:
+            observation = self.get_observation(1)
+            player_1_model_action = self.player_1_model.predict(observation)[0]
+        else:
+            player_1_model_action = action
 
-        player_1_model_action = action
         player_1_action = None
         player_2_action = None
 
@@ -346,7 +351,7 @@ class Game:
         g.framework.close()
 
 
-def main():
+def main(ai=False):
     g.TRAINING_PARAMS['no_sound'] = False
     g.SETTINGS['is_training'] = False
     g.framework = Framework()
@@ -365,6 +370,9 @@ def main():
         env = make_vec_env(lambda: environment.AirHockeyEnv(False), n_envs=1)
         print(f"loading model: {latest_model_path}")
         game.player_2_model = opponent_algorithm.load(latest_model_path, env=env)
+        if ai:
+            print(f"loading model: {latest_model_path}")
+            game.player_1_model = opponent_algorithm.load(latest_model_path, env=env)
 
     running = True
     while running:
@@ -379,6 +387,7 @@ def main():
 if __name__ == "__main__":
     parser = argparse.ArgumentParser(description="Run the game with optional profiling.")
     parser.add_argument("-p", "--profile", action="store_true", help="Run the game with profiling enabled")
+    parser.add_argument("-a", "--ai", action="store_true", help="AI vs AI")
     args = parser.parse_args()
 
     if args.profile:
@@ -387,4 +396,4 @@ if __name__ == "__main__":
         print("Profiling complete. Results saved to 'profile_output.prof'")
         print("You can visualize the results using snakeviz: snakeviz profile_output.prof")
     else:
-        main()
+        main(args.ai)
