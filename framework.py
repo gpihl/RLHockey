@@ -91,15 +91,18 @@ class Framework():
 
     def handle_events(self):
         running = True
-        for event in pygame.event.get():
-            if event.type == pygame.QUIT:
-                running = False
-            elif event.type == pygame.JOYDEVICEREMOVED:
-                print(f"Joystick {event.instance_id} disconnected")
-                pygame.joystick.quit()
-            elif event.type == pygame.JOYDEVICEADDED:
-                print(f"Joystick connected")
-                g.init_controls()
+        try:
+            for event in pygame.event.get():
+                if event.type == pygame.QUIT:
+                    running = False
+                elif event.type == pygame.JOYDEVICEREMOVED:
+                    print(f"Joystick {event.instance_id} disconnected")
+                    pygame.joystick.quit()
+                elif event.type == pygame.JOYDEVICEADDED:
+                    print(f"Joystick connected")
+                    g.init_controls()
+        except:
+            pass
 
         return running
 
