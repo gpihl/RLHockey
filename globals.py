@@ -103,7 +103,7 @@ def init_controls():
 
     if pygame.joystick.get_count() == 0:
         print("No joystick connected")
-        return
+        return None
     
     stick = pygame.joystick.Joystick(0)
     stick.init()
@@ -123,8 +123,8 @@ WIDTH, HEIGHT = 1920, 960
 GOAL_HEIGHT = int(140 * WIDTH / 800)
 
 # Display
-# RESOLUTION_W = 2560
-# RESOLUTION_H = 1440
+RESOLUTION_W = 2560
+RESOLUTION_H = 1440
 
 # RESOLUTION_W = 1920
 # RESOLUTION_H = 1080
@@ -135,8 +135,8 @@ GOAL_HEIGHT = int(140 * WIDTH / 800)
 # RESOLUTION_W = 1280
 # RESOLUTION_H = 720
 
-RESOLUTION_W = 800
-RESOLUTION_H = 400
+# RESOLUTION_W = 800
+# RESOLUTION_H = 400
 
 # RESOLUTION_W = 200
 # RESOLUTION_H = 100
@@ -145,8 +145,8 @@ RESOLUTION_H = 400
 # RESOLUTION_H = 64
 
 HIGH_FPS = 60000
-# LOW_FPS = 165
-LOW_FPS = 60
+LOW_FPS = 165
+# LOW_FPS = 60
 
 
 # Fonts
@@ -386,15 +386,17 @@ def get_human_action():
 def get_joystick_action():
     if joystick == None:
         return None
-            
-    input_vector = np.array([joystick.get_axis(0), joystick.get_axis(1)])
-    input_vector = apply_non_linear_response(input_vector)
+    try:
+        input_vector = np.array([joystick.get_axis(0), joystick.get_axis(1)])
+        input_vector = apply_non_linear_response(input_vector)
 
-    return {
-        'acceleration': np.array([input_vector[0] * PADDLE_ACC, input_vector[1] * PADDLE_ACC]),
-        'dash': button_pressed('dash'),
-        'magnet': button_pressed('magnet'),
-    }
+        return {
+            'acceleration': np.array([input_vector[0] * PADDLE_ACC, input_vector[1] * PADDLE_ACC]),
+            'dash': button_pressed('dash'),
+            'magnet': button_pressed('magnet'),
+        }
+    except:
+        return empty_action()
 
 def apply_non_linear_response(input_vector, exponent=1.5):
     magnitude = np.linalg.norm(input_vector)
