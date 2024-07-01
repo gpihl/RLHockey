@@ -20,8 +20,9 @@ settings = {
     'field_height': 1050,
     # 'field_width': 1920,
     # 'field_height': 960,
-    'goal_height': 336,
+    'goal_height': 300,
     'fps': 60,
+    # 'fps': 165,
     # 'delta_t': 96,
     'delta_t': 92,
 }

@@ -247,7 +247,7 @@ class Paddle:
 
     def draw(self, puck, reward_alpha=None):        
         theme_color = g.sound_handler.target_color()
-        hue_change = 0.15 if self.player == 1 else -0.15
+        hue_change = 0.1 if self.player == 1 else -0.1
         self.color = h.modify_hsl(theme_color, hue_change, 0, 0.2)
 
         if self.is_power_dashing():
