@@ -23,7 +23,7 @@ class Controls:
         if pygame.joystick.get_count() == 0:
             print("No joystick connected")
             return None
-        
+
         stick = pygame.joystick.Joystick(0)
         stick.init()
         print(f"Joystick name: {stick.get_name()}")
@@ -51,7 +51,7 @@ class Controls:
             action['acceleration'][0] = 1.0
         if keys[pygame.K_LSHIFT] or keys[pygame.K_SPACE] or keys[pygame.K_RSHIFT]:
             action['dash'] = True
-        
+
         return action
 
     def get_joystick_action(self):
@@ -77,7 +77,7 @@ class Controls:
 
         if magnitude == 0:
             return np.zeros_like(input_vector)
-        
+
         return input_vector * (modified_magnitude / magnitude)
 
     @staticmethod

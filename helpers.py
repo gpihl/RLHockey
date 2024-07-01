@@ -30,8 +30,17 @@ def goal_pos(goal_idx):
         goal_pos = np.array([0, field_mid_y()])
     else:
         goal_pos = np.array([field_right(), field_mid_y()])
-    
+
     return goal_pos
+
+def scale(vec, x_max, y_max):
+    return np.array([vec[0] / x_max, vec[1] / y_max])
+
+def goal_top():
+    return (c.settings['field_height'] - c.settings['goal_height']) / 2
+
+def goal_bottom():
+    return c.settings['goal_height'] + (c.settings['field_height'] - c.settings['goal_height']) / 2
 
 def dist_alpha(dist):
     return 1.0 - min(1.0, dist / c.settings['field_width'])
@@ -163,7 +172,7 @@ def get_latest_model_path_with_algorithm(base_path, algorithm=None):
         # algorithm = random.choice(['PPO', 'SAC', 'TD3'])
         algorithm = random.choice(['PPO'])
         # algorithm = random.choice(['PPO', 'SAC'])
-        
+
     models = [f for f in os.listdir(base_path) if f.startswith(algorithm) and f.endswith('.zip')]
     if not models:
         return None, algorithm
@@ -203,7 +212,7 @@ def get_random_model_with_algorithm():
     models = get_sorted_zip_files('models')
     if len(models) == 0:
         return None, None
-    
+
     random_index = max(0, len(models) - int(np.abs(np.random.normal(0, 0.25, 1)[0]) * len(models)) - 1)
     random_model = models[random_index]
     algorithm = get_model_algorithm(random_model)
@@ -217,7 +226,7 @@ def clip_vector_length_inplace(vector, max_length=1):
     magnitude = np.linalg.norm(vector)
     if magnitude > max_length:
         vector *= (max_length / magnitude)
-    
+
     return vector
 
 def smoothstep(x):
@@ -232,11 +241,11 @@ def angle_between(v1, v2):
 def signed_angle_between(v1, v2):
     v1_u = v1 / np.linalg.norm(v1)
     v2_u = v2 / np.linalg.norm(v2)
-    
+
     angle = np.arctan2(np.cross(v1_u, v2_u), np.dot(v1_u, v2_u))
 
     angle_deg = np.degrees(angle)
     if angle_deg < 0:
         angle_deg += 360
-    
+
     return angle_deg

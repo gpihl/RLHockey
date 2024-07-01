@@ -6,6 +6,11 @@ import time
 import constants as c
 import globals as g
 
+REWARD_FONT_SIZE = 30
+TIME_FONT_SIZE = 120
+STEPS_LEFT_FONT_SIZE = 30
+SCORE_FONT_SIZE = 85
+
 class Framework():
     _instance = None
 
@@ -14,13 +19,13 @@ class Framework():
             cls._instance = super(Framework, cls).__new__(cls)
             cls._instance._initialized = False
         return cls._instance
-    
+
     def __init__(self):
         if self._initialized:
             return
-        
+
         self._initialized = True
-        
+
         pygame.init()
         self.vsync = 0 if c.settings['is_training'] else 1
         self.last_ui_input = 0
@@ -35,10 +40,10 @@ class Framework():
         self.screen = self.create_screen()
         self.scaling_factor, self.shift = self.calculate_scaling_and_shift()
         self.fonts = {
-            'reward': pygame.font.SysFont(c.REWARD_FONT, self.world_to_screen_length(c.REWARD_FONT_SIZE)),
-            'time_left': pygame.font.SysFont(c.TIME_FONT, self.world_to_screen_length(c.TIME_FONT_SIZE)),
-            'steps_left': pygame.font.SysFont(c.STEPS_LEFT_FONT, self.world_to_screen_length(c.STEPS_LEFT_FONT_SIZE)),
-            'score': pygame.font.SysFont(c.SCORE_FONT, self.world_to_screen_length(c.SCORE_FONT_SIZE)),
+            'reward': pygame.font.SysFont(None, self.world_to_screen_length(REWARD_FONT_SIZE)),
+            'time_left': pygame.font.SysFont(None, self.world_to_screen_length(TIME_FONT_SIZE)),
+            'steps_left': pygame.font.SysFont(None, self.world_to_screen_length(STEPS_LEFT_FONT_SIZE)),
+            'score': pygame.font.SysFont(None, self.world_to_screen_length(SCORE_FONT_SIZE)),
         }
 
     def get_resolution(self):
@@ -61,10 +66,10 @@ class Framework():
     def handle_keyboard_input(self, events):
         if np.abs(g.current_time - self.last_ui_input) < 0.3:
             return
-        
+
         if events is None:
             return
-        
+
         key_pressed = False
         for event in events:
             if event.type == pygame.KEYDOWN:
@@ -91,8 +96,8 @@ class Framework():
                 elif event.key == pygame.K_u:
                     self.change_resolution()
                     key_pressed = True
-                    print(f"Changing resolution")         
-            
+                    print(f"Changing resolution")
+
         if key_pressed:
             self.last_ui_input = g.current_time
 
@@ -104,7 +109,7 @@ class Framework():
         pygame.display.quit()
         pygame.display.init()
         self.reset()
-        
+
     def create_screen(self):
         screen = pygame.display.set_mode(c.resolutions[self.current_resolution_idx], flags = pygame.SCALED | pygame.HWSURFACE | pygame.DOUBLEBUF | pygame.RESIZABLE, vsync = self.vsync)
         return screen
@@ -115,9 +120,9 @@ class Framework():
             events = pygame.event.get()
         except:
             pass
-        
+
         return events
-    
+
     def handle_events(self):
         running = True
         try:
@@ -152,7 +157,7 @@ class Framework():
         overlay = pygame.Surface(self.screen.get_size(), pygame.SRCALPHA)
         overlay.fill((0, 0, 0, opacity))
         self.screen.blit(overlay, (0, 0))
-        
+
     def draw_rectangle(self, color, pos, size):
         pos = self.world_to_screen_coord(pos)
         size = (self.world_to_screen_length(size[0]), self.world_to_screen_length(size[1]))
@@ -177,7 +182,7 @@ class Framework():
         x = int(coord[0] * self.scaling_factor) + self.shift[0]
         y = int(coord[1] * self.scaling_factor) + self.shift[1]
         return (x, y)
-    
+
     def world_to_screen_length(self, length):
         return int(length * self.scaling_factor)
 
@@ -214,20 +219,20 @@ class Framework():
         pos = self.world_to_screen_coord(pos)
         length = self.world_to_screen_length(length)
         width = self.world_to_screen_length(width)
-        
+
         angle_rad = math.radians(angle)
         cos_angle = math.cos(angle_rad)
         sin_angle = math.sin(angle_rad)
-        
+
         start_x = pos[0]
         start_y = pos[1]
-        
+
         end_x = start_x + length * cos_angle
         end_y = start_y + length * sin_angle
-        
-        pygame.draw.line(self.screen, color, (start_x, start_y), (end_x, end_y), int(width))        
+
+        pygame.draw.line(self.screen, color, (start_x, start_y), (end_x, end_y), int(width))
 
     def close(self):
-        pygame.joystick.quit()        
+        pygame.joystick.quit()
         pygame.quit()
 

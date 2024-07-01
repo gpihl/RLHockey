@@ -18,7 +18,7 @@ class AirHockeyEnv(gym.Env):
             "goal_1_top_pos": spaces.Box(low=-1, high=1, shape=(2,), dtype=np.float32),
             "goal_1_bot_pos": spaces.Box(low=-1, high=1, shape=(2,), dtype=np.float32),
             "goal_2_top_pos": spaces.Box(low=-1, high=1, shape=(2,), dtype=np.float32),
-            "goal_2_bot_pos": spaces.Box(low=-1, high=1, shape=(2,), dtype=np.float32),                                    
+            "goal_2_bot_pos": spaces.Box(low=-1, high=1, shape=(2,), dtype=np.float32),
         })
 
         self.action_space = spaces.Box(low=-1.0, high=1.0, shape=(3,), dtype=np.float32)
@@ -28,11 +28,10 @@ class AirHockeyEnv(gym.Env):
         super().reset(seed=seed)
         self.game.reset()
         observation = self.game.get_observation(1)
-        return {k: v.numpy() for k, v in observation.items()}, {}
+        return observation, {}
 
     def step(self, action):
         observation, reward, done, info = self.game.step(action)
-        observation = {k: v.numpy() for k, v in observation.items()}
         if done:
             print(f'Total reward: {info['cumulative_reward']}')
         truncated = False

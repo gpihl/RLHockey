@@ -14,7 +14,8 @@ settings = {
     'no_sound': True,
     'field_split': False,
     'blocked_goals': False,
-    'random_starting_locations': False,
+    'random_starting_locations': True,
+    # 'random_starting_locations': False,
     'resolution': 4,
     'field_width': 2100,
     'field_height': 1050,
@@ -29,19 +30,19 @@ settings = {
 
 settings['delta_t'] /= settings['fps']
 
-reward_policy = {
+rewards = {
     'time_reward': -0.4,
     'acc_reward': -0.005,
-    'goal': 110,    
-    'puck_proximity': 0.0,    
+    'goal': 240,
+    'puck_proximity': 0.0,
     'goal_puck_proximity': 0.8,
-    'shot': 0.0,    
+    'shot': 0.0,
     'shot_toward_goal': 0.3,
     'pointless_motion': -0.4,
     'normalization': 1.0,
 }
 
-training_params = {
+training = {
     'training_steps': 8000,
     'learning_rate': 1.0e-4,
     'base_path': 'models',
@@ -50,32 +51,12 @@ training_params = {
     'algorithm': 'PPO',
 }
 
-gameplay_params = {
+gameplay = {
     'dash_cooldown': 0.4,
     'dash_impulse': 700,
     'dash_duration': 0.22,
     'dash_max_charge_time': 1.5,
+    'max_paddle_speed': 40,
+    'max_puck_speed': 60,
 }
 
-MAX_PADDLE_SPEED = 40
-MAX_PUCK_SPEED = 60
-
-REWARD_COLOR = (255, 255, 255)
-REWARD_FONT = None
-REWARD_FONT_SIZE = 30
-REWARD_POS = (20, 10)
-
-TIME_COLOR = (255, 255, 255)
-TIME_FONT = None
-TIME_FONT_SIZE = 120
-TIME_POS = (settings['field_width']/2, 55)
-
-STEPS_LEFT_COLOR = (255, 255, 255)
-STEPS_LEFT_FONT = None
-STEPS_LEFT_FONT_SIZE = 30
-STEPS_LEFT_POS = (settings['field_width'] - 100, 30)
-
-SCORE_COLOR = (255, 255, 255)
-SCORE_FONT = None
-SCORE_FONT_SIZE = 85
-SCORE_POS = (180, 45)

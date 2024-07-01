@@ -4,7 +4,7 @@ import globals as g
 import constants as c
 import helpers as h
 
-class Puck: 
+class Puck:
     def __init__(self):
         self.pos = self.get_starting_pos_regular(2)
         self.prev_puck_start_pos = self.pos
@@ -29,7 +29,7 @@ class Puck:
                 self.pos = self.get_starting_pos_random()
             else:
                 self.pos = self.get_starting_pos_regular(last_scorer)
-            
+
             # self.pos = self.get_starting_pos_moved_a_bit()
 
         self.vel = np.zeros(2)
@@ -38,12 +38,12 @@ class Puck:
         self.homing = False
 
     def get_starting_pos_random(self):
-        starting_pos = np.array([random.uniform(2*self.radius, c.settings['field_width'] - 2*self.radius), 
-                                 random.uniform(2*self.radius, c.settings['field_height'] - 2*self.radius)], 
+        starting_pos = np.array([random.uniform(2*self.radius, c.settings['field_width'] - 2*self.radius),
+                                 random.uniform(2*self.radius, c.settings['field_height'] - 2*self.radius)],
                                  dtype=np.float32)
-        
+
         return starting_pos
-    
+
     def get_starting_pos_moved_a_bit(self):
         var = 10
         delta = np.array([random.uniform(-var, var), random.uniform(-var, var)],dtype=np.float32)
@@ -52,7 +52,7 @@ class Puck:
         self.prev_puck_start_pos = np.clip(self.prev_puck_start_pos, self.radius*2 + 20, c.settings['field_width'] - 2*self.radius - 20)
         new_starting_pos = np.clip(new_starting_pos, self.radius*2 + 20, c.settings['field_width'] - 2*self.radius - 20)
         return new_starting_pos
-    
+
     def get_starting_pos_regular(self, last_scorer):
         if last_scorer == 2:
             return np.array([c.settings['field_width'] / 4, c.settings['field_height'] / 2])
@@ -125,13 +125,13 @@ class Puck:
 
     def limit_speed(self):
         speed = np.linalg.norm(self.vel)
-        if speed > c.MAX_PUCK_SPEED:
-            self.vel = (self.vel / speed) * c.MAX_PUCK_SPEED
+        if speed > c.gameplay['max_puck_speed']:
+            self.vel = (self.vel / speed) * c.gameplay['max_puck_speed']
 
     def check_paddle_collision(self, paddle):
         dist = np.linalg.norm(self.pos - paddle.pos)
         return dist < self.radius + paddle.radius
-    
+
     def collect_shot_reward(self, reward_type, player):
         if reward_type == 'shot_toward_goal':
             reward = self.shot_on_goal_reward
@@ -141,7 +141,7 @@ class Puck:
             self.shot_reward = 0
 
         return reward
-    
+
     def handle_paddle_collision(self, paddle):
         dist = np.linalg.norm(self.pos - paddle.pos)
         if self.check_paddle_collision(paddle):
@@ -156,7 +156,7 @@ class Puck:
             velocity_along_normal = np.dot(relative_velocity, normal)
             if velocity_along_normal > 0:
                 return
-            
+
             impulse_scalar = -(1 + self.restitution) * velocity_along_normal
             impulse_scalar /= (1 / self.radius + 1 / paddle.radius)
             impulse = 0.9 * impulse_scalar * normal
@@ -165,7 +165,7 @@ class Puck:
             self.limit_speed()
 
             tangent = np.array([-normal[1], normal[0]])
-            velocity_along_tangent = np.dot(relative_velocity, tangent)            
+            velocity_along_tangent = np.dot(relative_velocity, tangent)
 
             rotational_impulse = np.cross(normal, tangent) * velocity_along_tangent
             rotational_impulse = 0 if np.abs(rotational_impulse) < 0.5 else rotational_impulse
@@ -182,9 +182,9 @@ class Puck:
                 self.homing = True
                 self.homing_target = 2 if paddle.player == 1 else 1
 
-            self.shot_on_goal_reward = self.vel[0] - prev_vel[0]            
+            self.shot_on_goal_reward = self.vel[0] - prev_vel[0]
             self.shot_reward = np.linalg.norm(relative_velocity)
-            
+
             if paddle.player == 2:
                 self.shot_reward *= -1
 
@@ -194,7 +194,7 @@ class Puck:
                 g.sound_handler.play_sound(sound_vel, self.pos[0], 'table_hit', pitch_shift=True)
 
     def draw(self):
-        intensity = np.linalg.norm(self.vel) * 1.3 / (c.MAX_PUCK_SPEED)
+        intensity = np.linalg.norm(self.vel) * 1.3 / (c.gameplay['max_puck_speed'])
         intensity = max(min(intensity, 1.0), 0.0)
         puck_color = g.sound_handler.target_color()
         puck_color = h.modify_hsl(puck_color, 0.05, 0, 0.3 * intensity + 0.2)
