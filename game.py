@@ -304,13 +304,13 @@ class Game:
         if c.settings['blocked_goals']:
             return False
 
-        return self.puck.pos[0] >= c.settings['field_width'] - self.puck.radius and self.puck.pos[1] > h.goal_top() and self.puck.pos[1] < self.goal_bottom()
+        return self.puck.pos[0] >= c.settings['field_width'] - self.puck.radius and self.puck.pos[1] > h.goal_top() and self.puck.pos[1] < h.goal_bottom()
 
     def player_2_scored(self):
         if c.settings['blocked_goals']:
             return False
 
-        return self.puck.pos[0] <= self.puck.radius and self.puck.pos[1] > h.goal_top() and self.puck.pos[1] < self.goal_bottom()
+        return self.puck.pos[0] <= self.puck.radius and self.puck.pos[1] > h.goal_top() and self.puck.pos[1] < h.goal_bottom()
 
     def close(self):
         g.framework.close()
