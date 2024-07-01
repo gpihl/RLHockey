@@ -1,9 +1,10 @@
 import pygame
-import math
 import os
 import numpy as np
 from scipy import signal
 import globals as g
+import constants as c
+import helpers as h
 import threading
 import random
 from collections import deque
@@ -96,11 +97,11 @@ class SoundHandler:
     def theme_alpha(self):
         alpha = (g.current_time % self.scale_change_period) / self.scale_change_period
         alpha = (alpha + 0.5) % 1
-        theme_alpha = g.smoothstep(alpha)
+        theme_alpha = h.smoothstep(alpha)
         return theme_alpha
     
     def target_color(self):
-        target_color = g.interpolate_color(self.current_color(), self.next_color(), self.theme_alpha())
+        target_color = h.interpolate_color(self.current_color(), self.next_color(), self.theme_alpha())
         return target_color
     
     def create_scales(self):
@@ -156,10 +157,9 @@ class SoundHandler:
             'chromatic': (7, 6, 43),
         }
 
-        for k, _ in self.colors.items():
-            color = self.colors[k]
-            color = g.set_h(color, 0.5)
-            color = g.set_s(color, 0.5)
+        for k, _ in self.colors.items():            
+            self.colors[k] = h.clamp_s(self.colors[k], 0.1, 0.7)
+            self.colors[k] = h.clamp_l(self.colors[k], 0.2, 0.5)
 
         for k, _ in self.scales.items():
             self.scales[k] += [n+12 for n in self.scales[k]]
@@ -174,7 +174,7 @@ class SoundHandler:
             return
         
         clip_name = random.choice(clip_names)
-        x_coord = int(np.clip(np.random.normal(g.WIDTH / 2, g.WIDTH / 4, 1), 0, g.WIDTH))        
+        x_coord = int(np.clip(np.random.normal(c.settings['field_width'] / 2, c.settings['field_width'] / 4, 1), 0, c.settings['field_width']))        
         self.play_sound(30, x_coord, clip_name)
 
     def get_scale_clip_names(self, scale):
@@ -188,7 +188,7 @@ class SoundHandler:
         return [os.path.splitext(f)[0] for f in os.listdir(folder_path) if f.endswith('.wav')]
 
     def play_ambience(self):
-        self.play_sound(40, g.WIDTH / 2, 'ambience', -1)
+        self.play_sound(40, c.settings['field_width'] / 2, 'ambience', -1)
 
     def load_sounds(self):        
         filenames = self.get_wav_files("sounds/")
@@ -201,8 +201,8 @@ class SoundHandler:
                 print(f"Warning: Sound file {path} not found.")
 
     def velocity_to_sound_index(self, velocity):
-        velocity = max(0, min(velocity, g.MAX_PUCK_SPEED + g.MAX_PADDLE_SPEED))
-        index = int((1 - (velocity / (g.MAX_PUCK_SPEED + g.MAX_PADDLE_SPEED))) * len(self.scales[self.current_scale])) + 1
+        velocity = max(0, min(velocity, c.MAX_PUCK_SPEED + c.MAX_PADDLE_SPEED))
+        index = int((1 - (velocity / (c.MAX_PUCK_SPEED + c.MAX_PADDLE_SPEED))) * len(self.scales[self.current_scale])) + 1
         scale_index = self.map_to_scale(index, self.current_scale)
         return str(scale_index)
     
@@ -234,8 +234,8 @@ class SoundHandler:
         return pitched_sound
     
     def set_pan(self, channel, volume, x_coord):
-        left_vol = volume * (g.WIDTH - x_coord) / g.WIDTH
-        right_vol = volume * x_coord / g.WIDTH
+        left_vol = volume * (c.settings['field_width'] - x_coord) / c.settings['field_width']
+        right_vol = volume * x_coord / c.settings['field_width']
         channel.set_volume(left_vol, right_vol)
 
     def change_pan(self, channel, x_coord, volume=None):
@@ -275,7 +275,7 @@ class SoundHandler:
         selected_notes = random.choices(self.scales[self.current_scale], k=4)
         # selected_notes = self.chords[self.current_scale]
         for sound_name in selected_notes:
-            self.play_sound(g.MAX_PUCK_SPEED / 4, x, str(sound_name))
+            self.play_sound(c.MAX_PUCK_SPEED / 4, x, str(sound_name))
 
         for sound_name in self.active_channels.keys():
             self.stop_sound(sound_name)
@@ -287,7 +287,7 @@ class SoundHandler:
             channel.fadeout(30)
 
     def play_sound(self, velocity, x_coord, sound_name, loops=0, pitch_shift=False, active=False):
-        if g.SETTINGS['is_training'] and g.TRAINING_PARAMS['no_sound']:
+        if c.settings['is_training'] and c.settings['no_sound']:
             return
         
         if sound_name == 'paddle':
@@ -297,7 +297,7 @@ class SoundHandler:
             if g.current_time - self.last_played[sound_name] < 0.05:
                 return            
 
-            volume = velocity / ((g.MAX_PUCK_SPEED + g.MAX_PADDLE_SPEED) if sound_name == 'paddle' else (g.MAX_PUCK_SPEED))
+            volume = velocity / ((c.MAX_PUCK_SPEED + c.MAX_PADDLE_SPEED) if sound_name == 'paddle' else (c.MAX_PUCK_SPEED))
             volume = min(0.8, volume)          
             sound = self.sounds[sound_name]
             if pitch_shift:

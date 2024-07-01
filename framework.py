@@ -1,7 +1,9 @@
 import pygame
+import pygame.gfxdraw
 import math
 import numpy as np
 import time
+import constants as c
 import globals as g
 
 class Framework():
@@ -20,79 +22,99 @@ class Framework():
         self._initialized = True
         
         pygame.init()
-        self.vsync = 0 if g.SETTINGS['is_training'] else 1
-        print(g.SETTINGS['is_training'])
+        self.vsync = 0 if c.settings['is_training'] else 1
         self.last_ui_input = 0
-        self.screen = pygame.display.set_mode((g.RESOLUTION_W, g.RESOLUTION_H), flags = pygame.SCALED | pygame.HWSURFACE | pygame.DOUBLEBUF | pygame.RESIZABLE, vsync = self.vsync)
-        # self.screen = pygame.display.set_mode((0, 0), pygame.FULLSCREEN)
-        self.clock = pygame.time.Clock()
-        self.scaling_factor, self.shift = self.calculate_scaling_and_shift()
+        self.current_resolution_idx = c.settings['resolution']
 
+        self.reset()
+        self.clock = pygame.time.Clock()
+
+        self.fps = 6000 if c.settings['is_training'] else c.settings['fps']
+
+    def reset(self):
+        self.screen = self.create_screen()
+        self.scaling_factor, self.shift = self.calculate_scaling_and_shift()
         self.fonts = {
-            'reward': pygame.font.SysFont(g.REWARD_FONT, self.world_to_screen_length(g.REWARD_FONT_SIZE)),
-            'time_left': pygame.font.SysFont(g.TIME_FONT, self.world_to_screen_length(g.TIME_FONT_SIZE)),
-            'steps_left': pygame.font.SysFont(g.STEPS_LEFT_FONT, self.world_to_screen_length(g.STEPS_LEFT_FONT_SIZE)),
-            'score': pygame.font.SysFont(g.SCORE_FONT, self.world_to_screen_length(g.SCORE_FONT_SIZE)),
-            'puck': pygame.font.SysFont(g.PUCK_TEXT_FONT, self.world_to_screen_length(g.PUCK_TEXT_FONT_SIZE)),
+            'reward': pygame.font.SysFont(c.REWARD_FONT, self.world_to_screen_length(c.REWARD_FONT_SIZE)),
+            'time_left': pygame.font.SysFont(c.TIME_FONT, self.world_to_screen_length(c.TIME_FONT_SIZE)),
+            'steps_left': pygame.font.SysFont(c.STEPS_LEFT_FONT, self.world_to_screen_length(c.STEPS_LEFT_FONT_SIZE)),
+            'score': pygame.font.SysFont(c.SCORE_FONT, self.world_to_screen_length(c.SCORE_FONT_SIZE)),
         }
 
-        self.fps = g.HIGH_FPS if g.SETTINGS['is_training'] else g.LOW_FPS
+    def get_resolution(self):
+        return c.resolutions[self.current_resolution_idx]
 
     def calculate_scaling_and_shift(self):
-        x_stretch = g.RESOLUTION_W / g.WIDTH
-        y_stretch = g.RESOLUTION_H / g.HEIGHT
+        x_stretch = self.get_resolution()[0] / c.settings['field_width']
+        y_stretch = self.get_resolution()[1] / c.settings['field_height']
         scaling = min(x_stretch, y_stretch)
 
         if x_stretch > y_stretch:
-            shift = ((g.RESOLUTION_W - g.WIDTH * scaling) / 2, 0)
+            shift = ((self.get_resolution()[0] - c.settings['field_width'] * scaling) / 2, 0)
         elif y_stretch > x_stretch:
-            shift = (0, (g.RESOLUTION_H - g.HEIGHT * scaling) / 2)
+            shift = (0, (self.get_resolution()[1] - c.settings['field_height'] * scaling) / 2)
         else:
             shift = (0, 0)
 
         return (scaling, shift)
 
-    def handle_keyboard_input(self):
-        events = pygame.event.get()
-
-        if np.abs(g.current_time - self.last_ui_input) < 0.5:
+    def handle_keyboard_input(self, events):
+        if np.abs(g.current_time - self.last_ui_input) < 0.3:
             return
         
-        self.last_ui_input = g.current_time
-
-        keys = g.get_keys()
-        if keys[pygame.K_e]:
-            self.fps = g.HIGH_FPS if self.fps == g.LOW_FPS else g.LOW_FPS
-            print(f"Switching to {self.fps} FPS")
-        elif keys[pygame.K_r]:
-            g.TRAINING_PARAMS['no_render'] = not g.TRAINING_PARAMS['no_render']
-            print(f"Setting rendering to {g.TRAINING_PARAMS['no_render']}")
-        elif keys[pygame.K_m]:
-            g.TRAINING_PARAMS['no_sound'] = not g.TRAINING_PARAMS['no_sound']
-            print(f"Setting sound to {not g.TRAINING_PARAMS['no_sound']}")
-        elif keys[pygame.K_t]:
-            g.SETTINGS['player_2_human'] = not g.SETTINGS['player_2_human']
-            print(f"Setting player 2 human to {not g.SETTINGS['player_2_human']}")
-        elif keys[pygame.K_y]:
-            self.toggle_fullscreen()
-            print(f"Toggling to fullscreen")
+        key_pressed = False
+        for event in events:
+            if event.type == pygame.KEYDOWN:
+                if event.key == pygame.K_e:
+                    self.fps = 6000 if self.fps == c.settings['fps'] else c.settings['fps']
+                    key_pressed = True
+                    print(f"Switching to {self.fps} FPS")
+                elif event.key == pygame.K_r:
+                    c.settings['no_render'] = not c.settings['no_render']
+                    key_pressed = True
+                    print(f"Setting rendering to {not c.settings['no_render']}")
+                elif event.key == pygame.K_m:
+                    c.settings['no_sound'] = not c.settings['no_sound']
+                    key_pressed = True
+                    print(f"Setting sound to {not c.settings['no_sound']}")
+                elif event.key == pygame.K_t:
+                    c.settings['player_2_human'] = not c.settings['player_2_human']
+                    key_pressed = True
+                    print(f"Setting player 2 human to {c.settings['player_2_human']}")
+                elif event.key == pygame.K_y:
+                    self.toggle_fullscreen()
+                    key_pressed = True
+                    print(f"Toggling fullscreen")
+                elif event.key == pygame.K_u:
+                    self.change_resolution()
+                    key_pressed = True
+                    print(f"Changing resolution")         
+            
+        if key_pressed:
+            self.last_ui_input = g.current_time
 
     def toggle_fullscreen(self):
         pygame.display.toggle_fullscreen()
-        # current_flags = self.screen.get_flags()
-        # if current_flags & pygame.FULLSCREEN:
-        #     # Switch to windowed mode
-        #     self.screen = pygame.display.set_mode((g.RESOLUTION_W, g.RESOLUTION_H), 
-        #                                         flags=pygame.SCALED | pygame.HWSURFACE | pygame.DOUBLEBUF | pygame.RESIZABLE, 
-        #                                         vsync=self.vsync)
-        # else:
-        #     # Switch to fullscreen mode
-        #     self.screen = pygame.display.set_mode((0, 0), pygame.FULLSCREEN)
 
+    def change_resolution(self):
+        self.current_resolution_idx = (self.current_resolution_idx + 1) % len(c.resolutions)
+        pygame.display.quit()
+        pygame.display.init()
+        self.reset()
+        
+    def create_screen(self):
+        screen = pygame.display.set_mode(c.resolutions[self.current_resolution_idx], flags = pygame.SCALED | pygame.HWSURFACE | pygame.DOUBLEBUF | pygame.RESIZABLE, vsync = self.vsync)
+        return screen
+
+    def get_events(self):
+        return pygame.event.get()
+    
     def handle_events(self):
         running = True
         try:
-            for event in pygame.event.get():
+            events = self.get_events()
+            self.handle_keyboard_input(events)
+            for event in events:
                 if event.type == pygame.QUIT:
                     running = False
                 elif event.type == pygame.JOYDEVICEREMOVED:
@@ -100,7 +122,7 @@ class Framework():
                     pygame.joystick.quit()
                 elif event.type == pygame.JOYDEVICEADDED:
                     print(f"Joystick connected")
-                    g.init_controls()
+                    g.controls.init_controls()
         except:
             pass
 
@@ -178,28 +200,6 @@ class Framework():
         rect.center = pos
 
         self.screen.blit(rotated_surface, rect)
-
-    # def draw_rotated_line(self, pos, length, angle, color, centered=True, width=1):
-    #     pos = self.world_to_screen_coord(pos)
-    #     length = self.world_to_screen_length(length)
-    #     width = self.world_to_screen_length(width)
-    #     line_surface = pygame.Surface((length, width), pygame.SRCALPHA)
-    #     line_surface.fill(color)
-        
-    #     rotated_surface = pygame.transform.rotate(line_surface, angle)
-        
-    #     rect = rotated_surface.get_rect()
-    #     if centered:
-    #         rect.center = pos
-    #     else:
-    #         # Calculate the position for non-centered line
-    #         angle_rad = math.radians(angle)
-    #         offset_x = rect.height * 0.5 * math.cos(angle_rad)
-    #         offset_y = rect.height * 0.5 * math.sin(angle_rad)
-    #         rect.centerx = pos[0] + offset_x
-    #         rect.centery = pos[1] - offset_y
-        
-    #     self.screen.blit(rotated_surface, rect)
 
     def draw_rotated_line(self, pos, length, angle, color, width=1):
         pos = self.world_to_screen_coord(pos)
