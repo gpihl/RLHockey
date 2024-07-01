@@ -25,6 +25,7 @@ class Game:
 
     def __init__(self):
         if self._initialized:
+            self.total_steps = 0
             return
 
         self._initialized = True

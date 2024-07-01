@@ -62,6 +62,9 @@ class Framework():
         if np.abs(g.current_time - self.last_ui_input) < 0.3:
             return
         
+        if events is None:
+            return
+        
         key_pressed = False
         for event in events:
             if event.type == pygame.KEYDOWN:
@@ -107,7 +110,13 @@ class Framework():
         return screen
 
     def get_events(self):
-        return pygame.event.get()
+        events = None
+        try:
+            events = pygame.event.get()
+        except:
+            pass
+        
+        return events
     
     def handle_events(self):
         running = True
