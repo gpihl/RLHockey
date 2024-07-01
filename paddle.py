@@ -317,6 +317,7 @@ class Paddle:
         g.framework.draw_circle(position, int(radius / 3), h.interpolate_color_rgb(color, (0,0,0), 0.1))
 
     def draw_dash_line(self, puck):
+        return
         dash_direction = self.dash_direction(puck)
         angle = h.signed_angle_between(self.dash_direction(puck), np.array([1,0]))
         max_length = self.radius * 2.5

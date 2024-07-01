@@ -278,13 +278,18 @@ class Game:
         goal2_color = h.modify_hsl(goal2_color, 0, 0, 0.45 * alpha)
 
         goal_width = 40
-        goal1_pos = (0, (h.field_bot() - c.settings['goal_height']) / 2)
-        goal1_size = (goal_width + 4, c.settings['goal_height'])
-        goal2_pos = (h.field_right() - goal_width, (h.field_bot() - c.settings['goal_height']) / 2)
-        goal2_size = (goal_width + 4, c.settings['goal_height'])
+        goal1_pos = (-goal_width / 2, (h.field_bot() - c.settings['goal_height']) / 2)
+        goal1_size = (goal_width, c.settings['goal_height'])
+        goal2_pos = (h.field_right() - goal_width / 2, (h.field_bot() - c.settings['goal_height']) / 2)
+        goal2_size = (goal_width, c.settings['goal_height'])
 
         g.framework.draw_transparent_rectangle(goal1_color, goal1_pos, goal1_size, 0.7)
         g.framework.draw_transparent_rectangle(goal2_color, goal2_pos, goal2_size, 0.7)
+
+        g.framework.draw_circle(h.goal_top_pos(1), goal_width / 2, goal1_color)
+        g.framework.draw_circle(h.goal_bot_pos(1), goal_width / 2, goal1_color)
+        g.framework.draw_circle(h.goal_top_pos(2), goal_width / 2, goal2_color)
+        g.framework.draw_circle(h.goal_bot_pos(2), goal_width / 2, goal2_color)        
 
     def draw_field_lines(self):
         color = h.interpolate_color_rgb((255,255,255), self.background_color, 0.95)

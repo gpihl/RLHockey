@@ -51,6 +51,12 @@ def scale(vec, x_max, y_max):
 def goal_top():
     return (c.settings['field_height'] - c.settings['goal_height']) / 2
 
+def goal_top_pos(goal_idx):
+    return (0, goal_top()) if goal_idx == 1 else (c.settings['field_width'], goal_top())
+
+def goal_bot_pos(goal_idx):
+    return (0, goal_bottom()) if goal_idx == 1 else (c.settings['field_width'], goal_bottom())
+
 def goal_bottom():
     return c.settings['goal_height'] + (c.settings['field_height'] - c.settings['goal_height']) / 2
 

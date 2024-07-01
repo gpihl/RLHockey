@@ -183,6 +183,15 @@ class Framework():
         pygame.gfxdraw.filled_circle(self.screen, int(pos[0]), int(pos[1]), radius, color)
         pygame.gfxdraw.aacircle(self.screen, int(pos[0]), int(pos[1]), radius, color)
 
+    def draw_transparent_circle(self, pos, radius, color, opacity):
+        pos = self.world_to_screen_coord(pos)
+        radius = self.world_to_screen_length(radius)
+        circle_surface = pygame.Surface((radius * 2, radius * 2), pygame.SRCALPHA)
+        alpha = int(opacity * 255)
+        transparent_color = (*color, alpha)
+        pygame.draw.circle(circle_surface, transparent_color, (radius, radius), radius)
+        self.screen.blit(circle_surface, (pos[0] - radius, pos[1] - radius))        
+
     def world_to_screen_coord(self, coord):
         x = round(coord[0] * self.scaling_factor + self.shift[0])
         y = round(coord[1] * self.scaling_factor + self.shift[1])
@@ -191,7 +200,7 @@ class Framework():
     def world_to_screen_length(self, length):
         return round(length * self.scaling_factor)
 
-    def draw_text(self, text, font_name, color, position, centered=False, rotation=0.0):
+    def draw_text(self, text, font_name, color, position, alignment='left', rotation=0.0):
         position = self.world_to_screen_coord(position)
         surface = self.fonts[font_name].render(text, True, color)
         rect = surface.get_rect()
@@ -200,11 +209,15 @@ class Framework():
             surface = pygame.transform.rotate(surface, -rotation)
             rect = surface.get_rect()
 
-        if centered:
-            rect.center = position
-            self.screen.blit(surface, rect)
-        else:
-            self.screen.blit(surface, position)
+        match alignment:
+            case 'left':
+                self.screen.blit(surface, position)
+            case 'center':
+                rect.center = (position[0], position[1] + rect.height / 2)
+                self.screen.blit(surface, rect)
+            case 'right':
+                rect.center = (position[0] - rect.width / 2, position[1] + rect.height / 2)
+                self.screen.blit(surface, rect)
 
     def draw_rotated_line_centered(self, pos, length, angle, color, width=1):
         pos = self.world_to_screen_coord(pos)
