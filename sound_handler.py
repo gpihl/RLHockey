@@ -274,11 +274,11 @@ class SoundHandler:
     def play_goal_sound(self, x):
         selected_notes = random.choices(self.scales[self.current_scale], k=4)
         # selected_notes = self.chords[self.current_scale]
-        for sound_name in selected_notes:
-            self.play_sound(c.MAX_PUCK_SPEED / 4, x, str(sound_name))
-
         for sound_name in self.active_channels.keys():
             self.stop_sound(sound_name)
+
+        for sound_name in selected_notes:
+            self.play_sound(c.MAX_PUCK_SPEED / 4, x, str(sound_name))
 
     def stop_sound(self, sound_name):
         channel = self.active_channels[sound_name]
@@ -298,7 +298,11 @@ class SoundHandler:
                 return            
 
             volume = velocity / ((c.MAX_PUCK_SPEED + c.MAX_PADDLE_SPEED) if sound_name == 'paddle' else (c.MAX_PUCK_SPEED))
-            volume = min(0.8, volume)          
+            volume = min(0.8, volume)
+
+            if volume < 0.02:
+                return
+            
             sound = self.sounds[sound_name]
             if pitch_shift:
                 sound = self.pitch_shift_hashed(sound, sound_name, 1 + volume)
