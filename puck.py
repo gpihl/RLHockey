@@ -91,37 +91,63 @@ class Puck:
         return delta_vel * epsilon
 
     def handle_wall_collision(self):
-        sound_vel = 0
+        sound_vel = self.handle_corner_collision()
 
-        collision = False
-        if self.pos[1] < self.radius:
-            collision = True
-            self.pos[1] = self.radius
-            self.vel[1] = -self.vel[1]
-            sound_vel = self.vel[1]
-        elif self.pos[1] > c.settings['field_height'] - self.radius:
-            collision = True
-            self.pos[1] = c.settings['field_height'] - self.radius
-            self.vel[1] = -self.vel[1]
-            sound_vel = self.vel[1]
+        if sound_vel == 0:
+            if self.pos[1] < self.radius:
+                self.pos[1] = self.radius
+                self.vel[1] = -self.vel[1]
+                sound_vel = self.vel[1]
+            elif self.pos[1] > c.settings['field_height'] - self.radius:
+                self.pos[1] = c.settings['field_height'] - self.radius
+                self.vel[1] = -self.vel[1]
+                sound_vel = self.vel[1]
 
-        if self.pos[0] < self.radius:
-            collision = True
-            self.pos[0] = self.radius
-            self.vel[0] = -self.vel[0]
-            sound_vel = self.vel[1]
-        elif self.pos[0] > c.settings['field_width'] - self.radius:
-            collision = True
-            self.pos[0] = c.settings['field_width'] - self.radius
-            self.vel[0] = -self.vel[0]
-            sound_vel = self.vel[1]
-
-        # if collision:
-        #     self.homing = False
+            if self.pos[0] < self.radius:
+                self.pos[0] = self.radius
+                self.vel[0] = -self.vel[0]
+                sound_vel = self.vel[1]
+            elif self.pos[0] > c.settings['field_width'] - self.radius:
+                self.pos[0] = c.settings['field_width'] - self.radius
+                self.vel[0] = -self.vel[0]
+                sound_vel = self.vel[1]
 
         if sound_vel != 0:
             sound_vel = np.linalg.norm(self.vel)
             g.sound_handler.play_sound(sound_vel, self.pos[0], 'table_hit', pitch_shift=True)
+
+    def handle_corner_collision(self):
+        sound_vel = 0
+
+        corner_radius = c.settings['corner_radius']
+        corner_circle_pos = None
+
+        if self.pos[0] < corner_radius and self.pos[1] < corner_radius:
+            corner_circle_pos = h.corner_top_left()
+        elif self.pos[0] > h.field_right() - corner_radius and self.pos[1] < corner_radius:
+            corner_circle_pos = h.corner_top_right()
+        elif self.pos[0] < corner_radius and self.pos[1] > h.field_bot() - corner_radius:
+            corner_circle_pos = h.corner_bot_left()
+        elif self.pos[0] > h.field_right() - corner_radius and self.pos[1] > h.field_bot() - corner_radius:
+            corner_circle_pos = h.corner_bot_right()
+
+        if corner_circle_pos is None:
+            return sound_vel
+
+        corner_circle_pos_dist = np.linalg.norm(corner_circle_pos - self.pos)
+        corner_circle_pos_dir = (corner_circle_pos - self.pos) / corner_circle_pos_dist
+
+        overlap = corner_circle_pos_dist + self.radius - corner_radius
+        if overlap <= 0:
+            return sound_vel
+
+        self.pos += corner_circle_pos_dir * np.ceil(overlap)
+
+        projection = np.dot(self.vel, corner_circle_pos_dir) * corner_circle_pos_dir
+        self.vel -= projection * 2
+
+        sound_vel = np.linalg.norm(projection)
+        return sound_vel
 
     def limit_speed(self):
         speed = np.linalg.norm(self.vel)
@@ -169,7 +195,7 @@ class Puck:
 
             rotational_impulse = np.cross(normal, tangent) * velocity_along_tangent
             rotational_impulse = 0 if np.abs(rotational_impulse) < 0.5 else rotational_impulse
-            self.rot_vel += rotational_impulse * 0.1
+            self.rot_vel += rotational_impulse * 0.15
 
             overlap = self.radius + paddle.radius - dist
             paddle.pos -= normal * (overlap / 2)

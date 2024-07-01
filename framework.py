@@ -179,12 +179,12 @@ class Framework():
         pygame.gfxdraw.aacircle(self.screen, int(pos[0]), int(pos[1]), radius, color)
 
     def world_to_screen_coord(self, coord):
-        x = int(coord[0] * self.scaling_factor) + self.shift[0]
-        y = int(coord[1] * self.scaling_factor) + self.shift[1]
+        x = round(coord[0] * self.scaling_factor + self.shift[0])
+        y = round(coord[1] * self.scaling_factor + self.shift[1])
         return (x, y)
 
     def world_to_screen_length(self, length):
-        return int(length * self.scaling_factor)
+        return round(length * self.scaling_factor)
 
     def draw_text(self, text, font_name, color, position, centered=False, rotation=0.0):
         position = self.world_to_screen_coord(position)

@@ -25,6 +25,18 @@ def field_top():
 def field_bot():
     return c.settings['field_height']
 
+def corner_top_left():
+    return np.array([c.settings['corner_radius'], c.settings['corner_radius']])
+
+def corner_top_right():
+    return np.array([field_right() - c.settings['corner_radius'], c.settings['corner_radius']])
+
+def corner_bot_left():
+    return np.array([c.settings['corner_radius'], field_bot() - c.settings['corner_radius']])
+
+def corner_bot_right():
+    return np.array([field_right() - c.settings['corner_radius'], field_bot() - c.settings['corner_radius']])
+
 def goal_pos(goal_idx):
     if goal_idx == 1:
         goal_pos = np.array([0, field_mid_y()])

@@ -123,7 +123,7 @@ class Paddle:
     def set_magnetic_effect(self, active):
         self.magnetic_effect_active = active
 
-    def calculate_magnetic_force(self, puck, ambient_force=0.25):
+    def calculate_magnetic_force(self, puck, ambient_force=0.075):
         max_distance = (puck.radius + self.radius) * 1.5
         to_puck = puck.pos - self.pos
         distance = np.linalg.norm(to_puck)
@@ -209,19 +209,49 @@ class Paddle:
             left_wall = self.radius
             right_wall = c.settings['field_width'] - self.radius
 
-        if self.pos[0] < left_wall:
-            self.pos[0] = left_wall
-            self.vel[0] = 0.0
-        elif self.pos[0] > right_wall:
-            self.pos[0] = right_wall
-            self.vel[0] = 0.0
+        corner_collision = self.handle_corner_collision()
+        if not corner_collision:
+            if self.pos[0] < left_wall:
+                self.pos[0] = left_wall
+                self.vel[0] = 0.0
+            elif self.pos[0] > right_wall:
+                self.pos[0] = right_wall
+                self.vel[0] = 0.0
 
-        if self.pos[1] < self.radius:
-            self.pos[1] = self.radius
-            self.vel[1] = 0.0
-        elif self.pos[1] > c.settings['field_height'] - self.radius:
-            self.pos[1] = c.settings['field_height'] - self.radius
-            self.vel[1] = 0.0
+            if self.pos[1] < self.radius:
+                self.pos[1] = self.radius
+                self.vel[1] = 0.0
+            elif self.pos[1] > c.settings['field_height'] - self.radius:
+                self.pos[1] = c.settings['field_height'] - self.radius
+                self.vel[1] = 0.0
+
+    def handle_corner_collision(self):
+        corner_radius = c.settings['corner_radius']
+        corner_circle_pos = None
+
+        if self.pos[0] < corner_radius and self.pos[1] < corner_radius:
+            corner_circle_pos = h.corner_top_left()
+        elif self.pos[0] > h.field_right() - corner_radius and self.pos[1] < corner_radius:
+            corner_circle_pos = h.corner_top_right()
+        elif self.pos[0] < corner_radius and self.pos[1] > h.field_bot() - corner_radius:
+            corner_circle_pos = h.corner_bot_left()
+        elif self.pos[0] > h.field_right() - corner_radius and self.pos[1] > h.field_bot() - corner_radius:
+            corner_circle_pos = h.corner_bot_right()
+
+        if corner_circle_pos is None:
+            return
+
+        corner_circle_pos_dist = np.linalg.norm(corner_circle_pos - self.pos)
+        corner_circle_pos_dir = (corner_circle_pos - self.pos) / corner_circle_pos_dist
+
+        overlap = corner_circle_pos_dist + self.radius - corner_radius
+        if overlap < 0:
+            return
+
+        self.pos += corner_circle_pos_dir * overlap
+
+        projection = np.dot(self.vel, corner_circle_pos_dir) * corner_circle_pos_dir
+        self.vel -= projection
 
     def handle_collision(self, paddle):
         dist = np.linalg.norm(self.pos - paddle.pos)
@@ -248,7 +278,7 @@ class Paddle:
     def draw(self, puck, reward_alpha=None):
         theme_color = g.sound_handler.target_color()
         hue_change = 0.1 if self.player == 1 else -0.1
-        self.color = h.modify_hsl(theme_color, hue_change, 0, 0.2)
+        self.color = h.modify_hsl(theme_color, hue_change, 0.2, 0.2)
 
         if self.is_power_dashing():
             glow = max(0.0, 1.0 - (g.current_time - self.last_dash_time) / c.gameplay['dash_duration'])

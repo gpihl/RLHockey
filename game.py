@@ -217,6 +217,7 @@ class Game:
 
     def render(self):
         self.draw_background()
+        self.draw_corners()
         self.draw_field_lines()
         self.puck.draw()
         if c.settings['is_training']:
@@ -242,6 +243,20 @@ class Game:
     def draw_background(self):
         self.background_color = g.sound_handler.target_color()
         g.framework.fill_screen(self.background_color, (c.settings['field_width'], c.settings['field_height']))
+
+    def draw_corners(self):
+        corner_radius = c.settings['corner_radius']
+        rect_size = (corner_radius, corner_radius)
+        color = h.modify_hsl(self.background_color, 0, 0, -0.2)
+        g.framework.draw_rectangle(color, np.zeros(2), rect_size)
+        g.framework.draw_rectangle(color, np.array([h.field_right() - corner_radius, 0]), rect_size)
+        g.framework.draw_rectangle(color, np.array([0, h.field_bot() - corner_radius]), rect_size)
+        g.framework.draw_rectangle(color, np.array([h.field_right() - corner_radius, h.field_bot() - corner_radius]), rect_size)
+
+        g.framework.draw_circle(h.corner_top_left(), corner_radius, self.background_color)
+        g.framework.draw_circle(h.corner_top_right(), corner_radius, self.background_color)
+        g.framework.draw_circle(h.corner_bot_left(), corner_radius, self.background_color)
+        g.framework.draw_circle(h.corner_bot_right(), corner_radius, self.background_color)
 
     def draw_ui(self):
         g.ui.draw_time_left(self.seconds_left())
