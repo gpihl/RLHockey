@@ -278,7 +278,7 @@ class Paddle:
     def draw(self, puck, reward_alpha=None):
         theme_color = g.sound_handler.target_color()
         hue_change = 0.1 if self.player == 1 else -0.1
-        self.color = h.modify_hsl(theme_color, hue_change, 0.2, 0.2)
+        self.color = h.modify_hsl(theme_color, hue_change, 0.25, 0.2)
 
         if self.is_power_dashing():
             glow = max(0.0, 1.0 - (g.current_time - self.last_dash_time) / c.gameplay['dash_duration'])

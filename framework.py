@@ -30,7 +30,7 @@ class Framework():
         self.vsync = 0 if c.settings['is_training'] else 1
         self.last_ui_input = 0
         self.current_resolution_idx = c.settings['resolution']
-
+        self.fullscreen = False
         self.reset()
         self.clock = pygame.time.Clock()
 
@@ -102,6 +102,7 @@ class Framework():
             self.last_ui_input = g.current_time
 
     def toggle_fullscreen(self):
+        self.fullscreen = not self.fullscreen
         pygame.display.toggle_fullscreen()
 
     def change_resolution(self):
@@ -111,7 +112,11 @@ class Framework():
         self.reset()
 
     def create_screen(self):
-        screen = pygame.display.set_mode(c.resolutions[self.current_resolution_idx], flags = pygame.SCALED | pygame.HWSURFACE | pygame.DOUBLEBUF | pygame.RESIZABLE, vsync = self.vsync)
+        flags = pygame.SCALED | pygame.HWSURFACE | pygame.DOUBLEBUF | pygame.RESIZABLE
+        if self.fullscreen:
+            flags |= pygame.FULLSCREEN
+
+        screen = pygame.display.set_mode(c.resolutions[self.current_resolution_idx], flags = flags, vsync = self.vsync)
         return screen
 
     def get_events(self):
