@@ -63,14 +63,14 @@ class Game:
         self.stats = Stats()
         g.sound_handler.reset()
 
-    def get_reward(self, paddle, action):
+    def get_reward(self, paddle, action, scorer):
         acceleration = action['acceleration']
         reward = 0
         reward += c.rewards["time_reward"]
 
         reward += np.linalg.norm(acceleration) * c.rewards["acc_reward"]
 
-        if (self.player_1_scored() and paddle.player == 1) or (self.player_2_scored() and paddle.player == 2):
+        if scorer == paddle.player:
             reward += c.rewards["goal"]
 
         relative_pos = self.puck.pos - paddle.pos
@@ -94,38 +94,45 @@ class Game:
 
         return reward
 
-    def step(self, action=None):
-        if c.settings['is_training']:
-            g.framework.handle_keyboard_input(g.framework.get_events())
+    def step_training(self, player_1_model_action):
+        running = g.framework.handle_events()
+        if not running:
+            exit()
 
-        if self.player_1_model is not None:
-            observation = self.get_observation(1)
-            player_1_model_action = self.player_1_model.predict(observation)[0]
+        player_1_action = g.controls.game_action_from_model_action(player_1_model_action)
+
+        if not c.settings['player_2_human']:
+            player_2_model_action = self.player_2_model.predict(self.get_observation(2))[0]
+            player_2_action = g.controls.game_action_from_model_action(player_2_model_action)
         else:
-            player_1_model_action = action
+            player_2_action = g.controls.get_human_action()
 
-        player_1_action = None
-        player_2_action = None
+        scorer = self.update(player_1_action, player_2_action)
+        reward = self.handle_rewards(player_1_action, player_2_action, scorer)
 
-        human_action = g.controls.get_human_action()
+        return self.get_observation(1), reward, self.is_done(scorer), { 'cumulative_reward': self.round_reward }
 
-        if player_1_model_action is not None:
+    def step(self):
+        if self.player_1_model is not None:
+            player_1_model_action = self.player_1_model.predict(self.get_observation(1))[0]
             player_1_action = g.controls.game_action_from_model_action(player_1_model_action)
         else:
-            player_1_action = human_action
+            player_1_action = g.controls.get_human_action()
 
-        if c.training['player_2_active']:
-            if self.player_2_model is not None and not c.settings['player_2_human']:
-                observation = self.get_observation(2)
-                player_2_model_action = self.player_2_model.predict(observation)[0]
-                player_2_action = g.controls.game_action_from_model_action(player_2_model_action)
-
-            elif c.settings['is_training']:
-                player_2_action = human_action
-
-        if player_2_action is None:
+        if self.player_2_model is not None:
+            player_2_model_action = self.player_2_model.predict(self.get_observation(2))[0]
+            player_2_action = g.controls.game_action_from_model_action(player_2_model_action)
+        else:
             player_2_action = g.controls.empty_action()
 
+        scorer = self.update(player_1_action, player_2_action)
+
+        if scorer != 0:
+            self.goal_scored_sequence(scorer)
+
+        return self.is_done(scorer)
+
+    def update(self, player_1_action, player_2_action):
         self.prev_t = self.curr_t
         self.curr_t = g.current_time
         self.current_step += 1
@@ -133,58 +140,61 @@ class Game:
 
         g.sound_handler.update()
 
-        scored_1 = self.player_1_scored()
-        scored_2 = self.player_2_scored()
+        scorer = 0
+        if self.player_1_scored():
+            scorer = 1
+        elif self.player_2_scored():
+            scorer = 2
 
-        if scored_1:
+        if scorer == 1:
             self.last_scorer = 1
             self.score[0] += 1
-        elif scored_2:
+        elif scorer == 2:
             self.last_scorer = 2
             self.score[1] += 1
-
-        if not c.settings['no_render']:
-            self.render()
 
         self.paddle1.update(self.puck, player_1_action)
         self.paddle2.update(self.puck, player_2_action)
         self.paddle1.handle_collision(self.paddle2)
         self.puck.update([self.paddle1, self.paddle2])
 
+        if not c.settings['no_render']:
+            self.render()
+
         g.framework.tick()
 
-        if scored_1 or scored_2:
-            if scored_1:
-                g.sound_handler.play_goal_sound(c.settings['field_width'])
-            elif scored_2:
-                g.sound_handler.play_goal_sound(0)
+        return scorer
 
-            if not c.settings['is_training']:
-                goal_time = g.current_time
-                scorer = self.paddle1 if scored_1 else self.paddle2
-                if scorer is not None:
-                    position = h.field_mid()
-                    radius = c.settings['field_height'] / 5
-                    color = self.paddle1.color if scored_1 else self.paddle2.color
-                    scorer.draw_paddle(position, radius, color)
-
-                while g.current_time - goal_time < 1:
-                    if g.current_time - goal_time > 0.7:
-                        g.framework.fill_screen_semiopaque_black(20)
-
-                    g.framework.render()
-                    g.framework.tick()
-
-        self.paddle1.current_reward = self.get_reward(self.paddle1, player_1_action)
-        self.paddle2.current_reward = self.get_reward(self.paddle2, player_2_action)
+    def handle_rewards(self, player_1_action, player_2_action, scorer):
+        self.paddle1.current_reward = self.get_reward(self.paddle1, player_1_action, scorer)
+        self.paddle2.current_reward = self.get_reward(self.paddle2, player_2_action, scorer)
         reward = self.paddle1.current_reward - self.paddle2.current_reward
         self.current_reward = reward
         self.round_reward += reward
         self.total_reward += reward
         self.stats.update(self.paddle1.current_reward - self.paddle2.current_reward)
         self.stats.update(self.paddle2.current_reward - self.paddle1.current_reward)
+        return reward
 
-        return self.get_observation(1), reward, self.is_done(scored_1 or scored_2), { 'cumulative_reward': self.round_reward }
+    def goal_scored_sequence(self, scorer):
+        if scorer == 1:
+            g.sound_handler.play_goal_sound(c.settings['field_width'])
+        elif scorer == 2:
+            g.sound_handler.play_goal_sound(0)
+
+        if not c.settings['is_training']:
+            goal_time = g.current_time
+            scorer = self.paddle1 if scorer == 1 else self.paddle2
+            position = h.field_mid()
+            radius = c.settings['field_height'] / 5
+            scorer.draw_paddle(position, radius, scorer.color)
+
+            while g.current_time - goal_time < 1:
+                if g.current_time - goal_time > 0.7:
+                    g.framework.fill_screen_semiopaque_black(20)
+
+                g.framework.render()
+                g.framework.tick()
 
     def get_observation(self, player):
         if player == 1:
@@ -318,8 +328,8 @@ class Game:
         seconds_left = math.ceil((self.match_steps - self.current_step) / c.settings['fps'])
         return seconds_left
 
-    def is_done(self, scored):
-        return self.current_step > self.match_steps or scored
+    def is_done(self, scorer):
+        return self.current_step > self.match_steps or scorer != 0
 
     def player_1_scored(self):
         if c.settings['blocked_goals']:
@@ -363,7 +373,7 @@ def main(ai=False):
     running = True
     while running:
         running = g.framework.handle_events()
-        _, _, done, _ = game.step()
+        done = game.step()
 
         if done:
             game.reset()

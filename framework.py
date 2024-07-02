@@ -33,7 +33,7 @@ class Framework():
         self.fullscreen = False
         self.screen = None
         self.reset()
-        self.clock = pygame.time.Clock()        
+        self.clock = pygame.time.Clock()
 
         self.fps = 6000 if c.settings['is_training'] else c.settings['fps']
 
@@ -148,7 +148,7 @@ class Framework():
             pass
 
         return running
-    
+
     def fade_surface(self, surface, amount=20):
         dark = pygame.Surface(surface.get_size(), pygame.SRCALPHA)
         dark.fill((0, 0, 0, amount))
@@ -200,7 +200,7 @@ class Framework():
         alpha = int(opacity * 255)
         transparent_color = (*color, alpha)
         pygame.draw.circle(circle_surface, transparent_color, (radius, radius), radius)
-        self.screen.blit(circle_surface, (pos[0] - radius, pos[1] - radius))        
+        self.screen.blit(circle_surface, (pos[0] - radius, pos[1] - radius))
 
     def world_to_screen_coord(self, coord):
         x = round(coord[0] * self.scaling_factor + self.shift[0])

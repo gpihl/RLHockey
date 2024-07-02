@@ -32,15 +32,27 @@ settings = {
 
 settings['delta_t'] /= settings['fps']
 
+# rewards = {
+#     'time_reward': -0.4,
+#     'acc_reward': -0.005,
+#     'goal': 240,
+#     'puck_proximity': 0.0,
+#     'goal_puck_proximity': 0.8,
+#     'shot': 0.0,
+#     'shot_toward_goal': 0.3,
+#     'pointless_motion': -0.4,
+#     'normalization': 1.0,
+# }
+
 rewards = {
-    'time_reward': -0.4,
-    'acc_reward': -0.005,
-    'goal': 240,
+    'time_reward': -0,
+    'acc_reward': -0,
+    'goal': 400,
     'puck_proximity': 0.0,
-    'goal_puck_proximity': 0.8,
+    'goal_puck_proximity': 0.0,
     'shot': 0.0,
-    'shot_toward_goal': 0.3,
-    'pointless_motion': -0.4,
+    'shot_toward_goal': 0,
+    'pointless_motion': -0,
     'normalization': 1.0,
 }
 

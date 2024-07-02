@@ -31,7 +31,7 @@ class AirHockeyEnv(gym.Env):
         return observation, {}
 
     def step(self, action):
-        observation, reward, done, info = self.game.step(action)
+        observation, reward, done, info = self.game.step_training(action)
         if done:
             print(f'Total reward: {info['cumulative_reward']}')
         truncated = False
