@@ -70,7 +70,7 @@ class Controls:
             return Controls.empty_action()
 
     @staticmethod
-    def apply_non_linear_response(input_vector, exponent=1.5):
+    def apply_non_linear_response(input_vector, exponent=1.4):
         magnitude = np.linalg.norm(input_vector)
         modified_magnitude = np.power(magnitude, exponent)
         modified_magnitude = np.clip(modified_magnitude, 0, 1)

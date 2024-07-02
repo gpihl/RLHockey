@@ -25,7 +25,9 @@ class SoundHandler:
 
         pygame.mixer.pre_init(44100, -16, 2, 256)
         pygame.mixer.init()
-        pygame.mixer.set_num_channels(36)  # Increase number of channels
+        self.reserved_channels = 8
+        self.total_channels = 42
+        pygame.mixer.set_num_channels(self.total_channels)
         self.scales = {}
         self.chords = {}
         self.colors = {}
@@ -41,13 +43,12 @@ class SoundHandler:
 
         self.pitch_buckets_per_octave = 50
         self.scale_change_period = 20
-        self.bg_music_period = 12
+        self.bg_music_period = 15
         self.bg_music_last_played = 0
         self.pitch_octaves = 3
 
         self.active_channels = { 'overload1': None, 'overload2': None, 'ambience': None, 'charge1': None, 'charge2': None }
         self.active_volumes = { 'overload1': None, 'overload2': None, 'ambience': None, 'charge1': None, 'charge2': None }
-
         self.current_scale = ''
 
         self.last_played = dict.fromkeys(self.sounds, 0)
@@ -175,7 +176,7 @@ class SoundHandler:
 
         clip_name = random.choice(clip_names)
         x_coord = int(np.clip(np.random.normal(c.settings['field_width'] / 2, c.settings['field_width'] / 4, 1), 0, c.settings['field_width']))
-        self.play_sound(30, x_coord, clip_name)
+        self.play_sound(25, x_coord, clip_name, priority=True)
 
     def get_scale_clip_names(self, scale):
         clips_names = list(filter(lambda name: name.rsplit('-', 1)[0] == scale, self.sounds))
@@ -188,7 +189,9 @@ class SoundHandler:
         return [os.path.splitext(f)[0] for f in os.listdir(folder_path) if f.endswith('.wav')]
 
     def play_ambience(self):
-        self.play_sound(40, c.settings['field_width'] / 2, 'ambience', -1)
+        self.play_sound(40, c.settings['field_width'] / 2, 'ambience', -1, priority=True)
+        self.active_channels['ambience'] = None
+        self.active_volumes['ambience'] = None
 
     def load_sounds(self):
         filenames = self.get_wav_files("sounds/")
@@ -272,21 +275,21 @@ class SoundHandler:
             self.active_channels[sound_name] = None
 
     def play_goal_sound(self, x):
-        selected_notes = random.choices(self.scales[self.current_scale], k=4)
-        # selected_notes = self.chords[self.current_scale]
+        selected_notes = random.choices(self.scales[self.current_scale][0:8], k=4)
         for sound_name in self.active_channels.keys():
             self.stop_sound(sound_name)
 
         for sound_name in selected_notes:
-            self.play_sound(c.gameplay['max_puck_speed'] / 4, x, str(sound_name))
+            self.play_sound(c.gameplay['max_puck_speed'] / 4, x, str(sound_name), priority=True)
 
     def stop_sound(self, sound_name):
         channel = self.active_channels[sound_name]
         if channel is not None:
             self.active_channels[sound_name] = None
-            channel.fadeout(30)
+            channel.fadeout(100)
 
-    def play_sound(self, velocity, x_coord, sound_name, loops=0, pitch_shift=False, active=False):
+    def play_sound(self, velocity, x_coord, sound_name, loops=0, pitch_shift=False, active=False, priority=False):
+        # print(f"playing: {velocity}, {x_coord}, {sound_name}")
         if c.settings['is_training'] and c.settings['no_sound']:
             return
 
@@ -307,7 +310,8 @@ class SoundHandler:
             if pitch_shift:
                 sound = self.pitch_shift_hashed(sound, sound_name, 1 + volume)
 
-            channel = pygame.mixer.find_channel()
+            channel = self.find_channel(priority=priority)
+
             if channel:
                 self.set_pan(channel, volume, x_coord)
                 if active:
@@ -319,6 +323,20 @@ class SoundHandler:
                 self.last_played[sound_name] = g.current_time
         else:
             print(f"Warning: No sound file for name {sound_name}")
+
+    def find_channel(self, force=False, priority=False):
+        start = 0 if priority else self.reserved_channels
+        end = self.reserved_channels if priority else self.total_channels
+
+        for i in range(start, end):
+            channel = pygame.mixer.Channel(i)
+            if not channel.get_busy():
+                return channel
+
+        if force:
+            return pygame.mixer.Channel(start)
+
+        return None
 
     def stop_all_sounds(self):
         pygame.mixer.stop()

@@ -85,8 +85,12 @@ class Paddle:
 
     def limit_speed(self):
         speed = np.linalg.norm(self.vel)
-        if speed > c.gameplay['max_paddle_speed']:
-            self.vel = (self.vel / speed) * c.gameplay['max_paddle_speed']
+        if not self.is_dashing:
+            if speed > c.gameplay['max_paddle_speed']:
+                self.vel = (self.vel / speed) * c.gameplay['max_paddle_speed']
+        else:
+            if speed > c.gameplay['max_paddle_speed'] + 15:
+                self.vel = (self.vel / speed) * (c.gameplay['max_paddle_speed'] + 15)
 
     def is_dashing(self):
         return (g.current_time - self.last_dash_time) < c.gameplay['dash_duration'] * self.dash_charge_power
@@ -271,7 +275,7 @@ class Paddle:
             self.pos += (normal * overlap) / 2
             paddle.pos -= (normal * overlap) / 2
 
-            sound_vel = np.linalg.norm(relative_velocity)
+            sound_vel = np.linalg.norm(relative_velocity) * 0.7
             if sound_vel != 0:
                 g.sound_handler.play_sound(sound_vel, self.pos[0], 'paddle')
 
@@ -311,10 +315,16 @@ class Paddle:
         else:
             outer_color = h.set_l(color, 0.75)
 
-        g.framework.draw_circle(position, radius, outer_color)
-        g.framework.draw_circle(position, int(8*radius / 9), h.interpolate_color_rgb(color, (0,0,0), 0.05))
-        g.framework.draw_circle(position, int(radius / 2), h.interpolate_color_rgb(color, (0,0,0), 0.3))
-        g.framework.draw_circle(position, int(radius / 3), h.interpolate_color_rgb(color, (0,0,0), 0.1))
+        self.draw_calls(position, radius, color, outer_color, g.framework.screen)
+
+        # if self.is_dashing():
+        #     self.draw_calls(position, radius, color, outer_color, g.framework.trail_surface)
+
+    def draw_calls(self, position, radius, color, outer_color, surface):
+        g.framework.draw_circle(position, radius, outer_color, surface)
+        g.framework.draw_circle(position, int(8*radius / 9), h.interpolate_color_rgb(color, (0,0,0), 0.05), surface)
+        g.framework.draw_circle(position, int(radius / 2), h.interpolate_color_rgb(color, (0,0,0), 0.3), surface)
+        g.framework.draw_circle(position, int(radius / 3), h.interpolate_color_rgb(color, (0,0,0), 0.1), surface)
 
     def draw_dash_line(self, puck):
         return

@@ -31,12 +31,14 @@ class Framework():
         self.last_ui_input = 0
         self.current_resolution_idx = c.settings['resolution']
         self.fullscreen = False
+        self.screen = None
         self.reset()
-        self.clock = pygame.time.Clock()
+        self.clock = pygame.time.Clock()        
 
         self.fps = 6000 if c.settings['is_training'] else c.settings['fps']
 
     def reset(self):
+        self.trail_surface = pygame.Surface(c.resolutions[self.current_resolution_idx], pygame.SRCALPHA)
         self.screen = self.create_screen()
         self.scaling_factor, self.shift = self.calculate_scaling_and_shift()
         self.fonts = {
@@ -50,8 +52,8 @@ class Framework():
         return c.resolutions[self.current_resolution_idx]
 
     def calculate_scaling_and_shift(self):
-        x_stretch = self.get_resolution()[0] / c.settings['field_width']
-        y_stretch = self.get_resolution()[1] / c.settings['field_height']
+        x_stretch = (self.get_resolution()[0]) / c.settings['field_width']
+        y_stretch = (self.get_resolution()[1]) / c.settings['field_height']
         scaling = min(x_stretch, y_stretch)
 
         if x_stretch > y_stretch:
@@ -146,12 +148,19 @@ class Framework():
             pass
 
         return running
+    
+    def fade_surface(self, surface, amount=20):
+        dark = pygame.Surface(surface.get_size(), pygame.SRCALPHA)
+        dark.fill((0, 0, 0, amount))
+        surface.blit(dark, (0, 0), special_flags=pygame.BLEND_RGBA_SUB)
 
     def tick(self):
         g.current_time = time.time()
         self.clock.tick(self.fps)
 
     def render(self):
+        # self.fade_surface(self.trail_surface)
+        # self.screen.blit(self.trail_surface, (0, 0))
         pygame.display.flip()
 
     def fill_screen(self, color, dimensions):
@@ -177,11 +186,12 @@ class Framework():
         rect_surface.fill(transparent_color)
         self.screen.blit(rect_surface, pos)
 
-    def draw_circle(self, pos, radius, color):
+    def draw_circle(self, pos, radius, color, surface=None):
+        surface = surface if surface is not None else self.screen
         pos = self.world_to_screen_coord(pos)
         radius = self.world_to_screen_length(radius)
-        pygame.gfxdraw.filled_circle(self.screen, int(pos[0]), int(pos[1]), radius, color)
-        pygame.gfxdraw.aacircle(self.screen, int(pos[0]), int(pos[1]), radius, color)
+        pygame.gfxdraw.filled_circle(surface, pos[0], pos[1], radius, color)
+        pygame.gfxdraw.aacircle(surface, pos[0], pos[1], radius, color)
 
     def draw_transparent_circle(self, pos, radius, color, opacity):
         pos = self.world_to_screen_coord(pos)
@@ -248,7 +258,7 @@ class Framework():
         end_x = start_x + length * cos_angle
         end_y = start_y + length * sin_angle
 
-        pygame.draw.line(self.screen, color, (start_x, start_y), (end_x, end_y), int(width))
+        pygame.draw.line(self.screen, color, (start_x, start_y), (end_x, end_y), round(width))
 
     def close(self):
         pygame.joystick.quit()

@@ -133,25 +133,25 @@ class Game:
 
         g.sound_handler.update()
 
-        self.paddle1.update(self.puck, player_1_action)
-        self.paddle2.update(self.puck, player_2_action)
-        self.paddle1.handle_collision(self.paddle2)
-        self.puck.update([self.paddle1, self.paddle2])
+        scored_1 = self.player_1_scored()
+        scored_2 = self.player_2_scored()
 
-        if self.player_1_scored():
+        if scored_1:
             self.last_scorer = 1
             self.score[0] += 1
-        elif self.player_2_scored():
+        elif scored_2:
             self.last_scorer = 2
             self.score[1] += 1
 
         if not c.settings['no_render']:
             self.render()
 
-        g.framework.tick()
+        self.paddle1.update(self.puck, player_1_action)
+        self.paddle2.update(self.puck, player_2_action)
+        self.paddle1.handle_collision(self.paddle2)
+        self.puck.update([self.paddle1, self.paddle2])
 
-        scored_1 = self.player_1_scored()
-        scored_2 = self.player_2_scored()
+        g.framework.tick()
 
         if scored_1 or scored_2:
             if scored_1:
@@ -164,7 +164,7 @@ class Game:
                 scorer = self.paddle1 if scored_1 else self.paddle2
                 if scorer is not None:
                     position = h.field_mid()
-                    radius = c.settings['field_height'] / 4.5
+                    radius = c.settings['field_height'] / 5
                     color = self.paddle1.color if scored_1 else self.paddle2.color
                     scorer.draw_paddle(position, radius, color)
 
@@ -184,7 +184,7 @@ class Game:
         self.stats.update(self.paddle1.current_reward - self.paddle2.current_reward)
         self.stats.update(self.paddle2.current_reward - self.paddle1.current_reward)
 
-        return self.get_observation(1), reward, self.is_done(), { 'cumulative_reward': self.round_reward }
+        return self.get_observation(1), reward, self.is_done(scored_1 or scored_2), { 'cumulative_reward': self.round_reward }
 
     def get_observation(self, player):
         if player == 1:
@@ -246,12 +246,13 @@ class Game:
 
     def draw_corners(self):
         corner_radius = c.settings['corner_radius']
-        rect_size = (corner_radius, corner_radius)
+        rect_size = (corner_radius + 4, corner_radius + 4)
         color = h.modify_hsl(self.background_color, 0, 0, -0.2)
-        g.framework.draw_rectangle(color, np.zeros(2), rect_size)
-        g.framework.draw_rectangle(color, np.array([h.field_right() - corner_radius, 0]), rect_size)
-        g.framework.draw_rectangle(color, np.array([0, h.field_bot() - corner_radius]), rect_size)
-        g.framework.draw_rectangle(color, np.array([h.field_right() - corner_radius, h.field_bot() - corner_radius]), rect_size)
+        buffer = 10
+        g.framework.draw_rectangle(color, np.array([-buffer, -buffer]), rect_size)
+        g.framework.draw_rectangle(color, np.array([h.field_right() - corner_radius + buffer, -buffer]), rect_size)
+        g.framework.draw_rectangle(color, np.array([-buffer, h.field_bot() - corner_radius + buffer]), rect_size)
+        g.framework.draw_rectangle(color, np.array([h.field_right() - corner_radius + buffer, h.field_bot() - corner_radius + buffer]), rect_size)
 
         g.framework.draw_circle(h.corner_top_left(), corner_radius, self.background_color)
         g.framework.draw_circle(h.corner_top_right(), corner_radius, self.background_color)
@@ -277,7 +278,7 @@ class Game:
         alpha = h.dist_alpha(puck_to_goal_2_dist) ** 2
         goal2_color = h.modify_hsl(goal2_color, 0, 0, 0.45 * alpha)
 
-        goal_width = 40
+        goal_width = 50
         goal1_pos = (-goal_width / 2, (h.field_bot() - c.settings['goal_height']) / 2)
         goal1_size = (goal_width, c.settings['goal_height'])
         goal2_pos = (h.field_right() - goal_width / 2, (h.field_bot() - c.settings['goal_height']) / 2)
@@ -289,17 +290,17 @@ class Game:
         g.framework.draw_circle(h.goal_top_pos(1), goal_width / 2, goal1_color)
         g.framework.draw_circle(h.goal_bot_pos(1), goal_width / 2, goal1_color)
         g.framework.draw_circle(h.goal_top_pos(2), goal_width / 2, goal2_color)
-        g.framework.draw_circle(h.goal_bot_pos(2), goal_width / 2, goal2_color)        
+        g.framework.draw_circle(h.goal_bot_pos(2), goal_width / 2, goal2_color)
 
     def draw_field_lines(self):
-        color = h.interpolate_color_rgb((255,255,255), self.background_color, 0.95)
+        color = self.background_color
         line_thickness = 40
 
         puck_to_mid_dist = np.abs(self.puck.pos[0] - c.settings['field_width'] / 2)
         alpha = h.dist_alpha(puck_to_mid_dist) ** 2
         color = h.modify_hsl(color, 0, 0, 0.15 * alpha)
 
-        mid_circle_color = h.modify_hsl(self.background_color, 0.05, 0, -0.04)
+        mid_circle_color = h.modify_hsl(self.background_color, 0.03, 0, -0.04)
         mid_circle_radius = int(6.75 * line_thickness)
         mid_point_radius = int(2.125 * line_thickness)
         g.framework.draw_circle(h.field_mid(), mid_circle_radius, color)
@@ -317,8 +318,8 @@ class Game:
         seconds_left = math.ceil((self.match_steps - self.current_step) / c.settings['fps'])
         return seconds_left
 
-    def is_done(self):
-        return self.current_step > self.match_steps or self.player_1_scored() or self.player_2_scored()
+    def is_done(self, scored):
+        return self.current_step > self.match_steps or scored
 
     def player_1_scored(self):
         if c.settings['blocked_goals']:

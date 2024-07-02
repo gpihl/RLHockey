@@ -103,17 +103,17 @@ class Puck:
                 self.vel[1] = -self.vel[1]
                 sound_vel = self.vel[1]
 
-            if self.pos[0] < self.radius:
+            if self.pos[0] < self.radius and not (self.pos[1] < h.goal_top() and self.pos[1] > h.goal_bottom()):
                 self.pos[0] = self.radius
                 self.vel[0] = -self.vel[0]
                 sound_vel = self.vel[1]
-            elif self.pos[0] > c.settings['field_width'] - self.radius:
+            elif self.pos[0] > c.settings['field_width'] - self.radius and not (self.pos[1] < h.goal_top() and self.pos[1] > h.goal_bottom()):
                 self.pos[0] = c.settings['field_width'] - self.radius
                 self.vel[0] = -self.vel[0]
                 sound_vel = self.vel[1]
 
         if sound_vel != 0:
-            sound_vel = np.linalg.norm(self.vel)
+            sound_vel = np.linalg.norm(self.vel) * 0.7
             g.sound_handler.play_sound(sound_vel, self.pos[0], 'table_hit', pitch_shift=True)
 
     def handle_corner_collision(self):
@@ -195,7 +195,7 @@ class Puck:
 
             rotational_impulse = np.cross(normal, tangent) * velocity_along_tangent
             rotational_impulse = 0 if np.abs(rotational_impulse) < 0.5 else rotational_impulse
-            self.rot_vel += rotational_impulse * 0.15
+            self.rot_vel += rotational_impulse * 0.02
 
             overlap = self.radius + paddle.radius - dist
             paddle.pos -= normal * (overlap / 2)
