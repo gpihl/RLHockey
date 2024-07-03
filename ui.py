@@ -4,7 +4,7 @@ import globals as g
 REWARD_POS = (20, 10)
 SCORE_POS = (170, 20)
 TIME_POS = (c.settings['field_width']/2, 10)
-STEPS_LEFT_POS = (c.settings['field_width'] - 100, 30)
+STEPS_LEFT_POS = (c.settings['field_width'] - 150, 30)
 TEXT_COLOR = (255, 255, 255)
 
 class UI():
@@ -37,11 +37,16 @@ class UI():
         g.framework.draw_circle((pos2[0] - 40, pos2[1] + 25), 20, paddle2.color)
 
     def draw_reward(self, current_reward, round_reward):
-        current_reward = f"curr reward: {current_reward:.5}"
-        g.framework.draw_text(current_reward, 'reward', TEXT_COLOR, REWARD_POS)
+        pass
+        # current_reward = f"curr reward: {current_reward:.5}"
+        # g.framework.draw_text(current_reward, 'reward', TEXT_COLOR, REWARD_POS)
 
-        round_reward = f"tot reward: {round_reward:.5}"
-        g.framework.draw_text(round_reward, 'reward', TEXT_COLOR, (REWARD_POS[0], REWARD_POS[1] + 30))
+        # round_reward = f"tot reward: {round_reward:.5}"
+        # g.framework.draw_text(round_reward, 'reward', TEXT_COLOR, (REWARD_POS[0], REWARD_POS[1] + 30))
 
     def draw_time_left(self, time_left):
         g.framework.draw_text(str(time_left), 'time_left', TEXT_COLOR, TIME_POS, alignment='center')
+
+    def draw_reward_breakdown(self, reward_breakdown_1, reward_breakdown_2):
+        g.framework.draw_dict(reward_breakdown_1, 'reward_breakdown', (440, c.settings['field_height'] - 50))
+        g.framework.draw_dict(reward_breakdown_2, 'reward_breakdown', (c.settings['field_width'] - 50, c.settings['field_height'] - 50))

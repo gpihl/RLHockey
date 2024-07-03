@@ -8,9 +8,10 @@ class Puck:
     def __init__(self):
         self.pos = self.get_starting_pos_regular(2)
         self.prev_puck_start_pos = self.pos
-        self.shot_reward = 0
-        self.shot_on_goal_reward = 0
+        self.shot_reward = {}
+        self.shot_on_goal_reward = {}
         self.radius = 48
+        self.wall_elasticity = 0.7
         self.vel = np.zeros(2)
         self.rot_vel = 0.0
         self.rot = 0.0
@@ -93,24 +94,25 @@ class Puck:
     def handle_wall_collision(self):
         sound_vel = self.handle_corner_collision()
 
+
         if sound_vel == 0:
             if self.pos[1] < self.radius:
                 self.pos[1] = self.radius
-                self.vel[1] = -self.vel[1]
+                self.vel[1] = -self.vel[1] * self.wall_elasticity
                 sound_vel = self.vel[1]
             elif self.pos[1] > c.settings['field_height'] - self.radius:
                 self.pos[1] = c.settings['field_height'] - self.radius
-                self.vel[1] = -self.vel[1]
+                self.vel[1] = -self.vel[1] * self.wall_elasticity
                 sound_vel = self.vel[1]
 
             if self.pos[0] < self.radius and not (self.pos[1] < h.goal_top() and self.pos[1] > h.goal_bottom()):
                 self.pos[0] = self.radius
-                self.vel[0] = -self.vel[0]
-                sound_vel = self.vel[1]
+                self.vel[0] = -self.vel[0] * self.wall_elasticity
+                sound_vel = self.vel[0]
             elif self.pos[0] > c.settings['field_width'] - self.radius and not (self.pos[1] < h.goal_top() and self.pos[1] > h.goal_bottom()):
                 self.pos[0] = c.settings['field_width'] - self.radius
-                self.vel[0] = -self.vel[0]
-                sound_vel = self.vel[1]
+                self.vel[0] = -self.vel[0] * self.wall_elasticity
+                sound_vel = self.vel[0]
 
         if sound_vel != 0:
             sound_vel = np.linalg.norm(self.vel) * 0.7
@@ -144,7 +146,7 @@ class Puck:
         self.pos += corner_circle_pos_dir * np.ceil(overlap)
 
         projection = np.dot(self.vel, corner_circle_pos_dir) * corner_circle_pos_dir
-        self.vel -= projection * 2
+        self.vel -= projection * (1 + self.wall_elasticity)
 
         sound_vel = np.linalg.norm(projection)
         return sound_vel
@@ -158,13 +160,17 @@ class Puck:
         dist = np.linalg.norm(self.pos - paddle.pos)
         return dist < self.radius + paddle.radius
 
-    def collect_shot_reward(self, reward_type, player):
+    def collect_shot_reward(self, reward_type, paddle):
+        key = f"{paddle.team}_{paddle.player}"
+        reward = 0
         if reward_type == 'shot_toward_goal':
-            reward = self.shot_on_goal_reward
-            self.shot_on_goal_reward = 0
+            if key in self.shot_on_goal_reward:
+                reward = self.shot_on_goal_reward[key]
+            self.shot_on_goal_reward[key] = 0
         elif reward_type == 'shot':
-            reward = self.shot_reward
-            self.shot_reward = 0
+            if key in self.shot_reward:
+                reward = self.shot_reward[key]
+            self.shot_reward[key] = 0
 
         return reward
 
@@ -208,11 +214,13 @@ class Puck:
                 self.homing = True
                 self.homing_target = 2 if paddle.player == 1 else 1
 
-            self.shot_on_goal_reward = self.vel[0] - prev_vel[0]
-            self.shot_reward = np.linalg.norm(relative_velocity)
+            if c.settings['is_training']:
+                key = f"{paddle.team}_{paddle.player}"
+                self.shot_reward[key] = np.linalg.norm(relative_velocity)
 
-            if paddle.player == 2:
-                self.shot_reward *= -1
+                goal_pos = h.goal_pos(1 if paddle.team == 2 else 2)
+                goal_dir = (goal_pos - self.pos) / np.linalg.norm(goal_pos - self.pos)
+                self.shot_on_goal_reward[key] = np.dot(self.vel, goal_dir)
 
             sound_vel = np.linalg.norm(relative_velocity) / 2
             if sound_vel != 0:

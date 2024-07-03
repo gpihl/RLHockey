@@ -38,6 +38,14 @@ class SoundHandler:
         self.active_sounds = deque(maxlen=64)
         self.sound_lock = threading.Lock()
 
+        self.active_channels = {
+            'ambience': None,
+        }
+
+        self.active_volumes = {
+            'ambience': None,
+        }
+
         self.load_sounds()
         self.create_octave_up_sounds()
 
@@ -47,8 +55,6 @@ class SoundHandler:
         self.bg_music_last_played = 0
         self.pitch_octaves = 3
 
-        self.active_channels = { 'overload1': None, 'overload2': None, 'ambience': None, 'charge1': None, 'charge2': None }
-        self.active_volumes = { 'overload1': None, 'overload2': None, 'ambience': None, 'charge1': None, 'charge2': None }
         self.current_scale = ''
 
         self.last_played = dict.fromkeys(self.sounds, 0)
@@ -203,6 +209,12 @@ class SoundHandler:
             else:
                 print(f"Warning: Sound file {path} not found.")
 
+        for name in ['overload', 'charge']:
+            for i in range(16):
+                self.sounds[f"{name}{i}"] = self.sounds[name]
+                self.active_channels[f"{name}{i}"] = None
+                self.active_volumes[f"{name}{i}"] = None
+
     def velocity_to_sound_index(self, velocity):
         velocity = max(0, min(velocity, c.gameplay['max_puck_speed'] + c.gameplay['max_paddle_speed']))
         index = int((1 - (velocity / (c.gameplay['max_puck_speed'] + c.gameplay['max_paddle_speed']))) * len(self.scales[self.current_scale])) + 1
@@ -250,7 +262,7 @@ class SoundHandler:
         self.set_pan(channel, volume, x_coord)
 
     def update_paddle_sound(self, paddle):
-        sound_name = f"overload{paddle.player}"
+        sound_name = f"overload{(paddle.team - 1) * 2 + paddle.player}"
         channel = self.active_channels[sound_name]
         volume = self.active_volumes[sound_name]
         if paddle.is_overloaded():

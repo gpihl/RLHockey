@@ -89,14 +89,12 @@ class Controls:
         return {
             'acceleration': np.array([0.0, 0.0]),
             'dash': False,
-            'magnet': False,
         }
 
     @staticmethod
     def game_action_from_model_action(model_action):
         action = {
             'acceleration': h.clip_vector_length_inplace(np.array([model_action[0], model_action[1]])),
-            'dash': model_action[2] > 0.0,
-            'magnet': False,
+            'dash': model_action[1] > 0.0,
         }
         return action

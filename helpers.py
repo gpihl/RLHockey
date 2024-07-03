@@ -3,6 +3,7 @@ import random
 import os
 import numpy as np
 import constants as c
+import globals as g
 
 def field_mid_x():
     return c.settings['field_width'] / 2
@@ -185,15 +186,14 @@ def get_latest_model_path(base_path, prefix):
     latest_model = max(models, key=lambda x: int(x.split('_')[-1].split('.')[0]))
     return os.path.join(base_path, latest_model)
 
-def get_latest_model_path_with_algorithm(base_path, algorithm=None):
+def get_latest_model_path_with_algorithm(base_path, algorithm=None, players_per_team=1):
     if algorithm is None:
-        # algorithm = random.choice(['PPO', 'SAC', 'TD3'])
         algorithm = random.choice(['PPO'])
-        # algorithm = random.choice(['PPO', 'SAC'])
 
-    models = [f for f in os.listdir(base_path) if f.startswith(algorithm) and f.endswith('.zip')]
+    models = [f for f in os.listdir(base_path) if f.startswith(f"{players_per_team}_{algorithm}") and f.endswith('.zip')]
     if not models:
         return None, algorithm
+
     latest_model = max(models, key=lambda x: int(x.split('_')[-1].split('.')[0]))
 
     return os.path.join(base_path, latest_model), algorithm
@@ -210,15 +210,15 @@ def get_random_model_path(base_path, prefix):
     random_model = models[random_index]
     return os.path.join(base_path, random_model)
 
-def get_next_model_path(base_path, algorithm):
-    models = [f for f in os.listdir(base_path) if f.startswith(algorithm) and f.endswith('.zip')]
+def get_next_model_path(base_path, algorithm, players_per_team=1):
+    models = [f for f in os.listdir(base_path) if f.startswith(f"{players_per_team}_{algorithm}") and f.endswith('.zip')]
     if not models:
         next_model_number = 1
     else:
         latest_model = max(models, key=lambda x: int(x.split('_')[-1].split('.')[0]))
         latest_number = int(latest_model.split('_')[-1].split('.')[0])
         next_model_number = latest_number + 1
-    return os.path.join(base_path, f"{algorithm}_{next_model_number}.zip")
+    return os.path.join(base_path, f"{players_per_team}_{algorithm}_{next_model_number}.zip")
 
 def get_sorted_zip_files(directory):
     dir_path = Path(directory).resolve()
@@ -226,8 +226,9 @@ def get_sorted_zip_files(directory):
     sorted_files = sorted(zip_files, key=lambda x: x.stat().st_mtime)
     return [f.name for f in sorted_files]
 
-def get_random_model_with_algorithm():
+def get_random_model_with_algorithm(players_per_team=1):
     models = get_sorted_zip_files('models')
+    models = list(filter(lambda x: x.startswith(str(players_per_team)), models))
     if len(models) == 0:
         return None, None
 
@@ -237,8 +238,11 @@ def get_random_model_with_algorithm():
     path = os.path.join('models', random_model)
     return path, algorithm
 
+def save_model_name():
+    save_text_to_file(g.current_model_name, 'model_name/name.txt')
+
 def get_model_algorithm(file_name):
-    return file_name.split('_')[0].strip()
+    return file_name.split('_')[1].strip()
 
 def clip_vector_length_inplace(vector, max_length=1):
     magnitude = np.linalg.norm(vector)

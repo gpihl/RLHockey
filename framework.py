@@ -5,11 +5,14 @@ import numpy as np
 import time
 import constants as c
 import globals as g
+import helpers as h
 
-REWARD_FONT_SIZE = 30
+REWARD_FONT_SIZE = 40
 TIME_FONT_SIZE = 120
-STEPS_LEFT_FONT_SIZE = 30
+STEPS_LEFT_FONT_SIZE = 40
 SCORE_FONT_SIZE = 85
+MODEL_NAME_FONT_SIZE = 40
+REWARD_BREAKDOWN_FONT_SIZE = 40
 
 class Framework():
     _instance = None
@@ -35,7 +38,7 @@ class Framework():
         self.reset()
         self.clock = pygame.time.Clock()
 
-        self.fps = 6000 if c.settings['is_training'] else c.settings['fps']
+        self.fps = c.settings['fps']
 
     def reset(self):
         self.trail_surface = pygame.Surface(c.resolutions[self.current_resolution_idx], pygame.SRCALPHA)
@@ -46,6 +49,8 @@ class Framework():
             'time_left': pygame.font.SysFont(None, self.world_to_screen_length(TIME_FONT_SIZE)),
             'steps_left': pygame.font.SysFont(None, self.world_to_screen_length(STEPS_LEFT_FONT_SIZE)),
             'score': pygame.font.SysFont(None, self.world_to_screen_length(SCORE_FONT_SIZE)),
+            'model_name': pygame.font.SysFont(None, self.world_to_screen_length(MODEL_NAME_FONT_SIZE)),
+            'reward_breakdown': pygame.font.SysFont(None, self.world_to_screen_length(REWARD_BREAKDOWN_FONT_SIZE)),
         }
 
     def get_resolution(self):
@@ -99,6 +104,12 @@ class Framework():
                     self.change_resolution()
                     key_pressed = True
                     print(f"Changing resolution")
+                elif event.key == pygame.K_p:
+                    c.settings['paused'] = not c.settings['paused']
+                    print(f"Paused game")
+                elif event.key == pygame.K_v:
+                    h.save_model_name()
+                    print(f"Saving name of current model")
 
         if key_pressed:
             self.last_ui_input = g.current_time
@@ -228,6 +239,113 @@ class Framework():
             case 'right':
                 rect.center = (position[0] - rect.width / 2, position[1] + rect.height / 2)
                 self.screen.blit(surface, rect)
+
+    def draw_dict(self, dictionary, font_name, pos, line_height=30):
+        # x, y = self.world_to_screen_coord(pos)
+        # line_height = self.world_to_screen_length(line_height)
+
+        # items = list(dictionary.items())
+        # total_height = len(items) * line_height
+        # y -= total_height
+
+        # for key, value in reversed(items):
+        #     text = f"{key}: {value:.2f}"
+        #     text_surface = self.fonts[font_name].render(text, True, (255, 255, 255))  # White text
+        #     text_rect = text_surface.get_rect()
+        #     text_rect.right = x
+        #     text_rect.top = y
+        #     self.screen.blit(text_surface, text_rect)
+        #     y += line_height
+
+
+
+        # x, y = self.world_to_screen_coord(pos)
+        # line_height = self.world_to_screen_length(line_height)
+        # items = list(dictionary.items())
+
+        # # Calculate total height
+        # total_height = len(items) * line_height
+
+        # # Adjust starting y-position
+        # y -= total_height
+
+        # font = self.fonts[font_name]
+        # label_value_gap = self.world_to_screen_length(10)
+        # # Find the widest label for alignment
+        # max_label_width = max(font.size(key)[0] for key in dictionary)
+
+        # for key, value in reversed(items):
+        #     # Render label (key)
+        #     label_surface = font.render(f"{key}:", True, (255, 255, 255))
+        #     label_rect = label_surface.get_rect()
+        #     label_rect.right = x - label_value_gap - max_label_width
+        #     label_rect.top = y
+        #     self.screen.blit(label_surface, label_rect)
+
+        #     # Render value
+        #     value_surface = font.render(str(value), True, (255, 255, 255))
+        #     value_rect = value_surface.get_rect()
+        #     value_rect.left = x - max_label_width
+        #     value_rect.top = y
+        #     self.screen.blit(value_surface, value_rect)
+
+        #     y += line_height
+
+
+        x, y = self.world_to_screen_coord(pos)
+        font = self.fonts[font_name]
+        label_value_gap = self.world_to_screen_length(120)
+        line_height = self.world_to_screen_length(line_height)
+        items = list(dictionary.items())
+
+        # Calculate total height
+        total_height = len(items) * line_height
+
+        # Adjust starting y-position
+        y -= total_height
+
+        # Find the widest label for alignment
+        max_label_width = max(font.size(key)[0] for key in dictionary)
+        gap = self.world_to_screen_length(50)
+
+        # Find the widest integer part and fractional part
+        max_int_width = 0
+        max_frac_width = 0
+        for value in dictionary.values():
+            int_part, _, frac_part = f"{value:.2f}".partition('.')
+            max_int_width = max(max_int_width, font.size(int_part)[0])
+            max_frac_width = max(max_frac_width, font.size(frac_part)[0])
+
+        for key, value in reversed(items):
+            # Render label (key)
+            label_surface = font.render(f"{key}:", True, (255, 255, 255))
+            label_rect = label_surface.get_rect()
+            label_rect.right = x - label_value_gap - font.size('.')[0]
+            label_rect.top = y
+            self.screen.blit(label_surface, label_rect)
+
+            # Render value
+            int_part, _, frac_part = f"{value:.2f}".partition('.')
+            int_surface = font.render(int_part, True, (255, 255, 255))
+            dot_surface = font.render('.', True, (255, 255, 255))
+            frac_surface = font.render(frac_part, True, (255, 255, 255))
+
+            int_rect = int_surface.get_rect()
+            dot_rect = dot_surface.get_rect()
+            frac_rect = frac_surface.get_rect()
+
+            int_rect.right = x - max_frac_width - font.size('.')[0]
+            int_rect.top = y
+            dot_rect.left = int_rect.right
+            dot_rect.top = y
+            frac_rect.left = dot_rect.right
+            frac_rect.top = y
+
+            self.screen.blit(int_surface, int_rect)
+            self.screen.blit(dot_surface, dot_rect)
+            self.screen.blit(frac_surface, frac_rect)
+
+            y += line_height
 
     def draw_rotated_line_centered(self, pos, length, angle, color, width=1):
         pos = self.world_to_screen_coord(pos)

@@ -6,8 +6,10 @@ import helpers as h
 from collections import deque
 
 class Paddle:
-    def __init__(self, player):
+    def __init__(self, team, player):
         self.player = player
+        self.team = team
+        self.team_mates = 0
         self.color = (0,0,0)
         self.pos = np.zeros(2)
         self.last_pos = np.zeros(2)
@@ -48,10 +50,13 @@ class Paddle:
         return starting_pos
 
     def get_starting_pos_regular(self):
-        if self.player == 1:
-            starting_pos = np.array([self.radius*3.0, c.settings['field_height'] // 2])
+        y_spacing = c.settings['field_height'] / (self.team_mates + 1)
+        y_coord = round(self.player * y_spacing)
+
+        if self.team == 1:
+            starting_pos = np.array([self.radius*3.0, y_coord])
         else:
-            starting_pos = np.array([c.settings['field_width'] - self.radius*3.0, c.settings['field_height'] // 2])
+            starting_pos = np.array([c.settings['field_width'] - self.radius*3.0, y_coord])
 
         return starting_pos
 
@@ -153,7 +158,8 @@ class Paddle:
         if action == None:
             return
 
-        self.set_magnetic_effect(action['magnet'])
+        if 'magnet' in action:
+            self.set_magnetic_effect(action['magnet'])
 
         if action['dash']:
             if not self.charging_dash:
@@ -165,7 +171,7 @@ class Paddle:
             self.charging_dash_initial = False
             self.dash(puck)
 
-        if (self.player == 2 and not c.settings['player_2_human']):
+        if (self.team == 2 and not c.settings['player_2_human']):
             acc = action['acceleration']
             reversed_x_acc = np.array([-acc[0], acc[1]])
             self.apply_force(reversed_x_acc)
@@ -203,7 +209,7 @@ class Paddle:
         self.pos += self.vel * c.settings['delta_t']
 
         if c.settings['field_split']:
-            if self.player == 1:
+            if self.team == 1:
                 left_wall = self.radius
                 right_wall = c.settings['field_width'] / 2 - self.radius
             else:
@@ -281,7 +287,7 @@ class Paddle:
 
     def draw(self, puck, reward_alpha=None):
         theme_color = g.sound_handler.target_color()
-        hue_change = 0.1 if self.player == 1 else -0.1
+        hue_change = 0.2 if self.team == 1 else -0.2
         self.color = h.modify_hsl(theme_color, hue_change, 0.25, 0.2)
 
         if self.is_power_dashing():
@@ -293,6 +299,10 @@ class Paddle:
             self.color = h.interpolate_color_rgb(self.color, (255,0,0), charge_color_shift)
             self.color = h.modify_hsl(self.color, 0, charge_color_shift * 0.5, charge_color_shift * 0.2)
             self.draw_dash_line(puck)
+
+        if c.settings['is_training']:
+            model_name = g.team_1_model_name if self.team == 1 else g.team_2_model_name
+            g.framework.draw_text(model_name, 'model_name', (255,255,255), (self.pos[0], self.pos[1] + self.radius * 1.2), 'center')
 
         self.draw_paddle(self.pos, self.radius, self.color, reward_alpha)
 
@@ -325,6 +335,9 @@ class Paddle:
         g.framework.draw_circle(position, int(8*radius / 9), h.interpolate_color_rgb(color, (0,0,0), 0.05), surface)
         g.framework.draw_circle(position, int(radius / 2), h.interpolate_color_rgb(color, (0,0,0), 0.3), surface)
         g.framework.draw_circle(position, int(radius / 3), h.interpolate_color_rgb(color, (0,0,0), 0.1), surface)
+
+        if self.team == 1 and self.player == 1:
+            g.framework.draw_circle([position[0], position[1] - 1.5*self.radius], 10, (255,255,255), surface)
 
     def draw_dash_line(self, puck):
         return

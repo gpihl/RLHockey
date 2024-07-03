@@ -13,7 +13,7 @@ ui = None
 joystick = None
 
 def initialize():
-    global sound_handler, ui, framework, controls, device, current_time, controller_type
+    global sound_handler, ui, framework, controls, device, current_time, controller_type, current_model_name, team_1_model_name, team_2_model_name
 
     device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
     current_time = time.time()
@@ -21,3 +21,6 @@ def initialize():
     ui = UI()
     framework = Framework()
     controls = Controls()
+    current_model_name = ""
+    team_1_model_name = ""
+    team_2_model_name = ""
