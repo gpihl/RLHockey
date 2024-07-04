@@ -165,7 +165,7 @@ class SoundHandler:
         }
 
         for k, _ in self.colors.items():
-            self.colors[k] = h.clamp_s(self.colors[k], 0.1, 0.7)
+            self.colors[k] = h.clamp_s(self.colors[k], 0.1, 0.5)
             self.colors[k] = h.clamp_l(self.colors[k], 0.2, 0.5)
 
         for k, _ in self.scales.items():

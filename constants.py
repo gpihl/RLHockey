@@ -1,10 +1,11 @@
 resolutions = [
+    # (3840, 2160),
     (2560, 1440),
     (1920, 1080),
-    (1470, 956),
     (1280, 720),
-    (800, 400),
-    (200, 100),
+    (640, 360),
+    (320, 180),
+    (160, 90),
 ]
 
 settings = {
@@ -18,7 +19,7 @@ settings = {
     # 'blocked_goals': True,
     'random_starting_locations': True,
     # 'random_starting_locations': False,
-    'resolution': 3,
+    'resolution': 1,
     'field_width': 3000,
     'field_height': 1500,
     # 'field_width': 2097,

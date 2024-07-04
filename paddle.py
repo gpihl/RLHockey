@@ -285,7 +285,7 @@ class Paddle:
             if sound_vel != 0:
                 g.sound_handler.play_sound(sound_vel, self.pos[0], 'paddle')
 
-    def draw(self, puck, reward_alpha=None):
+    def draw(self, puck, reward_alpha=None, draw_indicator=True):
         theme_color = g.sound_handler.target_color()
         hue_change = 0.2 if self.team == 1 else -0.2
         self.color = h.modify_hsl(theme_color, hue_change, 0.25, 0.2)
@@ -304,7 +304,7 @@ class Paddle:
             model_name = g.team_1_model_name if self.team == 1 else g.team_2_model_name
             g.framework.draw_text(model_name, 'model_name', (255,255,255), (self.pos[0], self.pos[1] + self.radius * 1.2), 'center')
 
-        self.draw_paddle(self.pos, self.radius, self.color, reward_alpha)
+        self.draw_paddle(self.pos, self.radius, self.color, reward_alpha, draw_indicator)
 
     def charging_time(self):
         return g.current_time - self.charge_start_time
@@ -316,7 +316,7 @@ class Paddle:
     def is_overloaded(self):
         return self.charging_dash and self.full_charge_alpha() > 0
 
-    def draw_paddle(self, position, radius, color, reward_alpha=None):
+    def draw_paddle(self, position, radius, color, reward_alpha=None, draw_indicator=True):
         if self.is_overloaded():
             color = h.modify_hsl(color, 0, 0, 0.1 + 0.1 * np.sin(2 * np.pi * g.current_time / self.charge_flash_period))
 
@@ -325,19 +325,19 @@ class Paddle:
         else:
             outer_color = h.set_l(color, 0.75)
 
-        self.draw_calls(position, radius, color, outer_color, g.framework.screen)
+        self.draw_calls(position, radius, color, outer_color, draw_indicator)
 
         # if self.is_dashing():
         #     self.draw_calls(position, radius, color, outer_color, g.framework.trail_surface)
 
-    def draw_calls(self, position, radius, color, outer_color, surface):
-        g.framework.draw_circle(position, radius, outer_color, surface)
-        g.framework.draw_circle(position, int(8*radius / 9), h.interpolate_color_rgb(color, (0,0,0), 0.05), surface)
-        g.framework.draw_circle(position, int(radius / 2), h.interpolate_color_rgb(color, (0,0,0), 0.3), surface)
-        g.framework.draw_circle(position, int(radius / 3), h.interpolate_color_rgb(color, (0,0,0), 0.1), surface)
+    def draw_calls(self, position, radius, color, outer_color, draw_indicator=True):
+        g.framework.draw_circle(position, radius, outer_color)
+        g.framework.draw_circle(position, int(8*radius / 9), h.interpolate_color_rgb(color, (0,0,0), 0.05))
+        g.framework.draw_circle(position, int(radius / 2), h.interpolate_color_rgb(color, (0,0,0), 0.3))
+        g.framework.draw_circle(position, int(radius / 3), h.interpolate_color_rgb(color, (0,0,0), 0.1))
 
-        if self.team == 1 and self.player == 1:
-            g.framework.draw_circle([position[0], position[1] - 1.5*self.radius], 10, (255,255,255), surface)
+        if self.team == 1 and self.player == 1 and draw_indicator:
+            g.framework.draw_circle([position[0], position[1] - 1.3 * self.radius], 10, (255,255,255))
 
     def draw_dash_line(self, puck):
         return

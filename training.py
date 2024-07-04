@@ -78,7 +78,7 @@ if __name__ == '__main__':
     parser = argparse.ArgumentParser(description="Run the game with optional profiling.")
     parser.add_argument("-p", "--profile", action="store_true", help="Run the game with profiling enabled")
     parser.add_argument("-a", "--ai", action="store_true", help="AI vs AI")
-    parser.add_argument("-n", "--number", type=int, default=1, help="Number of players per team")
+    parser.add_argument("-n", "--number", type=int, default=2, help="Number of players per team")
     args = parser.parse_args()
     players_per_team = args.number
     main(players_per_team)

@@ -1,6 +1,4 @@
-import torch
 import numpy as np
-import time
 import math
 import globals as g
 import constants as c
@@ -13,6 +11,7 @@ from paddle import Paddle
 from puck import Puck
 import cProfile
 from stats import Stats
+import pyray as pr
 
 class Game:
     _instance = None
@@ -31,8 +30,8 @@ class Game:
         self.ai_match = ai
         self._initialized = True
         self.total_steps = 0
-        self.prev_t = time.time()
-        self.curr_t = time.time()
+        self.prev_t = g.current_time
+        self.curr_t = g.current_time
         self.last_scorer = 2
         self.players_per_team = players_per_team
         self.paddles_1 = []
@@ -42,6 +41,7 @@ class Game:
         self.current_step = 0
         self.current_reward = 0.0
         self.round_reward = 0.0
+        self.start_time = 0
         self.total_reward = 0.0
         self.team_1_model = None
         self.team_2_model = None
@@ -50,6 +50,7 @@ class Game:
         self.stats = Stats()
         self.match_steps = 60 * c.settings['fps']
         self.create_objects()
+        g.controls.stick = g.controls.init_controls()
         self.reset()
 
         print("Game initialization done")
@@ -71,6 +72,7 @@ class Game:
         self.current_step = 0
         self.current_reward = 0.0
         self.round_reward = 0.0
+        self.start_time = g.current_time
 
         for key, _ in self.reward_breakdown_1.items():
             self.reward_breakdown_1[key] = 0
@@ -168,12 +170,15 @@ class Game:
         if not running:
             exit()
 
+        i = 0
         while c.settings['paused']:
+            i += 1
             running = g.framework.handle_events()
             if not running:
                 exit()
 
-            g.framework.tick()
+            if i % 60 == 0:
+                g.framework.paused()
 
         player_1_action = g.controls.game_action_from_model_action(player_1_model_action)
 
@@ -196,6 +201,11 @@ class Game:
         return self.get_observation(1, 1), reward, self.is_done(scorer), { 'reward_breakdown_1': self.reward_breakdown_1, 'reward_breakdown_2': self.reward_breakdown_2 }
 
     def step(self):
+        self.curr_t = g.current_time
+        delta_t = self.curr_t - self.prev_t
+        c.settings['delta_t'] = min(92 * delta_t, 3)
+        self.prev_t = self.curr_t
+
         team_1_actions = [g.controls.empty_action() for _ in range(len(self.paddles_1))]
         if self.team_1_model is not None:
             for i in range(len(self.paddles_1)) if self.ai_match else range(1, len(self.paddles_1)):
@@ -221,8 +231,6 @@ class Game:
         return self.is_done(scorer)
 
     def update(self, team_1_actions, team_2_actions):
-        self.prev_t = self.curr_t
-        self.curr_t = g.current_time
         self.current_step += 1
         self.total_steps += 1
 
@@ -257,7 +265,12 @@ class Game:
             g.sound_handler.play_goal_sound(0)
 
         if not c.settings['no_render']:
+            g.framework.begin_drawing()
             self.render()
+            g.framework.end_drawing()
+        else:
+            if self.current_step % 60 == 0:
+                g.framework.rendering_off_message()
 
         g.framework.tick()
 
@@ -289,13 +302,18 @@ class Game:
             scorer = self.paddles_1[0] if scorer == 1 else self.paddles_2[0]
             position = h.field_mid()
             radius = c.settings['field_height'] / 5
-            scorer.draw_paddle(position, radius, scorer.color)
 
             while g.current_time - goal_time < 1:
+                g.framework.begin_drawing()
+                self.render()
+                scorer.draw_paddle(position, radius, scorer.color, draw_indicator=False)
                 if g.current_time - goal_time > 0.7:
-                    g.framework.fill_screen_semiopaque_black(20)
+                    opacity = math.floor(255 * (g.current_time - goal_time - 0.7) / 0.3)
+                    g.framework.fill_screen_semiopaque_black(opacity)
 
-                g.framework.render()
+                g.framework.end_drawing()
+
+                # g.framework.render()
                 g.framework.tick()
 
     def get_observation(self, team, player):
@@ -363,6 +381,7 @@ class Game:
         self.draw_background()
         self.draw_corners()
         self.draw_field_lines()
+
         self.puck.draw()
         if c.settings['is_training']:
             reward_alpha_1 = self.get_reward_alpha(self.paddles_1, self.paddles_2)
@@ -376,7 +395,6 @@ class Game:
                 paddle.draw(self.puck)
         self.draw_goals()
         self.draw_ui()
-        g.framework.render()
 
     def get_reward_alpha(self, paddles, other_paddles):
         mean, std = self.stats.get_stats()
@@ -410,8 +428,9 @@ class Game:
     def draw_ui(self):
         g.ui.draw_time_left(self.seconds_left())
         g.ui.draw_score(self.score, self.paddles_1[0], self.paddles_2[0])
+        g.framework.draw_fps(0,0)
         if c.settings['is_training']:
-            g.ui.draw_reward(self.current_reward, self.round_reward)
+            # g.ui.draw_reward(self.current_reward, self.round_reward)
             g.ui.draw_steps_left(str(self.total_training_steps_left()))
             g.ui.draw_reward_breakdown(self.reward_breakdown_1, self.reward_breakdown_2)
 
@@ -464,11 +483,18 @@ class Game:
         return c.training['training_steps'] - self.total_steps
 
     def seconds_left(self):
-        seconds_left = math.ceil((self.match_steps - self.current_step) / c.settings['fps'])
+        if c.settings['is_training']:
+            seconds_left = math.ceil((self.match_steps - self.current_step) / c.settings['fps'])
+        else:
+            # seconds_left = math.ceil((self.match_steps - self.current_step) / c.settings['fps'])
+            seconds_left = math.ceil((self.match_steps / c.settings['fps']) - (g.current_time - self.start_time))
         return seconds_left
 
     def is_done(self, scorer):
-        return self.current_step > self.match_steps or scorer != 0
+        if c.settings['is_training']:
+            return self.current_step > self.match_steps or scorer != 0
+        else:
+            return self.seconds_left() < 0 or scorer != 0
 
     def team_1_scored(self):
         if c.settings['blocked_goals']:

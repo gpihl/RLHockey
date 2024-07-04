@@ -1,4 +1,4 @@
-import pygame
+import pyray as pr
 import helpers as h
 import numpy as np
 
@@ -8,59 +8,49 @@ class Controls:
             'dash': 'x',
             'magnet': 'l1',
         }
-
         ps5_controller = {
-            'x': 0,
+            'x': 7,
             'l1': 9
         }
-
         self.controller_type = ps5_controller
-        self.stick = self.init_controls()
+        self.stick = None
+        self.init_controls()
 
     def init_controls(self):
-        pygame.joystick.init()
-
-        if pygame.joystick.get_count() == 0:
-            print("No joystick connected")
-            return None
-
-        stick = pygame.joystick.Joystick(0)
-        stick.init()
-        print(f"Joystick name: {stick.get_name()}")
-        self.stick = stick
-        return stick
+        if pr.is_gamepad_available(0):
+            print(f"Joystick name: {pr.get_gamepad_name(0)}")
+            self.stick = 0
 
     def button_pressed(self, action_name):
         button_idx = self.controller_type[self.control_params[action_name]]
-        return self.stick.get_button(button_idx)
+        return pr.is_gamepad_button_down(0, button_idx)
 
     def get_human_action(self):
         action = Controls.empty_action()
-
-        if self.stick != None:
+        if self.stick is not None:
             action = self.get_joystick_action()
 
-        keys = Controls.get_keys()
-        if keys[pygame.K_w]:
+        if pr.is_key_down(pr.KEY_W):
             action['acceleration'][1] = -1.0
-        if keys[pygame.K_s]:
+        if pr.is_key_down(pr.KEY_S):
             action['acceleration'][1] = 1.0
-        if keys[pygame.K_a]:
+        if pr.is_key_down(pr.KEY_A):
             action['acceleration'][0] = -1.0
-        if keys[pygame.K_d]:
+        if pr.is_key_down(pr.KEY_D):
             action['acceleration'][0] = 1.0
-        if keys[pygame.K_LSHIFT] or keys[pygame.K_SPACE] or keys[pygame.K_RSHIFT]:
+        if pr.is_key_down(pr.KEY_LEFT_SHIFT) or pr.is_key_down(pr.KEY_SPACE) or pr.is_key_down(pr.KEY_RIGHT_SHIFT):
             action['dash'] = True
-
         return action
 
     def get_joystick_action(self):
-        if self.stick == None:
+        if self.stick is None:
             return None
         try:
-            input_vector = np.array([self.stick.get_axis(0), self.stick.get_axis(1)])
+            input_vector = np.array([
+                pr.get_gamepad_axis_movement(0, 0),
+                pr.get_gamepad_axis_movement(0, 1)
+            ])
             input_vector = self.apply_non_linear_response(input_vector)
-
             return {
                 'acceleration': np.array([input_vector[0] * 1.0, input_vector[1] * 1.0]),
                 'dash': self.button_pressed('dash'),
@@ -74,15 +64,21 @@ class Controls:
         magnitude = np.linalg.norm(input_vector)
         modified_magnitude = np.power(magnitude, exponent)
         modified_magnitude = np.clip(modified_magnitude, 0, 1)
-
         if magnitude == 0:
             return np.zeros_like(input_vector)
-
         return input_vector * (modified_magnitude / magnitude)
 
     @staticmethod
     def get_keys():
-        return pygame.key.get_pressed()
+        return {
+            pr.KEY_W: pr.is_key_down(pr.KEY_W),
+            pr.KEY_S: pr.is_key_down(pr.KEY_S),
+            pr.KEY_A: pr.is_key_down(pr.KEY_A),
+            pr.KEY_D: pr.is_key_down(pr.KEY_D),
+            pr.KEY_LEFT_SHIFT: pr.is_key_down(pr.KEY_LEFT_SHIFT),
+            pr.KEY_SPACE: pr.is_key_down(pr.KEY_SPACE),
+            pr.KEY_RIGHT_SHIFT: pr.is_key_down(pr.KEY_RIGHT_SHIFT),
+        }
 
     @staticmethod
     def empty_action():

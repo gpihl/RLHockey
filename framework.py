@@ -1,18 +1,8 @@
-import pygame
-import pygame.gfxdraw
+import pyray as pr
 import math
-import numpy as np
-import time
 import constants as c
 import globals as g
 import helpers as h
-
-REWARD_FONT_SIZE = 40
-TIME_FONT_SIZE = 120
-STEPS_LEFT_FONT_SIZE = 40
-SCORE_FONT_SIZE = 85
-MODEL_NAME_FONT_SIZE = 40
-REWARD_BREAKDOWN_FONT_SIZE = 40
 
 class Framework():
     _instance = None
@@ -29,32 +19,54 @@ class Framework():
 
         self._initialized = True
 
-        pygame.init()
-        self.vsync = 0 if c.settings['is_training'] else 1
-        self.last_ui_input = 0
+        self.flags = pr.FLAG_MSAA_4X_HINT | pr.FLAG_WINDOW_RESIZABLE
+        if not c.settings['is_training']:
+            self.flags |= pr.FLAG_VSYNC_HINT
+
         self.current_resolution_idx = c.settings['resolution']
         self.fullscreen = False
-        self.screen = None
-        self.reset()
-        self.clock = pygame.time.Clock()
-
         self.fps = c.settings['fps']
 
-    def reset(self):
-        self.trail_surface = pygame.Surface(c.resolutions[self.current_resolution_idx], pygame.SRCALPHA)
-        self.screen = self.create_screen()
-        self.scaling_factor, self.shift = self.calculate_scaling_and_shift()
+        self.tick()
+        self.reset()
+
+        self.keys_pressed = set()
+        self.fps_locked = False
+
+        if c.settings['is_training']:
+            pr.set_target_fps(c.settings['fps'])
+            self.fps_locked = True
+
+        font_bold = pr.load_font_ex("fonts/Roboto-Bold.ttf", 800, None, 0)
+        font_regular = pr.load_font_ex("fonts/Roboto-Regular.ttf", 800, None, 0)
+        self.fxaa_shader = pr.load_shader("shaders/fxaa.vs", "shaders/fxaa.fs")
+        self.scanlines_shader = pr.load_shader("shaders/scanlines.vs", "shaders/scanlines.fs")
+        self.shader = self.fxaa_shader
+        self.resolution_loc = pr.get_shader_location(self.fxaa_shader, "resolution")
+        resolution = pr.ffi.new('float[2]', [float(self.get_resolution()[0]), float(self.get_resolution()[1])])
+        pr.set_shader_value(self.fxaa_shader, self.resolution_loc, resolution, pr.SHADER_UNIFORM_VEC2)
+
         self.fonts = {
-            'reward': pygame.font.SysFont(None, self.world_to_screen_length(REWARD_FONT_SIZE)),
-            'time_left': pygame.font.SysFont(None, self.world_to_screen_length(TIME_FONT_SIZE)),
-            'steps_left': pygame.font.SysFont(None, self.world_to_screen_length(STEPS_LEFT_FONT_SIZE)),
-            'score': pygame.font.SysFont(None, self.world_to_screen_length(SCORE_FONT_SIZE)),
-            'model_name': pygame.font.SysFont(None, self.world_to_screen_length(MODEL_NAME_FONT_SIZE)),
-            'reward_breakdown': pygame.font.SysFont(None, self.world_to_screen_length(REWARD_BREAKDOWN_FONT_SIZE)),
+            'reward': font_bold,
+            'time_left': font_bold,
+            'steps_left': font_regular,
+            'score': font_bold,
+            'model_name': font_bold,
+            'reward_breakdown': font_regular,
         }
+
+    def reset(self):
+        self.scaling_factor, self.shift = self.calculate_scaling_and_shift()
+        pr.set_config_flags(self.flags)
+        pr.init_window(1280, 720, "Game")
+        self.render_texture = pr.load_render_texture(*self.get_resolution())
+        # pr.set_texture_filter(self.render_texture.texture, pr.TEXTURE_FILTER_ANISOTROPIC_16X)
 
     def get_resolution(self):
         return c.resolutions[self.current_resolution_idx]
+
+    def draw_fps(self, x, y):
+        self.draw_text(f"FPS: {pr.get_fps()}", 'steps_left', (255,255,255), (x, y), 'left', 0, 40)
 
     def calculate_scaling_and_shift(self):
         x_stretch = (self.get_resolution()[0]) / c.settings['field_width']
@@ -70,148 +82,166 @@ class Framework():
 
         return (scaling, shift)
 
-    def handle_keyboard_input(self, events):
-        if np.abs(g.current_time - self.last_ui_input) < 0.3:
-            return
+    def handle_input(self):
+        if g.controls.stick == None:
+            g.controls.init_controls()
 
-        if events is None:
-            return
+        new_presses = set()
+        for key in range(pr.KEY_A, pr.KEY_Z + 1):
+            if pr.is_key_pressed(key):
+                if key not in self.keys_pressed:
+                    new_presses.add(key)
 
-        key_pressed = False
-        for event in events:
-            if event.type == pygame.KEYDOWN:
-                if event.key == pygame.K_e:
-                    self.fps = 6000 if self.fps == c.settings['fps'] else c.settings['fps']
-                    key_pressed = True
-                    print(f"Switching to {self.fps} FPS")
-                elif event.key == pygame.K_r:
-                    c.settings['no_render'] = not c.settings['no_render']
-                    key_pressed = True
-                    print(f"Setting rendering to {not c.settings['no_render']}")
-                elif event.key == pygame.K_m:
-                    c.settings['no_sound'] = not c.settings['no_sound']
-                    key_pressed = True
-                    print(f"Setting sound to {not c.settings['no_sound']}")
-                elif event.key == pygame.K_t:
-                    c.settings['player_2_human'] = not c.settings['player_2_human']
-                    key_pressed = True
-                    print(f"Setting player 2 human to {c.settings['player_2_human']}")
-                elif event.key == pygame.K_y:
-                    self.toggle_fullscreen()
-                    key_pressed = True
-                    print(f"Toggling fullscreen")
-                elif event.key == pygame.K_u:
-                    self.change_resolution()
-                    key_pressed = True
-                    print(f"Changing resolution")
-                elif event.key == pygame.K_p:
-                    c.settings['paused'] = not c.settings['paused']
-                    print(f"Paused game")
-                elif event.key == pygame.K_v:
-                    h.save_model_name()
-                    print(f"Saving name of current model")
+                self.keys_pressed.add(key)
 
-        if key_pressed:
-            self.last_ui_input = g.current_time
+        for key in list(self.keys_pressed):
+            if pr.is_key_released(key):
+                self.keys_pressed.remove(key)
+
+        return new_presses
+
+    def handle_keyboard_input(self):
+        new_presses = self.handle_input()
+        if pr.KEY_E in new_presses:
+            if c.settings['is_training']:
+                self.fps_locked = not self.fps_locked
+                if self.fps_locked:
+                    pr.set_target_fps(c.settings['fps'])
+                else:
+                    pr.set_target_fps(0)
+                print(f"Setting FPS locked: {self.fps_locked}")
+        elif pr.KEY_R in new_presses:
+            c.settings['no_render'] = not c.settings['no_render']
+            print(f"Setting rendering to {not c.settings['no_render']}")
+        elif pr.KEY_M in new_presses:
+            c.settings['no_sound'] = not c.settings['no_sound']
+            print(f"Setting sound to {not c.settings['no_sound']}")
+        elif pr.KEY_T in new_presses:
+            c.settings['player_2_human'] = not c.settings['player_2_human']
+            print(f"Setting player 2 human to {c.settings['player_2_human']}")
+        elif pr.KEY_F in new_presses:
+            self.toggle_fullscreen()
+            print(f"Toggling fullscreen")
+        elif pr.KEY_U in new_presses:
+            self.change_resolution()
+            print(f"Changing resolution")
+        elif pr.KEY_P in new_presses:
+            c.settings['paused'] = not c.settings['paused']
+            print(f"Paused game")
+        elif pr.KEY_V in new_presses:
+            h.save_model_name()
+            print(f"Saving name of current model")
 
     def toggle_fullscreen(self):
         self.fullscreen = not self.fullscreen
-        pygame.display.toggle_fullscreen()
+        pr.toggle_fullscreen()
+
+    def rendering_off_message(self):
+        self.begin_drawing()
+        pr.clear_background(pr.BLACK)
+        pr.draw_text("Rendering disabled", 10, 10, 20, pr.WHITE)
+        self.end_drawing()
+
+    def paused(self):
+        self.begin_drawing()
+        self.end_drawing()
 
     def change_resolution(self):
         self.current_resolution_idx = (self.current_resolution_idx + 1) % len(c.resolutions)
-        pygame.display.quit()
-        pygame.display.init()
-        self.reset()
+        self.scaling_factor, self.shift = self.calculate_scaling_and_shift()
+        self.render_texture = pr.load_render_texture(*self.get_resolution())
+        resolution = pr.ffi.new('float[2]', [float(self.get_resolution()[0]), float(self.get_resolution()[1])])
+        pr.set_shader_value(self.fxaa_shader, self.resolution_loc, resolution, pr.SHADER_UNIFORM_VEC2)
+        if self.get_resolution()[0] > 600:
+            self.shader = self.fxaa_shader
+        else:
+            self.shader = self.scanlines_shader
 
-    def create_screen(self):
-        flags = pygame.SCALED | pygame.HWSURFACE | pygame.DOUBLEBUF | pygame.RESIZABLE
-        if self.fullscreen:
-            flags |= pygame.FULLSCREEN
-
-        screen = pygame.display.set_mode(c.resolutions[self.current_resolution_idx], flags = flags, vsync = self.vsync)
-        return screen
-
-    def get_events(self):
-        events = None
-        try:
-            events = pygame.event.get()
-        except:
-            pass
-
-        return events
+        # pr.set_window_size(*self.get_resolution())
 
     def handle_events(self):
-        running = True
-        try:
-            events = self.get_events()
-            self.handle_keyboard_input(events)
-            for event in events:
-                if event.type == pygame.QUIT:
-                    running = False
-                elif event.type == pygame.JOYDEVICEREMOVED:
-                    print(f"Joystick {event.instance_id} disconnected")
-                    pygame.joystick.quit()
-                elif event.type == pygame.JOYDEVICEADDED:
-                    print(f"Joystick connected")
-                    g.controls.init_controls()
-        except:
-            pass
+        self.handle_keyboard_input()
+        return not pr.window_should_close()
 
-        return running
+    def begin_drawing(self):
+        pr.begin_texture_mode(self.render_texture)
 
-    def fade_surface(self, surface, amount=20):
-        dark = pygame.Surface(surface.get_size(), pygame.SRCALPHA)
-        dark.fill((0, 0, 0, amount))
-        surface.blit(dark, (0, 0), special_flags=pygame.BLEND_RGBA_SUB)
+    def end_drawing(self):
+        pr.end_texture_mode()
+        pr.begin_drawing()
+        pr.clear_background(pr.BLACK)
+        pr.begin_shader_mode(self.shader)
+
+        if self.fullscreen:
+            monitor = pr.get_current_monitor()
+            width = pr.get_monitor_width(monitor)
+            height = pr.get_monitor_height(monitor)
+        else:
+            width = pr.get_screen_width()
+            height = pr.get_screen_height()
+
+        scale = min(width / self.get_resolution()[0],
+                    height / self.get_resolution()[1])
+        dest_width = round(self.get_resolution()[0] * scale)
+        dest_height = round(self.get_resolution()[1] * scale)
+        dest_x = (width - dest_width) // 2
+        dest_y = (height - dest_height) // 2
+
+        pr.draw_texture_pro(
+            self.render_texture.texture,
+            pr.Rectangle(0, 0, self.get_resolution()[0], -self.get_resolution()[1]),
+            pr.Rectangle(dest_x, dest_y, dest_width, dest_height),
+            pr.Vector2(0, 0),
+            0,
+            pr.WHITE
+        )
+
+        pr.end_shader_mode()
+        pr.end_drawing()
 
     def tick(self):
-        g.current_time = time.time()
-        self.clock.tick(self.fps)
+        g.current_time = pr.get_time()
 
-    def render(self):
-        # self.fade_surface(self.trail_surface)
-        # self.screen.blit(self.trail_surface, (0, 0))
-        pygame.display.flip()
+    def tuple_to_color(self, color_tuple):
+        if len(color_tuple) == 3:
+            return pr.Color(color_tuple[0], color_tuple[1], color_tuple[2], 255)
+        elif len(color_tuple) == 4:
+            return pr.Color(color_tuple[0], color_tuple[1], color_tuple[2], color_tuple[3])
+        else:
+            raise ValueError("Color tuple should have 3 or 4 elements")
 
     def fill_screen(self, color, dimensions):
-        self.screen.fill((0,0,0))
+        pr.clear_background(pr.BLACK)
         self.draw_rectangle(color, (0,0), dimensions)
 
     def fill_screen_semiopaque_black(self, opacity=10):
-        overlay = pygame.Surface(self.screen.get_size(), pygame.SRCALPHA)
-        overlay.fill((0, 0, 0, opacity))
-        self.screen.blit(overlay, (0, 0))
+        self.begin_drawing()
+        pr.draw_rectangle(0, 0, self.get_resolution()[0], self.get_resolution()[1], pr.Color(0, 0, 0, opacity))
+        self.end_drawing()
 
     def draw_rectangle(self, color, pos, size):
+        color = self.tuple_to_color(color)
         pos = self.world_to_screen_coord(pos)
         size = (self.world_to_screen_length(size[0]), self.world_to_screen_length(size[1]))
-        pygame.draw.rect(self.screen, color, (*pos, *size))
+        pr.draw_rectangle(int(pos[0]), int(pos[1]), int(size[0]), int(size[1]), color)
 
     def draw_transparent_rectangle(self, color, pos, size, opacity):
         pos = self.world_to_screen_coord(pos)
         size = (self.world_to_screen_length(size[0]), self.world_to_screen_length(size[1]))
-        rect_surface = pygame.Surface(size, pygame.SRCALPHA)
-        alpha = int(opacity * 255)
-        transparent_color = (*color, alpha)
-        rect_surface.fill(transparent_color)
-        self.screen.blit(rect_surface, pos)
+        color_with_alpha = pr.Color(color[0], color[1], color[2], int(opacity * 255))
+        pr.draw_rectangle(int(pos[0]), int(pos[1]), int(size[0]), int(size[1]), color_with_alpha)
 
-    def draw_circle(self, pos, radius, color, surface=None):
-        surface = surface if surface is not None else self.screen
+    def draw_circle(self, pos, radius, color):
+        color = self.tuple_to_color(color)
         pos = self.world_to_screen_coord(pos)
         radius = self.world_to_screen_length(radius)
-        pygame.gfxdraw.filled_circle(surface, pos[0], pos[1], radius, color)
-        pygame.gfxdraw.aacircle(surface, pos[0], pos[1], radius, color)
+        pr.draw_circle(int(pos[0]), int(pos[1]), radius, color)
 
     def draw_transparent_circle(self, pos, radius, color, opacity):
         pos = self.world_to_screen_coord(pos)
         radius = self.world_to_screen_length(radius)
-        circle_surface = pygame.Surface((radius * 2, radius * 2), pygame.SRCALPHA)
-        alpha = int(opacity * 255)
-        transparent_color = (*color, alpha)
-        pygame.draw.circle(circle_surface, transparent_color, (radius, radius), radius)
-        self.screen.blit(circle_surface, (pos[0] - radius, pos[1] - radius))
+        color_with_alpha = pr.Color(color[0], color[1], color[2], int(opacity * 255))
+        pr.draw_circle(int(pos[0]), int(pos[1]), radius, color_with_alpha)
 
     def world_to_screen_coord(self, coord):
         x = round(coord[0] * self.scaling_factor + self.shift[0])
@@ -221,164 +251,75 @@ class Framework():
     def world_to_screen_length(self, length):
         return round(length * self.scaling_factor)
 
-    def draw_text(self, text, font_name, color, position, alignment='left', rotation=0.0):
+    def draw_text(self, text, font_name, color, position, alignment='left', rotation=0.0, font_size=20):
+        color = self.tuple_to_color(color)
         position = self.world_to_screen_coord(position)
-        surface = self.fonts[font_name].render(text, True, color)
-        rect = surface.get_rect()
-
-        if rotation != 0.0:
-            surface = pygame.transform.rotate(surface, -rotation)
-            rect = surface.get_rect()
-
-        match alignment:
-            case 'left':
-                self.screen.blit(surface, position)
-            case 'center':
-                rect.center = (position[0], position[1] + rect.height / 2)
-                self.screen.blit(surface, rect)
-            case 'right':
-                rect.center = (position[0] - rect.width / 2, position[1] + rect.height / 2)
-                self.screen.blit(surface, rect)
-
-    def draw_dict(self, dictionary, font_name, pos, line_height=30):
-        # x, y = self.world_to_screen_coord(pos)
-        # line_height = self.world_to_screen_length(line_height)
-
-        # items = list(dictionary.items())
-        # total_height = len(items) * line_height
-        # y -= total_height
-
-        # for key, value in reversed(items):
-        #     text = f"{key}: {value:.2f}"
-        #     text_surface = self.fonts[font_name].render(text, True, (255, 255, 255))  # White text
-        #     text_rect = text_surface.get_rect()
-        #     text_rect.right = x
-        #     text_rect.top = y
-        #     self.screen.blit(text_surface, text_rect)
-        #     y += line_height
-
-
-
-        # x, y = self.world_to_screen_coord(pos)
-        # line_height = self.world_to_screen_length(line_height)
-        # items = list(dictionary.items())
-
-        # # Calculate total height
-        # total_height = len(items) * line_height
-
-        # # Adjust starting y-position
-        # y -= total_height
-
-        # font = self.fonts[font_name]
-        # label_value_gap = self.world_to_screen_length(10)
-        # # Find the widest label for alignment
-        # max_label_width = max(font.size(key)[0] for key in dictionary)
-
-        # for key, value in reversed(items):
-        #     # Render label (key)
-        #     label_surface = font.render(f"{key}:", True, (255, 255, 255))
-        #     label_rect = label_surface.get_rect()
-        #     label_rect.right = x - label_value_gap - max_label_width
-        #     label_rect.top = y
-        #     self.screen.blit(label_surface, label_rect)
-
-        #     # Render value
-        #     value_surface = font.render(str(value), True, (255, 255, 255))
-        #     value_rect = value_surface.get_rect()
-        #     value_rect.left = x - max_label_width
-        #     value_rect.top = y
-        #     self.screen.blit(value_surface, value_rect)
-
-        #     y += line_height
-
-
-        x, y = self.world_to_screen_coord(pos)
+        font_size = self.world_to_screen_length(font_size)
         font = self.fonts[font_name]
-        label_value_gap = self.world_to_screen_length(120)
-        line_height = self.world_to_screen_length(line_height)
+        text_width = pr.measure_text_ex(font, text, font_size, 0).x
+
+
+        if alignment == 'center':
+            position = (position[0] - text_width // 2, position[1])
+        elif alignment == 'right':
+            position = (position[0] - text_width, position[1])
+
+        pr.draw_text_pro(font, text, pr.Vector2(position[0], position[1]), pr.Vector2(0, 0), rotation, font_size, 0, color)
+
+    def draw_dict(self, dictionary, font_name, pos, font_size=20):
+        x, y = pos
+        label_value_gap = 400
+        line_height = 30
         items = list(dictionary.items())
-
-        # Calculate total height
         total_height = len(items) * line_height
-
-        # Adjust starting y-position
         y -= total_height
 
-        # Find the widest label for alignment
-        max_label_width = max(font.size(key)[0] for key in dictionary)
-        gap = self.world_to_screen_length(50)
-
-        # Find the widest integer part and fractional part
         max_int_width = 0
         max_frac_width = 0
         for value in dictionary.values():
             int_part, _, frac_part = f"{value:.2f}".partition('.')
-            max_int_width = max(max_int_width, font.size(int_part)[0])
-            max_frac_width = max(max_frac_width, font.size(frac_part)[0])
+            max_int_width = max(max_int_width, pr.measure_text(int_part, font_size))
+            max_frac_width = max(max_frac_width, pr.measure_text(frac_part, font_size))
 
         for key, value in reversed(items):
-            # Render label (key)
-            label_surface = font.render(f"{key}:", True, (255, 255, 255))
-            label_rect = label_surface.get_rect()
-            label_rect.right = x - label_value_gap - font.size('.')[0]
-            label_rect.top = y
-            self.screen.blit(label_surface, label_rect)
+            label_text = f"{key}:"
+            self.draw_text(label_text, font_name, (255,255,255), (x - label_value_gap - pr.measure_text('.', font_size), y), 'left', 0, font_size)
 
-            # Render value
             int_part, _, frac_part = f"{value:.2f}".partition('.')
-            int_surface = font.render(int_part, True, (255, 255, 255))
-            dot_surface = font.render('.', True, (255, 255, 255))
-            frac_surface = font.render(frac_part, True, (255, 255, 255))
-
-            int_rect = int_surface.get_rect()
-            dot_rect = dot_surface.get_rect()
-            frac_rect = frac_surface.get_rect()
-
-            int_rect.right = x - max_frac_width - font.size('.')[0]
-            int_rect.top = y
-            dot_rect.left = int_rect.right
-            dot_rect.top = y
-            frac_rect.left = dot_rect.right
-            frac_rect.top = y
-
-            self.screen.blit(int_surface, int_rect)
-            self.screen.blit(dot_surface, dot_rect)
-            self.screen.blit(frac_surface, frac_rect)
+            int_x = x - max_frac_width - pr.measure_text('.', font_size)
+            self.draw_text(int_part, font_name, (255,255,255), (int_x, y), 'left', 0, font_size)
+            self.draw_text('.', font_name, (255,255,255), (int_x + pr.measure_text(int_part, font_size), y), 'left', 0, font_size)
+            self.draw_text(frac_part, font_name, (255,255,255), (int_x + pr.measure_text(int_part + '.', font_size), y), 'left', 0, font_size)
 
             y += line_height
 
     def draw_rotated_line_centered(self, pos, length, angle, color, width=1):
+        color = self.tuple_to_color(color)
         pos = self.world_to_screen_coord(pos)
         length = self.world_to_screen_length(length)
         width = self.world_to_screen_length(width)
-        line_surface = pygame.Surface((length, width), pygame.SRCALPHA)
-        line_surface.fill(color)
 
-        rotated_surface = pygame.transform.rotate(line_surface, angle)
+        start_x = pos[0] - length * math.cos(math.radians(angle)) / 2
+        start_y = pos[1] - length * math.sin(math.radians(angle)) / 2
 
-        rect = rotated_surface.get_rect()
-        rect.center = pos
+        end_x = pos[0] + length * math.cos(math.radians(angle)) / 2
+        end_y = pos[1] + length * math.sin(math.radians(angle)) / 2
 
-        self.screen.blit(rotated_surface, rect)
+        pr.draw_line_ex(pr.Vector2(start_x, start_y), pr.Vector2(end_x, end_y), width, color)
 
     def draw_rotated_line(self, pos, length, angle, color, width=1):
+        color = self.tuple_to_color(color)
         pos = self.world_to_screen_coord(pos)
         length = self.world_to_screen_length(length)
         width = self.world_to_screen_length(width)
 
         angle_rad = math.radians(angle)
-        cos_angle = math.cos(angle_rad)
-        sin_angle = math.sin(angle_rad)
+        end_x = pos[0] + length * math.cos(angle_rad)
+        end_y = pos[1] + length * math.sin(angle_rad)
 
-        start_x = pos[0]
-        start_y = pos[1]
-
-        end_x = start_x + length * cos_angle
-        end_y = start_y + length * sin_angle
-
-        pygame.draw.line(self.screen, color, (start_x, start_y), (end_x, end_y), round(width))
+        pr.draw_line_ex(pr.Vector2(pos[0], pos[1]), pr.Vector2(end_x, end_y), width, color)
 
     def close(self):
-        pygame.joystick.quit()
-        pygame.quit()
-
+        for font in self.fonts.values():
+            pr.unload_font(font)
+        pr.close_window()
