@@ -165,16 +165,6 @@ class Game:
         if not running:
             exit()
 
-        i = 0
-        while c.settings['paused']:
-            i += 1
-            running = g.framework.handle_events()
-            if not running:
-                exit()
-
-            if i % 60 == 0:
-                g.framework.paused()
-
         player_1_action = g.controls.game_action_from_model_action(player_1_model_action)
 
         team_1_actions = [player_1_action]
@@ -226,6 +216,16 @@ class Game:
         return self.is_done(scorer)
 
     def update(self, team_1_actions, team_2_actions):
+        i = 0
+        while c.settings['paused']:
+            i += 1
+            running = g.framework.handle_events()
+            if not running:
+                exit()
+
+            if i % 60 == 0:
+                g.framework.paused()
+
         self.current_step += 1
         self.total_steps += 1
 
@@ -543,6 +543,10 @@ def main(ai=False):
         game.team_2_model = opponent_algorithm.load(latest_model_path, env=env)
         print(f"loading model: {latest_model_path}")
         game.team_1_model = opponent_algorithm.load(latest_model_path, env=env)
+
+    if latest_model_path is not None:
+        g.team_1_model_name = latest_model_path.split('/')[-1].split('.')[0].split('_', 1)[1]
+        g.team_2_model_name = latest_model_path.split('/')[-1].split('.')[0].split('_', 1)[1]
 
     running = True
     while running:

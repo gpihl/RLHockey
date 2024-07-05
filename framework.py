@@ -68,6 +68,10 @@ class Framework():
         self.scaling_factor, self.shift = self.calculate_scaling_and_shift()
         pr.set_config_flags(self.flags)
         pr.init_window(1280, 720, "Game")
+        monitor = pr.get_current_monitor()
+        self.monitor_width = pr.get_monitor_width(monitor)
+        self.monitor_height = pr.get_monitor_height(monitor)
+        print(f"{self.monitor_width}, {self.monitor_height}")
         self.render_texture = pr.load_render_texture(*self.get_resolution())
         # pr.set_texture_filter(self.render_texture.texture, pr.TEXTURE_FILTER_ANISOTROPIC_16X)
 
@@ -168,7 +172,12 @@ class Framework():
 
     def toggle_fullscreen(self):
         self.fullscreen = not self.fullscreen
-        pr.toggle_fullscreen()
+        if self.fullscreen:
+            pr.set_window_size(self.monitor_width, self.monitor_height)
+            pr.toggle_fullscreen()
+        else:
+            pr.toggle_fullscreen()
+            pr.set_window_size(1280, 720)
 
     def rendering_off_message(self):
         self.begin_drawing()
@@ -189,6 +198,7 @@ class Framework():
         y_extremes = pr.ffi.new('float[2]', [self.world_to_screen_coord((0, 0))[1], self.world_to_screen_coord((0, c.settings['field_height']))[1]])
         pr.set_shader_value(self.fxaa_shader, self.y_extremes_loc, y_extremes, pr.SHADER_UNIFORM_VEC2)
         if self.get_resolution()[0] > 600:
+            # self.shader = None
             self.shader = self.fxaa_shader
         else:
             # self.shader = self.scanlines_shader
@@ -211,9 +221,8 @@ class Framework():
             pr.begin_shader_mode(self.shader)
 
         if self.fullscreen:
-            monitor = pr.get_current_monitor()
-            width = pr.get_monitor_width(monitor)
-            height = pr.get_monitor_height(monitor)
+            width = self.monitor_width
+            height = self.monitor_height
         else:
             width = pr.get_screen_width()
             height = pr.get_screen_height()

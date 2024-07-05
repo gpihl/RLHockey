@@ -19,7 +19,7 @@ settings = {
     # 'blocked_goals': True,
     'random_starting_locations': True,
     # 'random_starting_locations': False,
-    'resolution': 1,
+    'resolution': 0,
     'field_width': 3000,
     'field_height': 1500,
     # 'field_width': 2097,

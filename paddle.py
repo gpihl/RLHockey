@@ -74,7 +74,7 @@ class Paddle:
             self.limit_speed()
 
             sound_vel = c.gameplay['max_paddle_speed'] * self.dash_charge_power
-            g.sound_handler.play_sound_velocity_based('dash', sound_vel, c.gameplay['max_paddle_speed'], 1.0, self.pos[0], exponent=3, pitch_shift=True)
+            g.sound_handler.play_sound_velocity_based('dash', sound_vel, c.gameplay['max_paddle_speed'], 1.5, self.pos[0], exponent=2, pitch_shift=True)
 
     def dash_direction(self, puck):
         if np.linalg.norm(self.average_velocity) > 0:
@@ -304,9 +304,9 @@ class Paddle:
             self.color = h.modify_hsl(self.color, 0, charge_color_shift * 0.5, charge_color_shift * 0.2)
             self.draw_dash_line(puck)
 
-        if c.settings['is_training']:
+        if c.settings['is_training'] or (not (self.player == 1 and self.team == 1)):
             model_name = g.team_1_model_name if self.team == 1 else g.team_2_model_name
-            g.framework.draw_text(model_name, 'model_name', (255,255,255), (self.pos[0], self.pos[1] + self.radius * 1.2), 'center')
+            g.framework.draw_text(model_name, 'model_name', (255,255,255), (self.pos[0], self.pos[1] - self.radius * 1.4), 'center')
 
         self.draw_paddle(self.pos, self.radius, self.color, reward_alpha, draw_indicator)
 
