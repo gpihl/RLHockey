@@ -29,6 +29,7 @@ settings = {
     # 'fps': 165,
     # 'delta_t': 96,
     'delta_t': 92,
+    'players_per_team': 2,
 }
 
 settings['goal_height'] = 400 * settings['field_width'] / 3000

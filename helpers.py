@@ -186,11 +186,11 @@ def get_latest_model_path(base_path, prefix):
     latest_model = max(models, key=lambda x: int(x.split('_')[-1].split('.')[0]))
     return os.path.join(base_path, latest_model)
 
-def get_latest_model_path_with_algorithm(base_path, algorithm=None, players_per_team=1):
+def get_latest_model_path_with_algorithm(base_path, algorithm=None):
     if algorithm is None:
         algorithm = random.choice(['PPO'])
 
-    models = [f for f in os.listdir(base_path) if f.startswith(f"{players_per_team}_{algorithm}") and f.endswith('.zip')]
+    models = [f for f in os.listdir(base_path) if f.startswith(f"{c.settings['team_size']}_{algorithm}") and f.endswith('.zip')]
     if not models:
         return None, algorithm
 
@@ -210,15 +210,15 @@ def get_random_model_path(base_path, prefix):
     random_model = models[random_index]
     return os.path.join(base_path, random_model)
 
-def get_next_model_path(base_path, algorithm, players_per_team=1):
-    models = [f for f in os.listdir(base_path) if f.startswith(f"{players_per_team}_{algorithm}") and f.endswith('.zip')]
+def get_next_model_path(base_path, algorithm):
+    models = [f for f in os.listdir(base_path) if f.startswith(f"{c.settings['team_size']}_{algorithm}") and f.endswith('.zip')]
     if not models:
         next_model_number = 1
     else:
         latest_model = max(models, key=lambda x: int(x.split('_')[-1].split('.')[0]))
         latest_number = int(latest_model.split('_')[-1].split('.')[0])
         next_model_number = latest_number + 1
-    return os.path.join(base_path, f"{players_per_team}_{algorithm}_{next_model_number}.zip")
+    return os.path.join(base_path, f"{c.settings['team_size']}_{algorithm}_{next_model_number}.zip")
 
 def get_sorted_zip_files(directory):
     dir_path = Path(directory).resolve()
@@ -226,9 +226,9 @@ def get_sorted_zip_files(directory):
     sorted_files = sorted(zip_files, key=lambda x: x.stat().st_mtime)
     return [f.name for f in sorted_files]
 
-def get_random_model_with_algorithm(players_per_team=1):
+def get_random_model_with_algorithm():
     models = get_sorted_zip_files('models')
-    models = list(filter(lambda x: x.startswith(str(players_per_team)), models))
+    models = list(filter(lambda x: x.startswith(str(c.settings['team_size'])), models))
     if len(models) == 0:
         return None, None
 

@@ -20,17 +20,17 @@ def get_algorithm(algorithm_name):
 def simple_clip_range(progress_remaining):
     return 0.2 * (1 - progress_remaining)
 
-def main(players_per_team=1):
+def main():
     c.settings['is_training'] = True
     g.initialize()
     for i in range(c.training['training_iterations']):
-        latest_model_path, training_algorithm = h.get_latest_model_path_with_algorithm(c.training['base_path'], algorithm=None, players_per_team=players_per_team)
-        player_2_model_path, opponent_algorithm = h.get_random_model_with_algorithm(players_per_team)
+        latest_model_path, training_algorithm = h.get_latest_model_path_with_algorithm(c.training['base_path'], algorithm=None)
+        player_2_model_path, opponent_algorithm = h.get_random_model_with_algorithm()
 
         g.current_model_name = latest_model_path
 
-        next_model_path = h.get_next_model_path(c.training['base_path'], training_algorithm, players_per_team)
-        env = make_vec_env(lambda: environment.AirHockeyEnv(players_per_team), n_envs=1)
+        next_model_path = h.get_next_model_path(c.training['base_path'], training_algorithm)
+        env = make_vec_env(lambda: environment.AirHockeyEnv(), n_envs=1)
 
         training_algorithm = get_algorithm(training_algorithm)
         opponent_algorithm = get_algorithm(opponent_algorithm)
@@ -80,5 +80,5 @@ if __name__ == '__main__':
     parser.add_argument("-a", "--ai", action="store_true", help="AI vs AI")
     parser.add_argument("-n", "--number", type=int, default=2, help="Number of players per team")
     args = parser.parse_args()
-    players_per_team = args.number
-    main(players_per_team)
+    c.settings['team_size'] = args.number
+    main()

@@ -3,11 +3,14 @@ import gymnasium as gym
 from gymnasium import spaces
 import numpy as np
 from pprint import pprint
+import constants as c
 
 class AirHockeyEnv(gym.Env):
-    def __init__(self, players_per_team=2):
+    def __init__(self):
         super(AirHockeyEnv, self).__init__()
-        self.game = game.Game(players_per_team)
+        self.game = game.Game()
+
+        team_size = c.settings['team_size']
 
         self.observation_space = {
             "puck_pos":     spaces.Box(low=-1, high=1, shape=(2,), dtype=np.float32),
@@ -18,10 +21,10 @@ class AirHockeyEnv(gym.Env):
             "goal_2_bot_pos": spaces.Box(low=-1, high=1, shape=(2,), dtype=np.float32),
         }
 
-        other_players_positions_team_1 = { f"paddle_{1}_{i}_pos": spaces.Box(low=-1, high=1, shape=(2,), dtype=np.float32) for i in range(2, players_per_team + 1) }
-        other_players_positions_team_2 = { f"paddle_{2}_{i}_pos": spaces.Box(low=-1, high=1, shape=(2,), dtype=np.float32) for i in range(1, players_per_team + 1) }
-        other_players_velocities_team_1 = { f"paddle_{1}_{i}_vel": spaces.Box(low=-1, high=1, shape=(2,), dtype=np.float32) for i in range(1, players_per_team + 1) }
-        other_players_velocities_team_2 = { f"paddle_{2}_{i}_vel": spaces.Box(low=-1, high=1, shape=(2,), dtype=np.float32) for i in range(1, players_per_team + 1) }
+        other_players_positions_team_1 = { f"paddle_{1}_{i}_pos": spaces.Box(low=-1, high=1, shape=(2,), dtype=np.float32) for i in range(2, team_size + 1) }
+        other_players_positions_team_2 = { f"paddle_{2}_{i}_pos": spaces.Box(low=-1, high=1, shape=(2,), dtype=np.float32) for i in range(1, team_size + 1) }
+        other_players_velocities_team_1 = { f"paddle_{1}_{i}_vel": spaces.Box(low=-1, high=1, shape=(2,), dtype=np.float32) for i in range(1, team_size + 1) }
+        other_players_velocities_team_2 = { f"paddle_{2}_{i}_vel": spaces.Box(low=-1, high=1, shape=(2,), dtype=np.float32) for i in range(1, team_size + 1) }
 
         self.observation_space |= {
             **other_players_positions_team_1,

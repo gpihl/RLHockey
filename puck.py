@@ -115,7 +115,9 @@ class Puck:
                 sound_vel = self.vel[0]
 
         if sound_vel != 0:
-            sound_vel = np.linalg.norm(self.vel) * 0.7
+            sound_vel = np.linalg.norm(self.vel)
+            sound_vel /= c.gameplay['max_puck_speed']
+            sound_vel = (sound_vel ** 2) * c.gameplay['max_puck_speed']
             g.sound_handler.play_sound(sound_vel, self.pos[0], 'table_hit', pitch_shift=True)
 
     def handle_corner_collision(self):
@@ -201,7 +203,7 @@ class Puck:
 
             rotational_impulse = np.cross(normal, tangent) * velocity_along_tangent
             rotational_impulse = 0 if np.abs(rotational_impulse) < 0.5 else rotational_impulse
-            self.rot_vel += rotational_impulse * 0.02
+            self.rot_vel += rotational_impulse * 0.13
 
             overlap = self.radius + paddle.radius - dist
             paddle.pos -= normal * (overlap / 2)
@@ -222,9 +224,10 @@ class Puck:
                 goal_dir = (goal_pos - self.pos) / np.linalg.norm(goal_pos - self.pos)
                 self.shot_on_goal_reward[key] = np.dot(self.vel, goal_dir)
 
-            sound_vel = np.linalg.norm(relative_velocity) / 2
+            sound_vel = np.linalg.norm(relative_velocity) / (c.gameplay['max_paddle_speed'] + c.gameplay['max_puck_speed'])
+            sound_vel = (sound_vel ** 2) * (c.gameplay['max_paddle_speed'] + c.gameplay['max_puck_speed'])
             if sound_vel != 0:
-                g.sound_handler.play_sound(sound_vel / 4, self.pos[0], 'paddle')
+                g.sound_handler.play_sound(sound_vel * 0.5, self.pos[0], 'paddle')
                 g.sound_handler.play_sound(sound_vel, self.pos[0], 'table_hit', pitch_shift=True)
 
     def draw(self):
@@ -242,4 +245,4 @@ class Puck:
         g.framework.draw_circle(self.pos, self.radius, h.modify_hsl(puck_color, 0, 0, 0.2))
         g.framework.draw_circle(self.pos, int(7*self.radius / 9), h.modify_hsl(puck_color, 0, 0, 0))
         g.framework.draw_circle(self.pos, int(8*self.radius / 9), h.modify_hsl(puck_color, 0, 0, -0.2))
-        g.framework.draw_rotated_line_centered(self.pos, self.radius * 1.5, -self.rot, puck_color, int(self.radius / 5.0))
+        g.framework.draw_rotated_line_centered(self.pos, self.radius * 1.5, self.rot, puck_color, int(self.radius / 5.0))

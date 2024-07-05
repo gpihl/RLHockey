@@ -73,7 +73,7 @@ class Paddle:
             self.vel += dash_direction * self.dash_charge_power * c.gameplay['dash_impulse'] * (average_speed / c.gameplay['max_paddle_speed'])
             self.limit_speed()
 
-            g.sound_handler.play_sound(c.gameplay['max_paddle_speed'] * self.dash_charge_power / 2, self.pos[0], 'dash', pitch_shift=True)
+            g.sound_handler.play_sound(c.gameplay['max_paddle_speed'] * (self.dash_charge_power ** 2) / 2, self.pos[0], 'dash', pitch_shift=True)
 
     def dash_direction(self, puck):
         if np.linalg.norm(self.average_velocity) > 0:
@@ -87,6 +87,9 @@ class Paddle:
             dash_direction = np.linalg.norm(puck.pos - self.pos)
 
         return dash_direction
+
+    def velocity_alpha(self):
+        return min(1, np.linalg.norm(self.vel) / c.gameplay['max_paddle_speed'])
 
     def limit_speed(self):
         speed = np.linalg.norm(self.vel)
@@ -281,9 +284,10 @@ class Paddle:
             self.pos += (normal * overlap) / 2
             paddle.pos -= (normal * overlap) / 2
 
-            sound_vel = np.linalg.norm(relative_velocity) * 0.7
+            sound_vel = np.linalg.norm(relative_velocity) / (2 * c.gameplay['max_paddle_speed'])
+            sound_vel = sound_vel ** 2
             if sound_vel != 0:
-                g.sound_handler.play_sound(sound_vel, self.pos[0], 'paddle')
+                g.sound_handler.play_sound(sound_vel * c.gameplay['max_paddle_speed'] / 2, self.pos[0], 'paddle')
 
     def draw(self, puck, reward_alpha=None, draw_indicator=True):
         theme_color = g.sound_handler.target_color()

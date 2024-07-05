@@ -7,6 +7,8 @@ in vec4 fragColor;
 // Input uniform values
 uniform sampler2D texture0;
 uniform vec2 resolution;
+uniform vec3 PaddleBuffer[12];
+uniform int paddleCount;
 
 // Output fragment color
 out vec4 finalColor;
@@ -15,6 +17,26 @@ out vec4 finalColor;
 const float FXAA_SPAN_MAX = 8.0;
 const float FXAA_REDUCE_MUL = 1.0/8.0;
 const float FXAA_REDUCE_MIN = 1.0/128.0;
+
+vec3 getPaddleGlow(vec3 color) {
+    vec2 fragCoord = vec2(fragTexCoord.x * resolution.x, (1.0 - fragTexCoord.y) * resolution.y);
+    for (int i = 0; i < paddleCount; i++) {
+        int base = i * 3;  // Each paddle uses 1.5 vec4s
+        vec3 paddleColor = PaddleBuffer[base];
+        vec2 pos = PaddleBuffer[base+1].xy;
+        float radius = PaddleBuffer[base+1].z;
+        float dist = length(fragCoord - pos);
+        float alpha = (dist - radius)/ (radius * 0.3);
+        alpha = clamp(alpha, 0.0, 2.0);
+        alpha = 1.0 - cos(alpha * 3.14159265359);
+        float vel_alpha = PaddleBuffer[base+2].x;
+        // alpha = alpha * 0.2;
+        // alpha = smoothstep(0, 1, alpha);
+        color = mix(color, paddleColor, vel_alpha * alpha * 0.5);  // Adjust glow intensity as needed
+    }
+
+    return color;
+}
 
 void main()
 {
@@ -60,4 +82,62 @@ void main()
         finalColor = vec4(rgbA, 1.0);
     else
         finalColor = vec4(rgbB, 1.0);
+
+    finalColor = vec4(getPaddleGlow(finalColor.xyz), 1.0);
 }
+
+
+
+
+// #version 330
+
+// // Input vertex attributes (from vertex shader)
+// in vec2 fragTexCoord;
+// in vec4 fragColor;
+
+// // Input uniform values
+// uniform vec3 PaddleBuffer[12];
+// uniform int paddleCount;
+// uniform vec2 resolution;
+// uniform sampler2D texture0;
+
+// // Output fragment color
+// out vec4 finalColor;
+
+// // FXAA parameters
+// const float FXAA_SPAN_MAX = 8.0;
+// const float FXAA_REDUCE_MUL = 1.0/8.0;
+// const float FXAA_REDUCE_MIN = 1.0/128.0;
+
+// // float smoothMapToPeak(float x, float maxVal) {
+// //     // Use a cosine function to create a smooth transition
+// //     return maxVal * (1.0 - cos(x * 3.14159265359)); // pi is approximately 3.14159265359
+// // }
+
+// vec3 getPaddleGlow(vec3 color) {
+//     vec2 fragCoord = vec2(fragTexCoord.x * resolution.x, (1.0 - fragTexCoord.y) * resolution.y);
+//     for (int i = 0; i < paddleCount; i++) {
+//         int base = i * 3;  // Each paddle uses 1.5 vec4s
+//         vec3 paddleColor = PaddleBuffer[base];
+//         vec2 pos = PaddleBuffer[base+1].xy;
+//         float radius = PaddleBuffer[base+1].z;
+//         float dist = length(fragCoord - pos);
+//         float alpha = (dist - radius)/ (radius * 0.3);
+//         alpha = clamp(alpha, 0.0, 2.0);
+//         alpha = 1.0 - cos(alpha * 3.14159265359);
+//         float vel_alpha = PaddleBuffer[base+2].x;
+//         // alpha = alpha * 0.2;
+//         // alpha = smoothstep(0, 1, alpha);
+//         color = mix(color, paddleColor, vel_alpha * alpha * 0.5);  // Adjust glow intensity as needed
+//     }
+
+//     return color;
+// }
+
+// void main()
+// {
+//     // vec3 color = fragColor.xyz;
+//     // vec3 color = vec3(0,0,0);
+//     vec3 color = texture(texture0, fragTexCoord).xyz;
+//     finalColor = vec4(getPaddleGlow(color), 1.0);
+// }

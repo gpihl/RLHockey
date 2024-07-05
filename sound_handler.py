@@ -26,7 +26,7 @@ class SoundHandler:
         pygame.mixer.pre_init(44100, -16, 2, 256)
         pygame.mixer.init()
         self.reserved_channels = 8
-        self.total_channels = 42
+        self.total_channels = 64
         pygame.mixer.set_num_channels(self.total_channels)
         self.scales = {}
         self.chords = {}
@@ -52,7 +52,7 @@ class SoundHandler:
         self.pitch_buckets_per_octave = 50
         self.scale_change_period = 20
         self.bg_music_period = 15
-        self.bg_music_last_played = 0
+        self.bg_music_last_played = -100
         self.pitch_octaves = 3
 
         self.current_scale = ''
@@ -73,7 +73,6 @@ class SoundHandler:
         id = self.current_scale_id()
         scale_name = self.scale_id_to_name(id)
         self.current_scale = scale_name
-
         if g.current_time - self.bg_music_last_played > self.bg_music_period:
             self.bg_music_last_played = g.current_time
             self.play_bg_music()
@@ -216,8 +215,9 @@ class SoundHandler:
                 self.active_volumes[f"{name}{i}"] = None
 
     def velocity_to_sound_index(self, velocity):
-        velocity = max(0, min(velocity, c.gameplay['max_puck_speed'] + c.gameplay['max_paddle_speed']))
-        index = int((1 - (velocity / (c.gameplay['max_puck_speed'] + c.gameplay['max_paddle_speed']))) * len(self.scales[self.current_scale])) + 1
+        alpha = 1 - min(1, max(0, velocity / (c.gameplay['max_puck_speed'] + c.gameplay['max_paddle_speed'])))
+        alpha = alpha ** 2
+        index = int(alpha * len(self.scales[self.current_scale])) + 1
         scale_index = self.map_to_scale(index, self.current_scale)
         return str(scale_index)
 
@@ -274,14 +274,14 @@ class SoundHandler:
             self.stop_sound(sound_name)
             self.active_channels[sound_name] = None
 
-        sound_name = f"charge{paddle.player}"
+        sound_name = f"charge{(paddle.team - 1) * 2 + paddle.player}"
         channel = self.active_channels[sound_name]
         volume = self.active_volumes[sound_name]
-        if paddle.charging_dash_initial:
+        if paddle.charging_dash_initial and paddle.charging_alpha() > 0.2:
             if channel is not None:
                 self.change_pan(channel, paddle.pos[0], volume)
             else:
-                self.play_sound(18, paddle.pos[0], sound_name, active=True)
+                self.play_sound(10, paddle.pos[0], sound_name, active=True)
         elif channel is not None:
             self.stop_sound(sound_name)
             self.active_channels[sound_name] = None
@@ -298,7 +298,7 @@ class SoundHandler:
         channel = self.active_channels[sound_name]
         if channel is not None:
             self.active_channels[sound_name] = None
-            channel.fadeout(100)
+            channel.fadeout(300)
 
     def play_sound(self, velocity, x_coord, sound_name, loops=0, pitch_shift=False, active=False, priority=False):
         # print(f"playing: {velocity}, {x_coord}, {sound_name}")
@@ -309,13 +309,13 @@ class SoundHandler:
             sound_name = self.velocity_to_sound_index(velocity)
 
         if sound_name in self.sounds:
-            if g.current_time - self.last_played[sound_name] < 0.05:
+            if g.current_time - self.last_played[sound_name] < 0.05 and priority == False:
                 return
 
             volume = velocity / ((c.gameplay['max_puck_speed'] + c.gameplay['max_paddle_speed']) if sound_name == 'paddle' else (c.gameplay['max_puck_speed']))
             volume = min(0.8, volume)
 
-            if volume < 0.02:
+            if volume < 0.01:
                 return
 
             sound = self.sounds[sound_name]
@@ -331,6 +331,7 @@ class SoundHandler:
                     self.active_volumes[sound_name] = volume
                 channel.set_volume(volume)
                 channel.play(sound, loops=loops)
+
 
                 self.last_played[sound_name] = g.current_time
         else:

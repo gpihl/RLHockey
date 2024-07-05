@@ -16,13 +16,13 @@ import pyray as pr
 class Game:
     _instance = None
 
-    def __new__(cls, players_per_team=2, ai=False):
+    def __new__(cls, ai=False):
         if cls._instance is None:
             cls._instance = super(Game, cls).__new__(cls)
             cls._instance._initialized = False
         return cls._instance
 
-    def __init__(self, players_per_team=2, ai=False):
+    def __init__(self, ai=False):
         if self._initialized:
             self.total_steps = 0
             return
@@ -33,7 +33,6 @@ class Game:
         self.prev_t = g.current_time
         self.curr_t = g.current_time
         self.last_scorer = 2
-        self.players_per_team = players_per_team
         self.paddles_1 = []
         self.paddles_2 = []
         self.reward_breakdown_1 = {'total': 0}
@@ -56,14 +55,14 @@ class Game:
         print("Game initialization done")
 
     def create_objects(self):
-        for i in range(self.players_per_team):
+        for i in range(c.settings['team_size']):
             paddle = Paddle(1, i+1)
-            paddle.team_mates = self.players_per_team
+            paddle.team_mates = c.settings['team_size']
             self.paddles_1.append(paddle)
 
-        for i in range(self.players_per_team):
+        for i in range(c.settings['team_size']):
             paddle = Paddle(2, i+1)
-            paddle.team_mates = self.players_per_team
+            paddle.team_mates = c.settings['team_size']
             self.paddles_2.append(paddle)
 
         self.puck = Puck()
@@ -185,7 +184,7 @@ class Game:
         team_1_actions = [player_1_action]
         team_2_actions = []
 
-        for i in range(self.players_per_team):
+        for i in range(c.settings['team_size']):
             team_2_model_action = self.team_2_model.predict(self.get_observation(2, i+1))[0]
             team_2_action = g.controls.game_action_from_model_action(team_2_model_action)
             team_2_actions.append(team_2_action)
@@ -263,6 +262,8 @@ class Game:
             g.sound_handler.play_goal_sound(c.settings['field_width'])
         elif scorer == 2:
             g.sound_handler.play_goal_sound(0)
+
+        g.framework.update_paddle_data(all_paddles)
 
         if not c.settings['no_render']:
             g.framework.begin_drawing()
@@ -428,7 +429,7 @@ class Game:
     def draw_ui(self):
         g.ui.draw_time_left(self.seconds_left())
         g.ui.draw_score(self.score, self.paddles_1[0], self.paddles_2[0])
-        g.framework.draw_fps(0,0)
+        # g.framework.draw_fps(0,0)
         if c.settings['is_training']:
             # g.ui.draw_reward(self.current_reward, self.round_reward)
             g.ui.draw_steps_left(str(self.total_training_steps_left()))
@@ -511,14 +512,14 @@ class Game:
     def close(self):
         g.framework.close()
 
-def main(ai=False, players_per_team=2):
+def main(ai=False):
     g.initialize()
     c.settings['no_sound'] = False
     c.settings['is_training'] = False
 
-    game = Game(players_per_team, ai)
+    game = Game(ai)
 
-    latest_model_path, opponent_algorithm = h.get_latest_model_path_with_algorithm(c.training['base_path'], 'PPO', players_per_team)
+    latest_model_path, opponent_algorithm = h.get_latest_model_path_with_algorithm(c.training['base_path'], 'PPO')
 
     if opponent_algorithm == 'PPO':
         opponent_algorithm = PPO
@@ -528,7 +529,7 @@ def main(ai=False, players_per_team=2):
         opponent_algorithm = TD3
 
     if latest_model_path:
-        env = make_vec_env(lambda: environment.AirHockeyEnv(players_per_team), n_envs=1)
+        env = make_vec_env(lambda: environment.AirHockeyEnv(), n_envs=1)
         print(f"loading model: {latest_model_path}")
         game.team_2_model = opponent_algorithm.load(latest_model_path, env=env)
         print(f"loading model: {latest_model_path}")
@@ -550,7 +551,7 @@ if __name__ == "__main__":
     parser.add_argument("-a", "--ai", action="store_true", help="AI vs AI")
     parser.add_argument("-n", "--number", type=int, default=2, help="Number of players per team")
     args = parser.parse_args()
-    players_per_team = args.number
+    c.settings['team_size'] = args.number
 
     if args.profile:
         print("Running game with profiling...")
@@ -558,4 +559,4 @@ if __name__ == "__main__":
         print("Profiling complete. Results saved to 'profile_output.prof'")
         print("You can visualize the results using snakeviz: snakeviz profile_output.prof")
     else:
-        main(args.ai, players_per_team)
+        main(args.ai)
