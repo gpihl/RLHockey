@@ -1,39 +1,60 @@
 #version 330
 
-// Input vertex attributes (from vertex shader)
+precision highp float;
+
 in vec2 fragTexCoord;
 in vec4 fragColor;
 
-// Input uniform values
 uniform sampler2D texture0;
 uniform vec2 resolution;
 uniform vec3 PaddleBuffer[12];
+uniform vec3 LightBuffer[4];
 uniform int paddleCount;
 uniform vec2 yExtremes;
 
-// Output fragment color
 out vec4 finalColor;
 
-// FXAA parameters
 const float FXAA_SPAN_MAX = 8.0;
 const float FXAA_REDUCE_MUL = 1.0/8.0;
 const float FXAA_REDUCE_MIN = 1.0/128.0;
 
-vec3 getPaddleGlow(vec3 color) {
-    vec2 fragCoord = vec2(fragTexCoord.x * resolution.x, (1.0 - fragTexCoord.y) * resolution.y);
+float random(vec2 co) {
+    return fract(sin(dot(co.xy, vec2(12.9898, 78.233))) * 43758.5453);
+}
+
+vec3 getPaddleGlow(vec3 color, vec2 fragCoord) {
     for (int i = 0; i < paddleCount; i++) {
-        int base = i * 3;  // Each paddle uses 1.5 vec4s
+        int base = i * 3;
         vec3 paddleColor = PaddleBuffer[base];
         vec2 pos = PaddleBuffer[base+1].xy;
         float radius = PaddleBuffer[base+1].z;
         float dist = length(fragCoord - pos);
-        float alpha = (dist - radius)/ (radius * 0.3);
+        float alpha = (dist - radius) / (radius * 0.3);
         alpha = clamp(alpha, 0.0, 2.0);
         alpha = 1.0 - cos(alpha * 3.14159265359);
         float vel_alpha = PaddleBuffer[base+2].x;
         // alpha = alpha * 0.2;
         // alpha = smoothstep(0, 1, alpha);
-        color = mix(color, paddleColor, vel_alpha * alpha * 0.5);  // Adjust glow intensity as needed
+        color = mix(color, paddleColor, vel_alpha * alpha * 0.5);
+    }
+
+    return color;
+}
+
+vec3 getLightGlow(vec3 color, vec2 fragCoord) {
+    vec3 lightColor = vec3(1.0,1.0,1.0);
+    for (int i = 0; i < 4; i++) {
+        vec2 pos = LightBuffer[i].xy;
+        float intensity = LightBuffer[i].z;
+        float dist = length(fragCoord - pos);
+        float alpha = clamp(1 - dist * 6 / length(resolution), 0.0, 1.0);
+        // alpha = smoothstep(0.0, 1.0, alpha);
+        alpha = pow(alpha, 2);
+
+        float dither = random(fragCoord * 0.05) * 0.02;
+        alpha += dither;
+
+        color = mix(color, lightColor, alpha * intensity * 0.6);
     }
 
     return color;
@@ -89,7 +110,12 @@ void main()
     else
         finalColor = vec4(rgbB, 1.0);
 
-    finalColor = vec4(getPaddleGlow(finalColor.xyz), 1.0);
+    vec2 fragCoord = vec2(fragTexCoord.x * resolution.x, (1.0 - fragTexCoord.y) * resolution.y);
+
+    finalColor = vec4(getPaddleGlow(finalColor.xyz, fragCoord), 1.0);
+
+    // finalColor = vec4(getLightGlow(vec3(0,0,0), fragCoord), 1.0);
+    finalColor = vec4(getLightGlow(finalColor.xyz, fragCoord), 1.0);
 }
 
 

@@ -3,6 +3,7 @@ import math
 import constants as c
 import globals as g
 import helpers as h
+import noise
 
 class Framework():
     _instance = None
@@ -29,10 +30,6 @@ class Framework():
 
         self.render_texture = None
 
-        self.max_paddles = c.settings['team_size'] * 2
-        self.paddle_buffer = pr.ffi.new("float[]", self.max_paddles * 9)  # 2 for position, 3 for color, 1 for radius
-        self.paddle_count = pr.ffi.new("int *", 0)
-
         self.tick()
         self.reset()
 
@@ -55,6 +52,13 @@ class Framework():
         y_extremes = pr.ffi.new('float[2]', [self.world_to_screen_coord((0, 0))[1], self.world_to_screen_coord((0, c.settings['field_height']))[1]])
         pr.set_shader_value(self.fxaa_shader, self.y_extremes_loc, y_extremes, pr.SHADER_UNIFORM_VEC2)
 
+        self.max_paddles = c.settings['team_size'] * 2
+        self.paddle_buffer = pr.ffi.new("float[]", self.max_paddles * 9)  # 2 for position, 3 for color, 1 for radius
+        self.paddle_count = pr.ffi.new("int *", 0)
+
+        self.light_data = pr.ffi.new("float[]", 4 * 3)
+        self.create_light_data()
+
         self.fonts = {
             'reward': font_bold,
             'time_left': font_bold,
@@ -74,6 +78,40 @@ class Framework():
         print(f"{self.monitor_width}, {self.monitor_height}")
         self.render_texture = pr.load_render_texture(*self.get_resolution())
         # pr.set_texture_filter(self.render_texture.texture, pr.TEXTURE_FILTER_ANISOTROPIC_16X)
+
+    def create_light_data(self):
+        y_offset = 0
+        pos1 = self.world_to_screen_coord((c.settings['field_width'] / 4, y_offset))
+        pos2 = self.world_to_screen_coord((3 * c.settings['field_width'] / 4, y_offset))
+        pos3 = self.world_to_screen_coord((c.settings['field_width'] / 4, c.settings['field_height'] - y_offset))
+        pos4 = self.world_to_screen_coord((3 * c.settings['field_width'] / 4, c.settings['field_height'] - y_offset))
+
+        positions = [pos1, pos2, pos3, pos4]
+
+        intensity = 0.7
+        for i, position in enumerate(positions):
+            self.light_data[3*i] = position[0]
+            self.light_data[3*i + 1] = position[1]
+            self.light_data[3*i + 2] = intensity
+
+        scale = 5
+        t = g.current_time
+        noise_value = noise.pnoise1(t * scale)
+        amplitude = 0.05
+        light_intensity = intensity + amplitude * noise_value
+        light_intensity = max(0.0, min(1.0, light_intensity))
+        self.light_data[2] = light_intensity
+
+        scale = 10
+        t = g.current_time
+        noise_value = noise.pnoise1(t * scale)
+        amplitude = 0.1
+        light_intensity = intensity + amplitude * noise_value
+        light_intensity = max(0.0, min(1.0, light_intensity))
+        self.light_data[11] = light_intensity
+
+        location = pr.get_shader_location(self.fxaa_shader, "LightBuffer")
+        pr.set_shader_value_v(self.fxaa_shader, location, self.light_data, pr.SHADER_UNIFORM_VEC3, len(positions) * 3)
 
     def get_resolution(self):
         return c.resolutions[self.current_resolution_idx]
@@ -95,16 +133,9 @@ class Framework():
             self.paddle_buffer[base_index + 6] = paddle.charging_alpha() if paddle.charging_dash else 0
 
         location = pr.get_shader_location(self.fxaa_shader, "PaddleBuffer")
-        if location != -1:
-            pr.set_shader_value_v(self.fxaa_shader, location, self.paddle_buffer, pr.SHADER_UNIFORM_VEC3, len(paddles) * 3)
-        else:
-            print("Failed to find PaddleBuffer in shader")
-
+        pr.set_shader_value_v(self.fxaa_shader, location, self.paddle_buffer, pr.SHADER_UNIFORM_VEC3, len(paddles) * 3)
         location = pr.get_shader_location(self.fxaa_shader, "paddleCount")
-        if location != -1:
-            pr.set_shader_value(self.fxaa_shader, location, self.paddle_count, pr.SHADER_UNIFORM_INT)
-        else:
-            print("Failed to find paddleCount in shader")
+        pr.set_shader_value(self.fxaa_shader, location, self.paddle_count, pr.SHADER_UNIFORM_INT)
 
     def calculate_scaling_and_shift(self):
         x_stretch = (self.get_resolution()[0]) / c.settings['field_width']
@@ -289,7 +320,18 @@ class Framework():
         color = self.tuple_to_color(color)
         pos = self.world_to_screen_coord(pos)
         radius = self.world_to_screen_length(radius)
-        pr.draw_circle(int(pos[0]), int(pos[1]), radius, color)
+        # pr.draw_circle_v(pr.Vector2(*pos), radius, color)
+        pr.draw_circle_sector(pr.Vector2(*pos), radius, 0, 360, max(30, int(radius/2)), color)
+        # pr.draw_circle(int(pos[0]), int(pos[1]), radius, color)
+        # segments = 100
+        # vertices = []
+        # for i in range(segments):
+        #     theta = 2.0 * math.pi * i / segments
+        #     x = pos[0] + radius * math.cos(theta)
+        #     y = pos[1] + radius * math.sin(theta)
+        #     vertices.append(pr.Vector2(x, y))
+        # pr.draw_triangle_fan(vertices, segments, color)
+        # # pr.draw_polygon_fan(vertices, segments, color)
 
     def draw_transparent_circle(self, pos, radius, color, opacity):
         pos = self.world_to_screen_coord(pos)

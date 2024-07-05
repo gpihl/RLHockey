@@ -75,7 +75,7 @@ class Puck:
         self.pos += self.vel * c.settings['delta_t']
 
         self.rot_vel *= (self.friction ** c.settings['delta_t'])
-        self.rot += self.rot_vel
+        self.rot += self.rot_vel * c.settings['delta_t']
 
         for paddle in paddles:
             self.handle_paddle_collision(paddle)
