@@ -191,7 +191,8 @@ class Framework():
         if self.get_resolution()[0] > 600:
             self.shader = self.fxaa_shader
         else:
-            self.shader = self.scanlines_shader
+            # self.shader = self.scanlines_shader
+            self.shader = None
 
         # pr.set_window_size(*self.get_resolution())
 
@@ -206,7 +207,8 @@ class Framework():
         pr.end_texture_mode()
         pr.begin_drawing()
         pr.clear_background(pr.BLACK)
-        pr.begin_shader_mode(self.shader)
+        if not c.settings['is_training'] and self.shader is not None:
+            pr.begin_shader_mode(self.shader)
 
         if self.fullscreen:
             monitor = pr.get_current_monitor()
@@ -232,7 +234,9 @@ class Framework():
             pr.WHITE
         )
 
-        pr.end_shader_mode()
+        if not c.settings['is_training'] and self.shader is not None:
+            pr.end_shader_mode()
+
         pr.end_drawing()
 
     def tick(self):
