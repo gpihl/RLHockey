@@ -246,11 +246,11 @@ class Framework():
     def begin_drawing(self):
         pr.begin_texture_mode(self.render_texture)
 
-    def end_drawing(self, paddles=None):
+    def end_drawing(self, paddles=None, shader=True):
         pr.end_texture_mode()
         pr.begin_drawing()
         pr.clear_background(pr.BLACK)
-        if not c.settings['is_training'] and self.shader is not None:
+        if not c.settings['is_training'] and self.shader is not None and shader:
             pr.begin_shader_mode(self.shader)
 
         if self.fullscreen:
@@ -279,7 +279,7 @@ class Framework():
             pr.WHITE
         )
 
-        if not c.settings['is_training'] and self.shader is not None:
+        if not c.settings['is_training'] and self.shader is not None and shader:
             pr.end_shader_mode()
 
         pr.end_drawing()
@@ -300,9 +300,9 @@ class Framework():
         self.draw_rectangle(color, (0,0), dimensions)
 
     def fill_screen_semiopaque_black(self, opacity=10):
-        self.begin_drawing()
+        pr.begin_drawing()
         pr.draw_rectangle(0, 0, self.get_resolution()[0], self.get_resolution()[1], pr.Color(0, 0, 0, opacity))
-        self.end_drawing()
+        pr.end_drawing()
 
     def draw_rectangle(self, color, pos, size):
         color = self.tuple_to_color(color)

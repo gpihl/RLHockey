@@ -313,18 +313,19 @@ class Game:
             scorer = self.paddles_1[0] if scorer == 1 else self.paddles_2[0]
             position = h.field_mid()
             radius = c.settings['field_height'] / 5
-
+            g.framework.begin_drawing()
+            scorer.draw_paddle(position, radius, scorer.color, draw_indicator=False)
+            g.framework.end_drawing()
+            prev_time = None
             while g.current_time - goal_time < 1:
-                g.framework.begin_drawing()
-                self.render()
-                scorer.draw_paddle(position, radius, scorer.color, draw_indicator=False)
-                if g.current_time - goal_time > 0.7:
-                    opacity = math.floor(255 * (g.current_time - goal_time - 0.7) / 0.3)
+                if g.current_time - goal_time > 0.6:
+                    if prev_time is None:
+                        prev_time = g.current_time
+                    delta_t = g.current_time - prev_time
+                    prev_time = g.current_time
+                    opacity = int(1400 * delta_t)
                     g.framework.fill_screen_semiopaque_black(opacity)
 
-                g.framework.end_drawing()
-
-                # g.framework.render()
                 g.framework.tick()
 
     def get_observation(self, team, player):
