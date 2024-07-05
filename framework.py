@@ -300,9 +300,9 @@ class Framework():
         self.draw_rectangle(color, (0,0), dimensions)
 
     def fill_screen_semiopaque_black(self, opacity=10):
-        pr.begin_drawing()
+        self.begin_drawing()
         pr.draw_rectangle(0, 0, self.get_resolution()[0], self.get_resolution()[1], pr.Color(0, 0, 0, opacity))
-        pr.end_drawing()
+        self.end_drawing(shader=False)
 
     def draw_rectangle(self, color, pos, size):
         color = self.tuple_to_color(color)

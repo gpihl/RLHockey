@@ -317,7 +317,7 @@ class Game:
             scorer.draw_paddle(position, radius, scorer.color, draw_indicator=False)
             g.framework.end_drawing()
             prev_time = None
-            while g.current_time - goal_time < 1:
+            while g.current_time - goal_time < 0.8:
                 if g.current_time - goal_time > 0.6:
                     if prev_time is None:
                         prev_time = g.current_time
