@@ -104,10 +104,6 @@ class Game:
         acceleration = action['acceleration']
         reward = 0
 
-        time_reward = c.rewards["time_reward"]
-        self.register_reward(time_reward, "time_reward", paddle.team)
-        reward += time_reward
-
         vel_reward = np.linalg.norm(paddle.vel) * c.rewards["vel_reward"]
         self.register_reward(vel_reward, "vel_reward", paddle.team)
         reward += vel_reward
@@ -266,9 +262,16 @@ class Game:
         g.framework.update_paddle_data(all_paddles)
 
         if not c.settings['no_render']:
-            g.framework.begin_drawing()
-            self.render()
-            g.framework.end_drawing()
+
+            if c.settings['is_training'] and (not g.framework.fps_locked):
+                if self.current_step % 10 == 0:
+                    g.framework.begin_drawing()
+                    self.render()
+                    g.framework.end_drawing()
+            else:
+                g.framework.begin_drawing()
+                self.render()
+                g.framework.end_drawing()
         else:
             if self.current_step % 60 == 0:
                 g.framework.rendering_off_message()
@@ -290,11 +293,17 @@ class Game:
         team1_reward = sum([paddle.current_reward for paddle in self.paddles_1])
         team2_reward = sum([paddle.current_reward for paddle in self.paddles_2])
         reward = team1_reward - team2_reward
+
+        time_reward = c.rewards["time_reward"]
+        self.register_reward(time_reward, "time_reward", 1)
+        self.register_reward(time_reward, "time_reward", 2)
+        reward += time_reward
+
         self.current_reward = reward
         self.round_reward += reward
         self.total_reward += reward
-        self.stats.update(team1_reward - team2_reward)
-        self.stats.update(team2_reward - team1_reward)
+        self.stats.update(team1_reward - team2_reward - time_reward)
+        self.stats.update(team2_reward - team1_reward - time_reward)
         return reward
 
     def goal_scored_sequence(self, scorer):

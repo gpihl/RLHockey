@@ -308,7 +308,7 @@ class Framework():
 
     def draw_dict(self, dictionary, font_name, pos, font_size=20):
         x, y = pos
-        label_value_gap = 400
+        label_value_gap = 440
         line_height = 30
         items = list(dictionary.items())
         total_height = len(items) * line_height
@@ -317,19 +317,21 @@ class Framework():
         max_int_width = 0
         max_frac_width = 0
         for value in dictionary.values():
-            int_part, _, frac_part = f"{value:.2f}".partition('.')
+            value = round(value)
+            int_part, _, frac_part = f"{value}".partition('.')
             max_int_width = max(max_int_width, pr.measure_text(int_part, font_size))
             max_frac_width = max(max_frac_width, pr.measure_text(frac_part, font_size))
 
         for key, value in reversed(items):
+            value = round(value)
             label_text = f"{key}:"
             self.draw_text(label_text, font_name, (255,255,255), (x - label_value_gap - pr.measure_text('.', font_size), y), 'left', 0, font_size)
 
-            int_part, _, frac_part = f"{value:.2f}".partition('.')
+            int_part, _, frac_part = f"{value}".partition('.')
             int_x = x - max_frac_width - pr.measure_text('.', font_size)
-            self.draw_text(int_part, font_name, (255,255,255), (int_x, y), 'left', 0, font_size)
-            self.draw_text('.', font_name, (255,255,255), (int_x + pr.measure_text(int_part, font_size), y), 'left', 0, font_size)
-            self.draw_text(frac_part, font_name, (255,255,255), (int_x + pr.measure_text(int_part + '.', font_size), y), 'left', 0, font_size)
+            self.draw_text(int_part, font_name, (255,255,255), (int_x, y), 'right', 0, font_size)
+            # self.draw_text('.', font_name, (255,255,255), (int_x + pr.measure_text(int_part, font_size), y), 'left', 0, font_size)
+            # self.draw_text(frac_part, font_name, (255,255,255), (int_x + pr.measure_text(int_part + '.', font_size), y), 'left', 0, font_size)
 
             y += line_height
 
