@@ -175,7 +175,9 @@ class Framework():
         if self.fullscreen:
             pr.set_window_size(self.monitor_width, self.monitor_height)
             pr.toggle_fullscreen()
+            pr.set_window_size(self.monitor_width, self.monitor_height)
         else:
+            pr.set_window_size(1280, 720)
             pr.toggle_fullscreen()
             pr.set_window_size(1280, 720)
 
@@ -221,8 +223,11 @@ class Framework():
             pr.begin_shader_mode(self.shader)
 
         if self.fullscreen:
-            width = self.monitor_width
-            height = self.monitor_height
+            monitor = pr.get_current_monitor()
+            maybe_width = pr.get_monitor_width(monitor)
+            maybe_height = pr.get_monitor_height(monitor)
+            width = self.monitor_width if self.monitor_width >= maybe_width else maybe_width
+            height = self.monitor_height if self.monitor_height >= maybe_height else maybe_height
         else:
             width = pr.get_screen_width()
             height = pr.get_screen_height()
