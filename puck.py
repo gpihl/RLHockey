@@ -15,7 +15,7 @@ class Puck:
         self.vel = np.zeros(2)
         self.rot_vel = 0.0
         self.rot = 0.0
-        self.friction = 0.996
+        self.friction = 0.997
         self.restitution = 0.95
         self.homing = False
         self.homing_target = 1
@@ -94,7 +94,6 @@ class Puck:
     def handle_wall_collision(self):
         sound_vel = self.handle_corner_collision()
 
-
         if sound_vel == 0:
             if self.pos[1] < self.radius:
                 self.pos[1] = self.radius
@@ -115,10 +114,8 @@ class Puck:
                 sound_vel = self.vel[0]
 
         if sound_vel != 0:
-            sound_vel = np.linalg.norm(self.vel)
-            sound_vel /= c.gameplay['max_puck_speed']
-            sound_vel = (sound_vel ** 2) * c.gameplay['max_puck_speed']
-            g.sound_handler.play_sound(sound_vel, self.pos[0], 'table_hit', pitch_shift=True)
+            sound_vel = np.abs(sound_vel)
+            g.sound_handler.play_sound_velocity_based('table_hit', sound_vel, c.gameplay['max_puck_speed'], 1.5, self.pos[0], pitch_shift=True)
 
     def handle_corner_collision(self):
         sound_vel = 0
@@ -193,7 +190,7 @@ class Puck:
 
             impulse_scalar = -(1 + self.restitution) * velocity_along_normal
             impulse_scalar /= (1 / self.radius + 1 / paddle.radius)
-            impulse = 0.9 * impulse_scalar * normal
+            impulse = 0.87 * impulse_scalar * normal
 
             self.vel += impulse / self.radius
             self.limit_speed()
@@ -211,10 +208,10 @@ class Puck:
             paddle.limit_speed()
             self.pos += normal * (overlap / 2)
 
-            if paddle.is_power_dashing():
-                g.sound_handler.play_sound(23, self.pos[0], 'power')
-                self.homing = True
-                self.homing_target = 2 if paddle.player == 1 else 1
+            # if paddle.is_power_dashing():
+            #     g.sound_handler.play_sound(0.5, self.pos[0], 'power')
+                # self.homing = True
+                # self.homing_target = 2 if paddle.player == 1 else 1
 
             if c.settings['is_training']:
                 key = f"{paddle.team}_{paddle.player}"
@@ -224,11 +221,10 @@ class Puck:
                 goal_dir = (goal_pos - self.pos) / np.linalg.norm(goal_pos - self.pos)
                 self.shot_on_goal_reward[key] = np.dot(self.vel, goal_dir)
 
-            sound_vel = np.linalg.norm(relative_velocity) / (c.gameplay['max_paddle_speed'] + c.gameplay['max_puck_speed'])
-            sound_vel = (sound_vel ** 2) * (c.gameplay['max_paddle_speed'] + c.gameplay['max_puck_speed'])
+            sound_vel = np.linalg.norm(relative_velocity)
             if sound_vel != 0:
-                g.sound_handler.play_sound(sound_vel * 0.5, self.pos[0], 'paddle')
-                g.sound_handler.play_sound(sound_vel, self.pos[0], 'table_hit', pitch_shift=True)
+                g.sound_handler.play_sound_velocity_based('paddle', sound_vel, c.gameplay['max_puck_speed'] + c.gameplay['max_paddle_speed'], 1.0, self.pos[0], exponent=4)
+                g.sound_handler.play_sound_velocity_based('table_hit', sound_vel, c.gameplay['max_puck_speed'] + c.gameplay['max_paddle_speed'], 1.5, self.pos[0], pitch_shift=True)
 
     def draw(self):
         intensity = np.linalg.norm(self.vel) * 1.3 / (c.gameplay['max_puck_speed'])

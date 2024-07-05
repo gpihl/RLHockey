@@ -3,14 +3,6 @@ import math
 import constants as c
 import globals as g
 import helpers as h
-import ctypes
-
-# class PaddleData(ctypes.Structure):
-#     _fields_ = [
-#         ("position", ctypes.c_float * 2),
-#         ("color", ctypes.c_float * 3),
-#         ("radius", ctypes.c_float)
-#     ]
 
 class Framework():
     _instance = None
@@ -37,11 +29,6 @@ class Framework():
 
         self.render_texture = None
 
-        # self.max_paddles = 16
-        # PaddleDataArray = PaddleData * self.max_paddles
-        # self.paddle_buffer = PaddleDataArray()
-        # self.paddle_count = ctypes.c_int(0)
-
         self.max_paddles = c.settings['team_size'] * 2
         self.paddle_buffer = pr.ffi.new("float[]", self.max_paddles * 9)  # 2 for position, 3 for color, 1 for radius
         self.paddle_count = pr.ffi.new("int *", 0)
@@ -62,8 +49,11 @@ class Framework():
         self.scanlines_shader = pr.load_shader("shaders/scanlines.vs", "shaders/scanlines.fs")
         self.shader = self.fxaa_shader
         self.resolution_loc = pr.get_shader_location(self.fxaa_shader, "resolution")
+        self.y_extremes_loc = pr.get_shader_location(self.fxaa_shader, "yExtremes")
         resolution = pr.ffi.new('float[2]', [float(self.get_resolution()[0]), float(self.get_resolution()[1])])
         pr.set_shader_value(self.fxaa_shader, self.resolution_loc, resolution, pr.SHADER_UNIFORM_VEC2)
+        y_extremes = pr.ffi.new('float[2]', [self.world_to_screen_coord((0, 0))[1], self.world_to_screen_coord((0, c.settings['field_height']))[1]])
+        pr.set_shader_value(self.fxaa_shader, self.y_extremes_loc, y_extremes, pr.SHADER_UNIFORM_VEC2)
 
         self.fonts = {
             'reward': font_bold,
@@ -98,18 +88,11 @@ class Framework():
             self.paddle_buffer[base_index + 3] = screen_pos[0]
             self.paddle_buffer[base_index + 4] = screen_pos[1]
             self.paddle_buffer[base_index + 5] = self.world_to_screen_length(paddle.radius)
-            self.paddle_buffer[base_index + 6] = paddle.velocity_alpha()
+            self.paddle_buffer[base_index + 6] = paddle.charging_alpha() if paddle.charging_dash else 0
 
-            # print(f"Paddle {i}: Pos=({screen_pos[0]}, {screen_pos[1]}), Color=({self.paddle_buffer[base_index+2]}, {self.paddle_buffer[base_index+3]}, {self.paddle_buffer[base_index+4]}), Radius={self.paddle_buffer[base_index+5]}")
-
-
-        # Debug print
-        # print(f"First paddle data: {self.paddle_buffer[0:6]}")
-
-        # Update the shader uniform
         location = pr.get_shader_location(self.fxaa_shader, "PaddleBuffer")
         if location != -1:
-            pr.set_shader_value_v(self.fxaa_shader, location, self.paddle_buffer, pr.SHADER_UNIFORM_VEC3, self.paddle_count[0] * 3)
+            pr.set_shader_value_v(self.fxaa_shader, location, self.paddle_buffer, pr.SHADER_UNIFORM_VEC3, len(paddles) * 3)
         else:
             print("Failed to find PaddleBuffer in shader")
 
@@ -118,40 +101,6 @@ class Framework():
             pr.set_shader_value(self.fxaa_shader, location, self.paddle_count, pr.SHADER_UNIFORM_INT)
         else:
             print("Failed to find paddleCount in shader")
-
-
-        # # Update the shader uniform
-        # pr.set_shader_value(self.fxaa_shader,
-        #                     pr.get_shader_location(self.fxaa_shader, "PaddleBuffer"),
-        #                     self.paddle_buffer,
-        #                     pr.SHADER_UNIFORM_VEC3)
-        # pr.set_shader_value(self.fxaa_shader,
-        #                     pr.get_shader_location(self.fxaa_shader, "paddleCount"),
-        #                     self.paddle_count,
-        #                     pr.SHADER_UNIFORM_INT)
-
-
-
-
-        # paddle_count = ctypes.c_int(0)
-        # for i, paddle in enumerate(paddles):
-        #     screen_pos = self.world_to_screen_coord(paddle.pos)
-        #     self.paddle_buffer[i].position[0] = screen_pos[0]
-        #     self.paddle_buffer[i].position[1] = screen_pos[1]
-        #     self.paddle_buffer[i].color[0] = paddle.color[0] / 255.0
-        #     self.paddle_buffer[i].color[1] = paddle.color[1] / 255.0
-        #     self.paddle_buffer[i].color[2] = paddle.color[2] / 255.0
-        #     self.paddle_buffer[i].radius = paddle.radius
-
-        # # Update the shader uniform
-        # pr.set_shader_value(self.fxaa_shader,
-        #                     pr.get_shader_location(self.fxaa_shader, "PaddleBuffer"),
-        #                     self.paddle_buffer,
-        #                     pr.SHADER_UNIFORM_FLOAT)
-        # pr.set_shader_value(self.fxaa_shader,
-        #                     pr.get_shader_location(self.fxaa_shader, "paddleCount"),
-        #                     self.paddle_count,
-        #                     pr.SHADER_UNIFORM_INT)
 
     def calculate_scaling_and_shift(self):
         x_stretch = (self.get_resolution()[0]) / c.settings['field_width']
@@ -237,6 +186,8 @@ class Framework():
         self.render_texture = pr.load_render_texture(*self.get_resolution())
         resolution = pr.ffi.new('float[2]', [float(self.get_resolution()[0]), float(self.get_resolution()[1])])
         pr.set_shader_value(self.fxaa_shader, self.resolution_loc, resolution, pr.SHADER_UNIFORM_VEC2)
+        y_extremes = pr.ffi.new('float[2]', [self.world_to_screen_coord((0, 0))[1], self.world_to_screen_coord((0, c.settings['field_height']))[1]])
+        pr.set_shader_value(self.fxaa_shader, self.y_extremes_loc, y_extremes, pr.SHADER_UNIFORM_VEC2)
         if self.get_resolution()[0] > 600:
             self.shader = self.fxaa_shader
         else:
@@ -253,26 +204,6 @@ class Framework():
 
     def end_drawing(self, paddles=None):
         pr.end_texture_mode()
-
-        # if paddles is not None:
-        #     pr.begin_texture_mode(self.paddle_data_texture)
-        #     for i, paddle in enumerate(paddles):
-        #         screen_coords = self.world_to_screen_coord(paddle.pos)
-        #         pr.draw_pixel(i * 2, 0, pr.Color(
-        #             screen_coords[0],
-        #             screen_coords[1],
-        #             int(paddle.radius),
-        #             0,
-        #         ))
-        #         pr.draw_pixel(i * 2 + 1, 0, pr.Color(
-        #             *paddle.color,
-        #             int(paddle.velocity_alpha() * 255)  # Assuming glow_intensity is 0-1
-        #         ))
-        #     pr.end_texture_mode()
-
-        #     pr.set_shader_value(self.fxaa_shader, pr.get_shader_location(self.fxaa_shader, "paddleData"), self.paddle_data_texture.texture, pr.SHADER_UNIFORM_SAMPLER2D)
-        #     pr.set_shader_value(self.fxaa_shader, pr.get_shader_location(self.fxaa_shader, "paddleCount"), pr.ffi.new("int *", len(2 * c.settings['team_size'])), pr.SHADER_UNIFORM_INT)
-
         pr.begin_drawing()
         pr.clear_background(pr.BLACK)
         pr.begin_shader_mode(self.shader)

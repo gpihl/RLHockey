@@ -13,7 +13,7 @@ class Paddle:
         self.color = (0,0,0)
         self.pos = np.zeros(2)
         self.last_pos = np.zeros(2)
-        self.friction = 0.86
+        self.friction = 0.87
         self.max_acceleration = 4.0
         self.magnetic_effect_active = False
         self.original_radius = 72
@@ -73,7 +73,8 @@ class Paddle:
             self.vel += dash_direction * self.dash_charge_power * c.gameplay['dash_impulse'] * (average_speed / c.gameplay['max_paddle_speed'])
             self.limit_speed()
 
-            g.sound_handler.play_sound(c.gameplay['max_paddle_speed'] * (self.dash_charge_power ** 2) / 2, self.pos[0], 'dash', pitch_shift=True)
+            sound_vel = c.gameplay['max_paddle_speed'] * self.dash_charge_power
+            g.sound_handler.play_sound_velocity_based('dash', sound_vel, c.gameplay['max_paddle_speed'], 1.0, self.pos[0], exponent=3, pitch_shift=True)
 
     def dash_direction(self, puck):
         if np.linalg.norm(self.average_velocity) > 0:
@@ -93,12 +94,12 @@ class Paddle:
 
     def limit_speed(self):
         speed = np.linalg.norm(self.vel)
-        if not self.is_dashing:
+        if not self.is_dashing():
             if speed > c.gameplay['max_paddle_speed']:
                 self.vel = (self.vel / speed) * c.gameplay['max_paddle_speed']
         else:
-            if speed > c.gameplay['max_paddle_speed'] + 15:
-                self.vel = (self.vel / speed) * (c.gameplay['max_paddle_speed'] + 15)
+            if speed > c.gameplay['max_paddle_speed'] + 45:
+                self.vel = (self.vel / speed) * (c.gameplay['max_paddle_speed'] + 45)
 
     def is_dashing(self):
         return (g.current_time - self.last_dash_time) < c.gameplay['dash_duration'] * self.dash_charge_power
@@ -110,7 +111,7 @@ class Paddle:
         res = min(1.0, max(0.0, (self.charging_time() / c.gameplay['dash_max_charge_time'] - 1)) * 2)
         return res
 
-    def apply_aim_assist(self, puck, max_assist_strength=0.4):
+    def apply_aim_assist(self, puck, max_assist_strength=0.7):
         future_time = 0.3
         predicted_puck_pos = puck.pos + puck.vel * future_time
 
@@ -198,7 +199,7 @@ class Paddle:
         if self.charging_dash_initial:
             if charging_alpha >= 1.0:
                 self.charging_dash_initial = False
-                g.sound_handler.play_sound(30, self.pos[0], 'full-charge')
+                # g.sound_handler.play_sound(0.5, self.pos[0], 'full-charge')
 
         g.sound_handler.update_paddle_sound(self)
 
@@ -284,19 +285,18 @@ class Paddle:
             self.pos += (normal * overlap) / 2
             paddle.pos -= (normal * overlap) / 2
 
-            sound_vel = np.linalg.norm(relative_velocity) / (2 * c.gameplay['max_paddle_speed'])
-            sound_vel = sound_vel ** 2
+            sound_vel = np.linalg.norm(relative_velocity)
             if sound_vel != 0:
-                g.sound_handler.play_sound(sound_vel * c.gameplay['max_paddle_speed'] / 2, self.pos[0], 'paddle')
+                g.sound_handler.play_sound_velocity_based('paddle', sound_vel, 2 * c.gameplay['max_paddle_speed'], 0.6, self.pos[0], exponent=2)
 
     def draw(self, puck, reward_alpha=None, draw_indicator=True):
         theme_color = g.sound_handler.target_color()
         hue_change = 0.2 if self.team == 1 else -0.2
         self.color = h.modify_hsl(theme_color, hue_change, 0.25, 0.2)
 
-        if self.is_power_dashing():
-            glow = max(0.0, 1.0 - (g.current_time - self.last_dash_time) / c.gameplay['dash_duration'])
-            self.color = h.modify_hsl(self.color, 0, 0, glow*0.5)
+        # if self.is_power_dashing():
+        #     glow = max(0.0, 1.0 - (g.current_time - self.last_dash_time) / c.gameplay['dash_duration'])
+        #     self.color = h.modify_hsl(self.color, 0, 0, glow*0.5)
 
         if self.charging_dash:
             charge_color_shift = min(0.9, self.charging_alpha() * 0.5)
@@ -315,14 +315,14 @@ class Paddle:
 
     def charging_alpha(self):
         charging_time = self.charging_time()
-        return max(0.0, min(1.0, charging_time / c.gameplay['dash_max_charge_time'])) ** (1/2)
+        return max(0.0, min(1.0, charging_time / c.gameplay['dash_max_charge_time'])) ** 1.2
 
     def is_overloaded(self):
         return self.charging_dash and self.full_charge_alpha() > 0
 
     def draw_paddle(self, position, radius, color, reward_alpha=None, draw_indicator=True):
-        if self.is_overloaded():
-            color = h.modify_hsl(color, 0, 0, 0.1 + 0.1 * np.sin(2 * np.pi * g.current_time / self.charge_flash_period))
+        # if self.is_overloaded():
+        #     color = h.modify_hsl(color, 0, 0, 0.1 + 0.1 * np.sin(2 * np.pi * g.current_time / self.charge_flash_period))
 
         if reward_alpha is not None:
             outer_color = h.interpolate_color_rgb((255,0,0), (0,255,0), reward_alpha)

@@ -9,6 +9,7 @@ uniform sampler2D texture0;
 uniform vec2 resolution;
 uniform vec3 PaddleBuffer[12];
 uniform int paddleCount;
+uniform vec2 yExtremes;
 
 // Output fragment color
 out vec4 finalColor;
@@ -40,6 +41,11 @@ vec3 getPaddleGlow(vec3 color) {
 
 void main()
 {
+    if ((1.0 - fragTexCoord.y) * resolution.y < yExtremes.x || (1.0 - fragTexCoord.y) * resolution.y > yExtremes.y) {
+        finalColor = vec4(0,0,0,0);
+        return;
+    }
+
     vec2 inverseResolution = 1.0 / resolution;
 
     vec3 rgbNW = texture(texture0, fragTexCoord + vec2(-1.0, -1.0) * inverseResolution).xyz;

@@ -181,7 +181,7 @@ class SoundHandler:
 
         clip_name = random.choice(clip_names)
         x_coord = int(np.clip(np.random.normal(c.settings['field_width'] / 2, c.settings['field_width'] / 4, 1), 0, c.settings['field_width']))
-        self.play_sound(25, x_coord, clip_name, priority=True)
+        self.play_sound(0.5, x_coord, clip_name, priority=True)
 
     def get_scale_clip_names(self, scale):
         clips_names = list(filter(lambda name: name.rsplit('-', 1)[0] == scale, self.sounds))
@@ -194,7 +194,7 @@ class SoundHandler:
         return [os.path.splitext(f)[0] for f in os.listdir(folder_path) if f.endswith('.wav')]
 
     def play_ambience(self):
-        self.play_sound(40, c.settings['field_width'] / 2, 'ambience', -1, priority=True)
+        self.play_sound(0.5, c.settings['field_width'] / 2, 'ambience', -1, priority=True)
         self.active_channels['ambience'] = None
         self.active_volumes['ambience'] = None
 
@@ -214,9 +214,8 @@ class SoundHandler:
                 self.active_channels[f"{name}{i}"] = None
                 self.active_volumes[f"{name}{i}"] = None
 
-    def velocity_to_sound_index(self, velocity):
-        alpha = 1 - min(1, max(0, velocity / (c.gameplay['max_puck_speed'] + c.gameplay['max_paddle_speed'])))
-        alpha = alpha ** 2
+    def velocity_to_sound_index(self, volume):
+        alpha = 1.0 - volume
         index = int(alpha * len(self.scales[self.current_scale])) + 1
         scale_index = self.map_to_scale(index, self.current_scale)
         return str(scale_index)
@@ -262,26 +261,26 @@ class SoundHandler:
         self.set_pan(channel, volume, x_coord)
 
     def update_paddle_sound(self, paddle):
-        sound_name = f"overload{(paddle.team - 1) * 2 + paddle.player}"
-        channel = self.active_channels[sound_name]
-        volume = self.active_volumes[sound_name]
-        if paddle.is_overloaded():
-            if channel is not None:
-                self.change_pan(channel, paddle.pos[0], volume)
-            else:
-                self.play_sound(15, paddle.pos[0], sound_name, active=True)
-        elif channel is not None:
-            self.stop_sound(sound_name)
-            self.active_channels[sound_name] = None
+        # sound_name = f"overload{(paddle.team - 1) * 2 + paddle.player}"
+        # channel = self.active_channels[sound_name]
+        # volume = self.active_volumes[sound_name]
+        # if paddle.is_overloaded():
+        #     if channel is not None:
+        #         self.change_pan(channel, paddle.pos[0], volume)
+        #     else:
+        #         self.play_sound(0.3, paddle.pos[0], sound_name, active=True)
+        # elif channel is not None:
+        #     self.stop_sound(sound_name)
+        #     self.active_channels[sound_name] = None
 
         sound_name = f"charge{(paddle.team - 1) * 2 + paddle.player}"
         channel = self.active_channels[sound_name]
         volume = self.active_volumes[sound_name]
-        if paddle.charging_dash_initial and paddle.charging_alpha() > 0.2:
+        if paddle.charging_dash_initial and paddle.charging_alpha() > 0.1:
             if channel is not None:
                 self.change_pan(channel, paddle.pos[0], volume)
             else:
-                self.play_sound(10, paddle.pos[0], sound_name, active=True)
+                self.play_sound(0.3, paddle.pos[0], sound_name, active=True)
         elif channel is not None:
             self.stop_sound(sound_name)
             self.active_channels[sound_name] = None
@@ -292,7 +291,7 @@ class SoundHandler:
             self.stop_sound(sound_name)
 
         for sound_name in selected_notes:
-            self.play_sound(c.gameplay['max_puck_speed'] / 4, x, str(sound_name), priority=True)
+            self.play_sound(0.2, x, str(sound_name), priority=True)
 
     def stop_sound(self, sound_name):
         channel = self.active_channels[sound_name]
@@ -300,27 +299,31 @@ class SoundHandler:
             self.active_channels[sound_name] = None
             channel.fadeout(300)
 
-    def play_sound(self, velocity, x_coord, sound_name, loops=0, pitch_shift=False, active=False, priority=False):
-        # print(f"playing: {velocity}, {x_coord}, {sound_name}")
+    def play_sound_velocity_based(self, sound_name, velocity, max_velocity, volume, x_coord, exponent=2, pitch_shift=False):
+        alpha = velocity / max_velocity
+        alpha = min(1.0, max(0.0, alpha))
+        alpha = alpha ** exponent
+        final_volume = alpha * volume
+        self.play_sound(final_volume, x_coord, sound_name, loops=False, pitch_shift=pitch_shift)
+
+    def play_sound(self, volume, x_coord, sound_name, loops=0, pitch_shift=False, active=False, priority=False):
+        volume *= 0.7
         if c.settings['is_training'] and c.settings['no_sound']:
             return
 
         if sound_name == 'paddle':
-            sound_name = self.velocity_to_sound_index(velocity)
+            sound_name = self.velocity_to_sound_index(volume)
 
         if sound_name in self.sounds:
-            if g.current_time - self.last_played[sound_name] < 0.05 and priority == False:
+            if g.current_time - self.last_played[sound_name] < 0.05 and priority == False and (not sound_name == 'dash'):
                 return
-
-            volume = velocity / ((c.gameplay['max_puck_speed'] + c.gameplay['max_paddle_speed']) if sound_name == 'paddle' else (c.gameplay['max_puck_speed']))
-            volume = min(0.8, volume)
 
             if volume < 0.01:
                 return
 
             sound = self.sounds[sound_name]
             if pitch_shift:
-                sound = self.pitch_shift_hashed(sound, sound_name, 1 + volume)
+                sound = self.pitch_shift_hashed(sound, sound_name, 1.4 - volume/2)
 
             channel = self.find_channel(priority=priority)
 
