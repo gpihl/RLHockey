@@ -26,11 +26,12 @@ void main()
         float intensity = dot(localDir, lightDir);
         intensity *= pow(1 - (lightDist / length(resolution)), 2);
 
-        intensity *= pow(localDist * 100 / length(resolution), 2);
+        // intensity *= pow(localDist * 100 / length(resolution), 2);
+        intensity *= -sin(localDist * 300 / length(resolution));
 
         float light_intensity = LightBuffer[i].z;
 
-        color = mix(color, vec4(1,1,1,1), intensity * 0.3 * light_intensity);
+        color = mix(color, vec4(1,1,1,1), intensity * 0.35 * light_intensity);
     }
 
     finalColor = color;

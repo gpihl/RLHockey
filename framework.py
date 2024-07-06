@@ -153,7 +153,7 @@ class Framework():
         pr.end_shader_mode()
 
     def add_temporary_particles(self, pos, vel, colors):
-        n = int(vel / 10)
+        n = int(vel / 15)
         particles = Particle.random_particles(pos, n, colors)
         self.temporary_particles += particles
 

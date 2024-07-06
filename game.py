@@ -445,7 +445,7 @@ class Game:
     def draw_ui(self):
         g.ui.draw_time_left(self.seconds_left())
         g.ui.draw_score(self.score, self.paddles_1[0], self.paddles_2[0])
-        g.framework.draw_fps(0,0)
+        # g.framework.draw_fps(0,0)
         if c.settings['is_training']:
             # g.ui.draw_reward(self.current_reward, self.round_reward)
             g.ui.draw_steps_left(str(self.total_training_steps_left()))

@@ -291,6 +291,10 @@ class Paddle:
                 g.framework.add_temporary_particles(self.pos - self.radius * normal, sound_vel, [self.color, paddle.color])
 
     def draw(self, puck, reward_alpha=None, draw_indicator=True):
+        if c.settings['is_training'] or (not (self.player == 1 and self.team == 1)):
+            model_name = g.team_1_model_name if self.team == 1 else g.team_2_model_name
+            g.framework.draw_text(model_name, 'model_name', (255,255,255), (self.pos[0], self.pos[1] - self.radius * 1.4), 'center')
+
         g.framework.begin_drawing_paddle(self)
         theme_color = g.sound_handler.target_color()
         hue_change = 0.2 if self.team == 1 else -0.2
@@ -305,10 +309,6 @@ class Paddle:
             self.color = h.interpolate_color_rgb(self.color, (255,0,0), charge_color_shift)
             self.color = h.modify_hsl(self.color, 0, charge_color_shift * 0.5, charge_color_shift * 0.2)
             self.draw_dash_line(puck)
-
-        if c.settings['is_training'] or (not (self.player == 1 and self.team == 1)):
-            model_name = g.team_1_model_name if self.team == 1 else g.team_2_model_name
-            g.framework.draw_text(model_name, 'model_name', (255,255,255), (self.pos[0], self.pos[1] - self.radius * 1.4), 'center')
 
         self.draw_paddle(self.pos, self.radius, self.color, reward_alpha, draw_indicator)
         g.framework.end_drawing_paddle()
