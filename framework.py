@@ -158,7 +158,7 @@ class Framework():
         self.temporary_particles += particles
 
     def update_light_intensities(self):
-        intensity = 0.7
+        intensity = 0.75
         intensities = [intensity] * 4
         scale = 5
         t = g.current_time
