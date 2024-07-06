@@ -17,6 +17,7 @@ class Puck:
         self.rot = 0.0
         self.friction = 0.997
         self.restitution = 0.95
+        self.color = (0,0,0)
         self.homing = False
         self.homing_target = 1
         self.last_collider = None
@@ -92,30 +93,35 @@ class Puck:
         return delta_vel * epsilon
 
     def handle_wall_collision(self):
-        sound_vel = self.handle_corner_collision()
+        sound_vel, normal = self.handle_corner_collision()
 
         if sound_vel == 0:
             if self.pos[1] < self.radius:
                 self.pos[1] = self.radius
                 self.vel[1] = -self.vel[1] * self.wall_elasticity
                 sound_vel = self.vel[1]
+                normal = np.array([0,1])
             elif self.pos[1] > c.settings['field_height'] - self.radius:
                 self.pos[1] = c.settings['field_height'] - self.radius
                 self.vel[1] = -self.vel[1] * self.wall_elasticity
                 sound_vel = self.vel[1]
+                normal = np.array([0,-1])
 
             if self.pos[0] < self.radius and not (self.pos[1] < h.goal_top() and self.pos[1] > h.goal_bottom()):
                 self.pos[0] = self.radius
                 self.vel[0] = -self.vel[0] * self.wall_elasticity
                 sound_vel = self.vel[0]
+                normal = np.array([1,0])
             elif self.pos[0] > c.settings['field_width'] - self.radius and not (self.pos[1] < h.goal_top() and self.pos[1] > h.goal_bottom()):
                 self.pos[0] = c.settings['field_width'] - self.radius
                 self.vel[0] = -self.vel[0] * self.wall_elasticity
                 sound_vel = self.vel[0]
+                normal = np.array([-1,0])
 
         if sound_vel != 0:
             sound_vel = np.abs(sound_vel)
             g.sound_handler.play_sound_velocity_based('table_hit', sound_vel, c.gameplay['max_puck_speed'], 1.5, self.pos[0], pitch_shift=True)
+            g.framework.add_temporary_particles(self.pos - self.radius * normal, sound_vel, [self.color])
 
     def handle_corner_collision(self):
         sound_vel = 0
@@ -133,14 +139,14 @@ class Puck:
             corner_circle_pos = h.corner_bot_right()
 
         if corner_circle_pos is None:
-            return sound_vel
+            return sound_vel, None
 
         corner_circle_pos_dist = np.linalg.norm(corner_circle_pos - self.pos)
         corner_circle_pos_dir = (corner_circle_pos - self.pos) / corner_circle_pos_dist
 
         overlap = corner_circle_pos_dist + self.radius - corner_radius
         if overlap <= 0:
-            return sound_vel
+            return sound_vel, None
 
         self.pos += corner_circle_pos_dir * np.ceil(overlap)
 
@@ -148,7 +154,7 @@ class Puck:
         self.vel -= projection * (1 + self.wall_elasticity)
 
         sound_vel = np.linalg.norm(projection)
-        return sound_vel
+        return sound_vel, -corner_circle_pos_dir
 
     def limit_speed(self):
         speed = np.linalg.norm(self.vel)
@@ -226,11 +232,14 @@ class Puck:
                 g.sound_handler.play_sound_velocity_based('paddle', sound_vel, c.gameplay['max_puck_speed'] + c.gameplay['max_paddle_speed'], 1.0, self.pos[0], exponent=4)
                 g.sound_handler.play_sound_velocity_based('table_hit', sound_vel, c.gameplay['max_puck_speed'] + c.gameplay['max_paddle_speed'], 1.5, self.pos[0], pitch_shift=True)
 
+            g.framework.add_temporary_particles(self.pos - self.radius * normal, sound_vel, [self.color, paddle.color])
+
     def draw(self):
         intensity = np.linalg.norm(self.vel) * 1.3 / (c.gameplay['max_puck_speed'])
         intensity = max(min(intensity, 1.0), 0.0)
         puck_color = g.sound_handler.target_color()
         puck_color = h.modify_hsl(puck_color, 0.05, 0, 0.3 * intensity + 0.2)
+        self.color = puck_color
 
         if self.homing:
             puck_color = h.set_l(puck_color, 0.9)

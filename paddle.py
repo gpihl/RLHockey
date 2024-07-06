@@ -288,8 +288,10 @@ class Paddle:
             sound_vel = np.linalg.norm(relative_velocity)
             if sound_vel != 0:
                 g.sound_handler.play_sound_velocity_based('paddle', sound_vel, 2 * c.gameplay['max_paddle_speed'], 0.6, self.pos[0], exponent=2)
+                g.framework.add_temporary_particles(self.pos - self.radius * normal, sound_vel, [self.color, paddle.color])
 
     def draw(self, puck, reward_alpha=None, draw_indicator=True):
+        g.framework.begin_drawing_paddle(self)
         theme_color = g.sound_handler.target_color()
         hue_change = 0.2 if self.team == 1 else -0.2
         self.color = h.modify_hsl(theme_color, hue_change, 0.25, 0.2)
@@ -309,6 +311,7 @@ class Paddle:
             g.framework.draw_text(model_name, 'model_name', (255,255,255), (self.pos[0], self.pos[1] - self.radius * 1.4), 'center')
 
         self.draw_paddle(self.pos, self.radius, self.color, reward_alpha, draw_indicator)
+        g.framework.end_drawing_paddle()
 
     def charging_time(self):
         return g.current_time - self.charge_start_time

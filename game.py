@@ -65,6 +65,8 @@ class Game:
             paddle.team_mates = c.settings['team_size']
             self.paddles_2.append(paddle)
 
+        g.paddles = self.paddles_1 + self.paddles_2
+
         self.puck = Puck()
 
     def reset(self):
@@ -259,6 +261,7 @@ class Game:
         elif scorer == 2:
             g.sound_handler.play_goal_sound(0)
 
+        g.framework.update_particles()
         g.framework.update_paddle_data(all_paddles)
         g.framework.create_light_data()
 
@@ -406,6 +409,8 @@ class Game:
             for paddle in self.paddles_1 + self.paddles_2:
                 paddle.draw(self.puck)
         self.draw_goals()
+        self.draw_lights()
+        g.framework.draw_particles()
         self.draw_ui()
 
     def get_reward_alpha(self, paddles, other_paddles):
@@ -471,6 +476,21 @@ class Game:
         g.framework.draw_circle(h.goal_bot_pos(1), goal_width / 2, goal1_color)
         g.framework.draw_circle(h.goal_top_pos(2), goal_width / 2, goal2_color)
         g.framework.draw_circle(h.goal_bot_pos(2), goal_width / 2, goal2_color)
+
+    def draw_lights(self):
+        height = 8
+        width = 40
+        pos1 = (c.settings['field_width'] / 4 - width/2, 0)
+        pos2 = (3 * c.settings['field_width'] / 4 - width/2, 0)
+        pos3 = (c.settings['field_width'] / 4 - width/2, c.settings['field_height'] - height)
+        pos4 = (3 * c.settings['field_width'] / 4 - width/2, c.settings['field_height'] - height)
+        positions = [pos1, pos2, pos3, pos4]
+        for i, pos in enumerate(positions):
+            intensity = g.framework.light_intensities[i]
+            bright = int(255 * (intensity + 0.15))
+            bright = max(0, min(255, bright))
+            color = (bright, bright, bright)
+            g.framework.draw_rectangle(color, pos, (width, height))
 
     def draw_field_lines(self):
         color = self.background_color

@@ -49,7 +49,7 @@ vec3 getLightGlow(vec3 color, vec2 fragCoord) {
         float dist = length(fragCoord - pos);
         float alpha = clamp(1 - dist * 6 / length(resolution), 0.0, 1.0);
         // alpha = smoothstep(0.0, 1.0, alpha);
-        alpha = pow(alpha, 2);
+        alpha = pow(alpha, 3);
 
         float dither = random(fragCoord * 0.05) * 0.02;
         alpha += dither;

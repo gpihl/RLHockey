@@ -9,6 +9,7 @@ device = None
 sound_handler = None
 ui = None
 joystick = None
+paddles = []
 
 def initialize():
     global sound_handler, ui, framework, controls, device, current_time, controller_type, current_model_name, team_1_model_name, team_2_model_name
