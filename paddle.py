@@ -295,7 +295,9 @@ class Paddle:
             model_name = g.team_1_model_name if self.team == 1 else g.team_2_model_name
             g.framework.draw_text(model_name, 'model_name', (255,255,255), (self.pos[0], self.pos[1] - self.radius * 1.4), 'center')
 
-        g.framework.begin_drawing_paddle(self)
+        if not c.settings['is_training']:
+            g.framework.begin_drawing_paddle(self)
+
         theme_color = g.sound_handler.target_color()
         hue_change = 0.2 if self.team == 1 else -0.2
         self.color = h.modify_hsl(theme_color, hue_change, 0.25, 0.2)
@@ -311,7 +313,8 @@ class Paddle:
             self.draw_dash_line(puck)
 
         self.draw_paddle(self.pos, self.radius, self.color, reward_alpha, draw_indicator)
-        g.framework.end_drawing_paddle()
+        if not c.settings['is_training']:
+            g.framework.end_drawing_paddle()
 
     def charging_time(self):
         return g.current_time - self.charge_start_time
@@ -330,7 +333,7 @@ class Paddle:
         if reward_alpha is not None:
             outer_color = h.interpolate_color_rgb((255,0,0), (0,255,0), reward_alpha)
         else:
-            outer_color = h.set_l(color, 0.75)
+            outer_color = h.set_l(color, 0.87)
 
         self.draw_calls(position, radius, color, outer_color, draw_indicator)
 

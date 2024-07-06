@@ -410,7 +410,8 @@ class Game:
                 paddle.draw(self.puck)
         self.draw_goals()
         self.draw_lights()
-        g.framework.draw_particles()
+        if not c.settings['is_training']:
+            g.framework.draw_particles()
         self.draw_ui()
 
     def get_reward_alpha(self, paddles, other_paddles):

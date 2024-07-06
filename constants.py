@@ -1,5 +1,4 @@
 resolutions = [
-    # (3840, 2160),
     (2560, 1440),
     (1920, 1080),
     (1280, 720),
@@ -55,13 +54,13 @@ settings['delta_t'] /= settings['fps']
 rewards = {
     'time_reward': -0.4,
     'vel_reward': -0.01,
-    'goal': 400,
+    'goal': 1000,
     'team_mate_proximity': -0.1,
-    'wrong_side_of_puck': -0.8,
-    'puck_proximity': 1.0,
+    'wrong_side_of_puck': -0.4,
+    'puck_proximity': 0.5,
     'goal_puck_proximity': 0.5,
-    'shot': 0.8,
-    'shot_toward_goal': 1.0,
+    'shot': 2.0,
+    'shot_toward_goal': 8.0,
     'pointless_motion': -0.4,
     'normalization': 1.0
 }
