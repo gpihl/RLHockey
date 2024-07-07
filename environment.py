@@ -15,6 +15,7 @@ class AirHockeyEnv(gym.Env):
         self.observation_space = {
             "puck_pos":     spaces.Box(low=-1, high=1, shape=(2,), dtype=np.float32),
             "puck_vel":     spaces.Box(low=-1, high=1, shape=(2,), dtype=np.float32),
+            "puck_rot_vel": spaces.Box(low=-1, high=1, shape=(1,), dtype=np.float32),
             "goal_1_top_pos": spaces.Box(low=-1, high=1, shape=(2,), dtype=np.float32),
             "goal_1_bot_pos": spaces.Box(low=-1, high=1, shape=(2,), dtype=np.float32),
             "goal_2_top_pos": spaces.Box(low=-1, high=1, shape=(2,), dtype=np.float32),
@@ -35,7 +36,7 @@ class AirHockeyEnv(gym.Env):
 
         self.observation_space = spaces.Dict(self.observation_space)
 
-        self.action_space = spaces.Box(low=-1.0, high=1.0, shape=(2,), dtype=np.float32)
+        self.action_space = spaces.Box(low=-1.0, high=1.0, shape=(3,), dtype=np.float32)
 
     def reset(self, seed=None, **kwargs):
         print("Resetting environment")

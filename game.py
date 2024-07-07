@@ -49,6 +49,9 @@ class Game:
         self.create_objects()
         g.controls.stick = g.controls.init_controls()
         self.reset()
+        self.max_paddle_speed = 0
+        self.max_puck_speed = 0
+        self.max_puck_spin = 0
 
         print("Game initialization done")
 
@@ -253,12 +256,13 @@ class Game:
         elif scorer == 2:
             g.sound_handler.play_goal_sound(0)
 
-        g.framework.update_particles()
-        g.framework.update_paddle_data(all_paddles)
-        g.field.update(self.puck)
-        g.framework.update_object_data(self.paddles_1 + self.paddles_2 + [self.puck])
-        paddle_lights = list(map(lambda x: x.light, all_paddles))
-        g.framework.update_light_data(g.field.lights + paddle_lights + [self.puck.light])
+        if not c.settings["is_training"]:
+            g.framework.update_particles()
+            g.framework.update_paddle_data(all_paddles)
+            g.field.update(self.puck)
+            g.framework.update_object_data(self.paddles_1 + self.paddles_2 + [self.puck])
+            paddle_lights = list(map(lambda x: x.light, all_paddles))
+            g.framework.update_light_data(g.field.lights + paddle_lights + [self.puck.light])
 
         if not c.settings["no_render"]:
             if c.settings["is_training"] and (not g.framework.fps_locked):
@@ -271,6 +275,17 @@ class Game:
                 g.framework.rendering_off_message()
 
         g.framework.tick()
+
+        # self.max_puck_speed = max(self.max_puck_speed, np.linalg.norm(self.puck.vel))
+        # for paddle in all_paddles:
+        #     self.max_paddle_speed = max(self.max_paddle_speed, np.linalg.norm(paddle.vel))
+
+        # self.max_puck_spin = max(self.max_puck_spin, np.abs(self.puck.rot_vel))
+
+        # if self.current_step % 60 == 0:
+        #     print(f"puck_speed: {self.max_puck_speed}")
+        #     print(f"puck_spin: {self.max_puck_spin}")
+        #     print(f"paddle_speed: {self.max_paddle_speed}")
 
         return scorer
 
@@ -320,11 +335,15 @@ class Game:
 
     def get_observation(self, team, player):
         player = player - 1
+        max_puck_speed = 60
+        max_paddle_speed = 110
+        max_puck_spin = 130
 
         if team == 1:
             obs = {
                 "puck_pos":         self.paddles_1[player].get_relative_pos_of_puck_obs(self.puck),
-                "puck_vel":         h.scale(self.puck.vel, c.gameplay["max_puck_speed"], c.gameplay["max_puck_speed"]),
+                "puck_vel":         h.scale_v(self.puck.vel, max_puck_speed, max_puck_speed),
+                "puck_rot_vel":     h.scale(self.puck.rot_vel, max_puck_spin),
                 "goal_1_top_pos":   self.paddles_1[player].get_relative_pos_of_goal_1_top(),
                 "goal_1_bot_pos":   self.paddles_1[player].get_relative_pos_of_goal_1_bot(),
                 "goal_2_top_pos":   self.paddles_1[player].get_relative_pos_of_goal_2_top(),
@@ -336,8 +355,8 @@ class Game:
 
             players_positions_team_1 = { f"paddle_{1}_{i+2}_pos": self.paddles_1[player].get_relative_pos_of_paddle_obs(paddle) for i, paddle in enumerate(other_paddles_on_team) }
             players_positions_team_2 = { f"paddle_{2}_{i+1}_pos": self.paddles_1[player].get_relative_pos_of_paddle_obs(paddle) for i, paddle in enumerate(self.paddles_2) }
-            players_velocities_team_1 = { f"paddle_{1}_{i+1}_vel": h.scale(paddle.vel, c.gameplay["max_paddle_speed"], c.gameplay["max_paddle_speed"]) for i, paddle in enumerate(all_paddles_on_team) }
-            players_velocities_team_2 = { f"paddle_{2}_{i+1}_vel": h.scale(paddle.vel, c.gameplay["max_paddle_speed"], c.gameplay["max_paddle_speed"]) for i, paddle in enumerate(self.paddles_2) }
+            players_velocities_team_1 = { f"paddle_{1}_{i+1}_vel": h.scale_v(paddle.vel, max_paddle_speed, max_paddle_speed) for i, paddle in enumerate(all_paddles_on_team) }
+            players_velocities_team_2 = { f"paddle_{2}_{i+1}_vel": h.scale_v(paddle.vel, max_paddle_speed, max_paddle_speed) for i, paddle in enumerate(self.paddles_2) }
 
             obs |= {
                 **players_positions_team_1,
@@ -349,7 +368,8 @@ class Game:
         elif team == 2:
             obs = {
                 "puck_pos":         self.paddles_2[player].get_relative_pos_of_puck_obs(self.puck),
-                "puck_vel":         h.scale(self.puck.vel, c.gameplay["max_puck_speed"], c.gameplay["max_puck_speed"]),
+                "puck_vel":         h.scale_v(self.puck.vel, max_puck_speed, max_puck_speed),
+                "puck_rot_vel":     h.scale(self.puck.rot_vel, max_puck_spin),
                 "goal_1_top_pos":   self.paddles_2[player].get_relative_pos_of_goal_2_top(),
                 "goal_1_bot_pos":   self.paddles_2[player].get_relative_pos_of_goal_2_bot(),
                 "goal_2_top_pos":   self.paddles_2[player].get_relative_pos_of_goal_1_top(),
@@ -361,8 +381,8 @@ class Game:
 
             players_positions_team_1 = { f"paddle_{1}_{i+2}_pos": self.paddles_2[player].get_relative_pos_of_paddle_obs(paddle) for i, paddle in enumerate(other_paddles_on_team) }
             players_positions_team_2 = { f"paddle_{2}_{i+1}_pos": self.paddles_2[player].get_relative_pos_of_paddle_obs(paddle) for i, paddle in enumerate(self.paddles_1) }
-            players_velocities_team_1 = { f"paddle_{1}_{i+1}_vel": h.scale(paddle.vel, c.gameplay["max_paddle_speed"], c.gameplay["max_paddle_speed"]) for i, paddle in enumerate(all_paddles_on_team) }
-            players_velocities_team_2 = { f"paddle_{2}_{i+1}_vel": h.scale(paddle.vel, c.gameplay["max_paddle_speed"], c.gameplay["max_paddle_speed"]) for i, paddle in enumerate(self.paddles_1) }
+            players_velocities_team_1 = { f"paddle_{1}_{i+1}_vel": h.scale_v(paddle.vel, max_paddle_speed, max_paddle_speed) for i, paddle in enumerate(all_paddles_on_team) }
+            players_velocities_team_2 = { f"paddle_{2}_{i+1}_vel": h.scale_v(paddle.vel, max_paddle_speed, max_paddle_speed) for i, paddle in enumerate(self.paddles_1) }
 
             obs |= {
                 **players_positions_team_1,
@@ -371,7 +391,7 @@ class Game:
                 **players_velocities_team_2
             }
 
-            obs = { k: np.array([-v[0], v[1]]) for k, v in obs.items() }
+            obs = { k: v if v.size == 1 else np.array([-v[0], v[1]]) for k, v in obs.items() }
 
         return obs
 

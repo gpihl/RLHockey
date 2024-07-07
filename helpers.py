@@ -46,8 +46,11 @@ def goal_pos(goal_idx):
 
     return goal_pos
 
-def scale(vec, x_max, y_max):
+def scale_v(vec, x_max, y_max):
     return np.array([vec[0] / x_max, vec[1] / y_max])
+
+def scale(val, max):
+    return np.array([val / max])
 
 def goal_top():
     return (c.settings["field_height"] - c.settings["goal_height"]) / 2

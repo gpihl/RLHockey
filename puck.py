@@ -238,7 +238,9 @@ class Puck:
             g.framework.add_temporary_particles(self.pos - self.radius * normal, sound_vel, [self.color, paddle.color])
 
     def draw(self):
-        g.framework.begin_drawing_puck(self)
+        if not c.settings["is_training"]:
+            g.framework.begin_drawing_puck(self)
+
         intensity = np.linalg.norm(self.vel) * 1.3 / (c.gameplay["max_puck_speed"])
         intensity = max(min(intensity, 1.0), 0.0)
         puck_color = g.sound_handler.target_color()
@@ -255,4 +257,6 @@ class Puck:
         g.framework.draw_circle(self.pos, int(7*self.radius / 9), h.modify_hsl(puck_color, 0, 0, 0))
         g.framework.draw_circle(self.pos, int(8*self.radius / 9), h.modify_hsl(puck_color, 0, 0, -0.2))
         g.framework.draw_rotated_line_centered(self.pos, self.radius * 1.5, self.rot, puck_color, int(self.radius / 5.0))
-        g.framework.end_drawing_puck()
+
+        if not c.settings["is_training"]:
+            g.framework.end_drawing_puck()

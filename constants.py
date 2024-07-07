@@ -35,47 +35,20 @@ settings["goal_height"] = 400 * settings["field_width"] / 3000
 
 settings["delta_t"] /= settings["fps"]
 
-# rewards = {
-#     "time_reward": -0.4,
-#     "vel_reward": -0.01,
-#     # "vel_reward": -0.1,
-#     "goal": 1000,
-#     # "team_mate_proximity": -0.2,
-#     "team_mate_proximity": -0.08,
-#     "wrong_side_of_puck": -0.2,
-#     "puck_proximity": 0.2,
-#     "goal_puck_proximity": 0.2,
-#     "shot": 2.0,
-#     "shot_toward_goal": 10.0,
-#     "pointless_motion": -0.4,
-#     "normalization": 1.0,
-# }
-
 rewards = {
     "time_reward": -0.4,
     "vel_reward": -0.01,
     "goal": 1000,
     "team_mate_proximity": -0.1,
-    "wrong_side_of_puck": -0.4,
-    "puck_proximity": 0.5,
-    "goal_puck_proximity": 0.5,
-    "shot": 2.0,
+    "wrong_side_of_puck": -0.6,
+    "puck_proximity": 0.4,
+    "goal_puck_proximity": 0.6,
+    "shot": 4.0,
     "shot_toward_goal": 8.0,
     "pointless_motion": -0.4,
     "normalization": 1.0
 }
 
-# rewards = {
-#     "time_reward": -0,
-#     "vel_reward": -0,
-#     "goal": 400,
-#     "puck_proximity": 0.0,
-#     "goal_puck_proximity": 0.0,
-#     "shot": 0.0,
-#     "shot_toward_goal": 0,
-#     "pointless_motion": -0,
-#     "normalization": 1.0,
-# }
 
 training = {
     "training_steps": 8000,
