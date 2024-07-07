@@ -3,6 +3,7 @@ import random
 import globals as g
 import constants as c
 import helpers as h
+from light import Light
 from collections import deque
 
 class Paddle:
@@ -27,6 +28,7 @@ class Paddle:
         self.velocity_history = deque(maxlen=5)
         self.average_velocity = np.zeros(2)
         self.current_reward = 0.0
+        self.light = Light(self.pos, 0.45, 0, 0, None, self.color, light_type='paddle')
         self.reset()
 
     def reset(self):
@@ -239,6 +241,8 @@ class Paddle:
                 self.pos[1] = c.settings['field_height'] - self.radius
                 self.vel[1] = 0.0
 
+        self.light.update(object=self)
+
     def handle_corner_collision(self):
         corner_radius = c.settings['corner_radius']
         corner_circle_pos = None
@@ -291,7 +295,8 @@ class Paddle:
                 g.framework.add_temporary_particles(self.pos - self.radius * normal, sound_vel, [self.color, paddle.color])
 
     def draw(self, puck, reward_alpha=None, draw_indicator=True):
-        if c.settings['is_training'] or (not (self.player == 1 and self.team == 1)):
+        # if c.settings['is_training'] or (not (self.player == 1 and self.team == 1)):
+        if c.settings['is_training']:
             model_name = g.team_1_model_name if self.team == 1 else g.team_2_model_name
             g.framework.draw_text(model_name, 'model_name', (255,255,255), (self.pos[0], self.pos[1] - self.radius * 1.4), 'center')
 
@@ -302,15 +307,10 @@ class Paddle:
         hue_change = 0.2 if self.team == 1 else -0.2
         self.color = h.modify_hsl(theme_color, hue_change, 0.25, 0.2)
 
-        # if self.is_power_dashing():
-        #     glow = max(0.0, 1.0 - (g.current_time - self.last_dash_time) / c.gameplay['dash_duration'])
-        #     self.color = h.modify_hsl(self.color, 0, 0, glow*0.5)
-
         if self.charging_dash:
             charge_color_shift = min(0.9, self.charging_alpha() * 0.5)
             self.color = h.interpolate_color_rgb(self.color, (255,0,0), charge_color_shift)
             self.color = h.modify_hsl(self.color, 0, charge_color_shift * 0.5, charge_color_shift * 0.2)
-            self.draw_dash_line(puck)
 
         self.draw_paddle(self.pos, self.radius, self.color, reward_alpha, draw_indicator)
         if not c.settings['is_training']:
@@ -323,22 +323,13 @@ class Paddle:
         charging_time = self.charging_time()
         return max(0.0, min(1.0, charging_time / c.gameplay['dash_max_charge_time'])) ** 1.2
 
-    def is_overloaded(self):
-        return self.charging_dash and self.full_charge_alpha() > 0
-
     def draw_paddle(self, position, radius, color, reward_alpha=None, draw_indicator=True):
-        # if self.is_overloaded():
-        #     color = h.modify_hsl(color, 0, 0, 0.1 + 0.1 * np.sin(2 * np.pi * g.current_time / self.charge_flash_period))
-
         if reward_alpha is not None:
             outer_color = h.interpolate_color_rgb((255,0,0), (0,255,0), reward_alpha)
         else:
-            outer_color = h.set_l(color, 0.87)
+            outer_color = h.set_l(color, 0.80)
 
         self.draw_calls(position, radius, color, outer_color, draw_indicator)
-
-        # if self.is_dashing():
-        #     self.draw_calls(position, radius, color, outer_color, g.framework.trail_surface)
 
     def draw_calls(self, position, radius, color, outer_color, draw_indicator=True):
         g.framework.draw_circle(position, radius, outer_color)
@@ -348,21 +339,6 @@ class Paddle:
 
         if self.team == 1 and self.player == 1 and draw_indicator:
             g.framework.draw_circle([position[0], position[1] - 1.3 * self.radius], 10, (255,255,255))
-
-    def draw_dash_line(self, puck):
-        return
-        dash_direction = self.dash_direction(puck)
-        angle = h.signed_angle_between(self.dash_direction(puck), np.array([1,0]))
-        max_length = self.radius * 2.5
-        size_alpha = self.charging_alpha() ** (1/2)
-        length = max_length * size_alpha
-        position = self.pos
-        thickness = 18 * size_alpha
-        color = h.modify_hsl(self.color, 0, 0, 0.05)
-        g.framework.draw_rotated_line(position, length, -angle, color, thickness)
-        arrow_head_pos = self.pos + (dash_direction / np.linalg.norm(dash_direction)) * length
-        g.framework.draw_rotated_line(arrow_head_pos, 35, -angle + 180 - 40, color, thickness)
-        g.framework.draw_rotated_line(arrow_head_pos, 35, -angle + 180 + 40, color, thickness)
 
     def update_velocity_history(self):
         self.velocity_history.append(self.vel.copy())

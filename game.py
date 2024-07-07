@@ -11,7 +11,6 @@ from paddle import Paddle
 from puck import Puck
 import cProfile
 from stats import Stats
-import pyray as pr
 
 class Game:
     _instance = None
@@ -45,7 +44,6 @@ class Game:
         self.team_1_model = None
         self.team_2_model = None
         self.score = [0, 0]
-        self.background_color = g.sound_handler.current_color()
         self.stats = Stats()
         self.match_steps = 60 * c.settings['fps']
         self.create_objects()
@@ -86,6 +84,7 @@ class Game:
         self.puck.reset(self.last_scorer)
         self.stats = Stats()
         g.sound_handler.reset()
+        g.field.reset()
 
     def register_reward(self, reward, name, team):
         if team == 1:
@@ -116,9 +115,6 @@ class Game:
             reward += goal_reward
 
         dist_to_puck = min([np.linalg.norm(self.puck.pos - team_player.pos) for team_player in team_mates + [paddle]])
-        # if paddle.team == 1 and self.current_step % 60 == 1:
-        #     print(dist_to_puck)
-
         proximity_reward = ((c.settings['field_width'] - dist_to_puck) / c.settings['field_width']) * c.rewards["puck_proximity"]
         self.register_reward(proximity_reward, "puck_proximity", paddle.team)
         reward += proximity_reward
@@ -128,7 +124,6 @@ class Game:
         self.register_reward(team_mate_proximity_reward, "team_mate_proximity", paddle.team)
         reward += team_mate_proximity_reward
 
-
         puck_delta_x = self.puck.pos[0] - paddle.pos[0]
         if paddle.team == 1:
             wrong_side_of_puck_reward = c.rewards['wrong_side_of_puck'] if puck_delta_x < 0 else -c.rewards['wrong_side_of_puck']
@@ -136,9 +131,6 @@ class Game:
             wrong_side_of_puck_reward = c.rewards['wrong_side_of_puck'] if puck_delta_x > 0 else -c.rewards['wrong_side_of_puck']
         self.register_reward(wrong_side_of_puck_reward, "wrong_side_of_puck", paddle.team)
         reward += wrong_side_of_puck_reward
-
-        # if self.current_step % 60 == 0:
-        #     print(f"team {paddle.team}, player {paddle.player}, {wrong_side_of_puck_reward}")
 
         goal_pos = h.goal_pos(2) if paddle.team == 1 else h.goal_pos(1)
         puck_to_goal_dist = np.linalg.norm(goal_pos - self.puck.pos)
@@ -247,11 +239,11 @@ class Game:
         self.puck.update(all_paddles)
 
         scorer = 0
-        if self.team_1_scored():
+        if g.field.team_1_scored(self.puck):
             scorer = 1
             self.last_scorer = 1
             self.score[0] += 1
-        elif self.team_2_scored():
+        elif g.field.team_2_scored(self.puck):
             scorer = 2
             self.last_scorer = 2
             self.score[1] += 1
@@ -263,19 +255,17 @@ class Game:
 
         g.framework.update_particles()
         g.framework.update_paddle_data(all_paddles)
-        g.framework.create_light_data()
+        g.field.update(self.puck)
+        g.framework.update_object_data(self.paddles_1 + self.paddles_2 + [self.puck])
+        paddle_lights = list(map(lambda x: x.light, all_paddles))
+        g.framework.update_light_data(g.field.lights + paddle_lights + [self.puck.light])
 
         if not c.settings['no_render']:
-
             if c.settings['is_training'] and (not g.framework.fps_locked):
                 if self.current_step % 10 == 0:
-                    g.framework.begin_drawing()
                     self.render()
-                    g.framework.end_drawing()
             else:
-                g.framework.begin_drawing()
                 self.render()
-                g.framework.end_drawing()
         else:
             if self.current_step % 60 == 0:
                 g.framework.rendering_off_message()
@@ -285,9 +275,6 @@ class Game:
         return scorer
 
     def handle_rewards(self, team_1_actions, team_2_actions, scorer):
-        # if self.current_step % 60 == 0:
-        #     print("")
-
         for idx, paddle in enumerate(self.paddles_1):
             paddle.current_reward = self.get_reward(paddle, list(filter(lambda x: x.player != paddle.player, self.paddles_1)), team_1_actions[idx], scorer)
 
@@ -315,7 +302,7 @@ class Game:
             goal_time = g.current_time
             scorer = self.paddles_1[0] if scorer == 1 else self.paddles_2[0]
             position = h.field_mid()
-            radius = c.settings['field_height'] / 5
+            radius = c.settings['field_height'] / 5.4
             g.framework.begin_drawing()
             scorer.draw_paddle(position, radius, scorer.color, draw_indicator=False)
             g.framework.end_drawing()
@@ -386,17 +373,11 @@ class Game:
 
             obs = { k: np.array([-v[0], v[1]]) for k, v in obs.items() }
 
-        # if self.current_step % 60 == 0 and player+1 == 1 and team == 2:
-        #     print(obs)
-        #     print("")
-
         return obs
 
     def render(self):
-        self.draw_background()
-        self.draw_corners()
-        self.draw_field_lines()
-
+        g.framework.begin_drawing()
+        g.field.draw_bottom_layer(self.puck)
         self.puck.draw()
         if c.settings['is_training']:
             reward_alpha_1 = self.get_reward_alpha(self.paddles_1, self.paddles_2)
@@ -408,11 +389,11 @@ class Game:
         else:
             for paddle in self.paddles_1 + self.paddles_2:
                 paddle.draw(self.puck)
-        self.draw_goals()
-        self.draw_lights()
+        g.field.draw_top_layer(self.puck)
         if not c.settings['is_training']:
             g.framework.draw_particles()
         self.draw_ui()
+        g.framework.end_drawing()
 
     def get_reward_alpha(self, paddles, other_paddles):
         mean, std = self.stats.get_stats()
@@ -424,93 +405,13 @@ class Game:
         alpha = max(0.0, min(1.0, p))
         return alpha
 
-    def draw_background(self):
-        self.background_color = g.sound_handler.target_color()
-        g.framework.fill_screen(self.background_color, (c.settings['field_width'], c.settings['field_height']))
-
-    def draw_corners(self):
-        corner_radius = c.settings['corner_radius']
-        rect_size = (corner_radius + 4, corner_radius + 4)
-        color = h.modify_hsl(self.background_color, 0, 0, -0.2)
-        buffer = 10
-        g.framework.draw_rectangle(color, np.array([-buffer, -buffer]), rect_size)
-        g.framework.draw_rectangle(color, np.array([h.field_right() - corner_radius + buffer, -buffer]), rect_size)
-        g.framework.draw_rectangle(color, np.array([-buffer, h.field_bot() - corner_radius + buffer]), rect_size)
-        g.framework.draw_rectangle(color, np.array([h.field_right() - corner_radius + buffer, h.field_bot() - corner_radius + buffer]), rect_size)
-
-        g.framework.draw_circle(h.corner_top_left(), corner_radius, self.background_color)
-        g.framework.draw_circle(h.corner_top_right(), corner_radius, self.background_color)
-        g.framework.draw_circle(h.corner_bot_left(), corner_radius, self.background_color)
-        g.framework.draw_circle(h.corner_bot_right(), corner_radius, self.background_color)
-
     def draw_ui(self):
         g.ui.draw_time_left(self.seconds_left())
         g.ui.draw_score(self.score, self.paddles_1[0], self.paddles_2[0])
         # g.framework.draw_fps(0,0)
         if c.settings['is_training']:
-            # g.ui.draw_reward(self.current_reward, self.round_reward)
             g.ui.draw_steps_left(str(self.total_training_steps_left()))
             g.ui.draw_reward_breakdown(self.reward_breakdown_1, self.reward_breakdown_2)
-
-    def draw_goals(self):
-        goal1_color = h.modify_hsl(self.background_color, 0.15, 0, 0)
-        goal2_color = h.modify_hsl(self.background_color, -0.15, 0, 0)
-
-        puck_to_goal_1_dist = np.linalg.norm(self.puck.pos - h.goal_pos(1))
-        alpha = h.dist_alpha(puck_to_goal_1_dist) ** 2
-        goal1_color = h.modify_hsl(goal1_color, 0, 0, 0.45 * alpha)
-
-        puck_to_goal_2_dist = np.linalg.norm(self.puck.pos - h.goal_pos(2))
-        alpha = h.dist_alpha(puck_to_goal_2_dist) ** 2
-        goal2_color = h.modify_hsl(goal2_color, 0, 0, 0.45 * alpha)
-
-        goal_width = 50
-        goal1_pos = (-goal_width / 2, (h.field_bot() - c.settings['goal_height']) / 2)
-        goal1_size = (goal_width, c.settings['goal_height'])
-        goal2_pos = (h.field_right() - goal_width / 2, (h.field_bot() - c.settings['goal_height']) / 2)
-        goal2_size = (goal_width, c.settings['goal_height'])
-
-        g.framework.draw_transparent_rectangle(goal1_color, goal1_pos, goal1_size, 0.7)
-        g.framework.draw_transparent_rectangle(goal2_color, goal2_pos, goal2_size, 0.7)
-
-        g.framework.draw_circle(h.goal_top_pos(1), goal_width / 2, goal1_color)
-        g.framework.draw_circle(h.goal_bot_pos(1), goal_width / 2, goal1_color)
-        g.framework.draw_circle(h.goal_top_pos(2), goal_width / 2, goal2_color)
-        g.framework.draw_circle(h.goal_bot_pos(2), goal_width / 2, goal2_color)
-
-    def draw_lights(self):
-        height = 8
-        width = 40
-        pos1 = (c.settings['field_width'] / 4 - width/2, 0)
-        pos2 = (3 * c.settings['field_width'] / 4 - width/2, 0)
-        pos3 = (c.settings['field_width'] / 4 - width/2, c.settings['field_height'] - height)
-        pos4 = (3 * c.settings['field_width'] / 4 - width/2, c.settings['field_height'] - height)
-        positions = [pos1, pos2, pos3, pos4]
-        for i, pos in enumerate(positions):
-            intensity = g.framework.light_intensities[i]
-            bright = int(255 * (intensity + 0.15))
-            bright = max(0, min(255, bright))
-            color = (bright, bright, bright)
-            g.framework.draw_rectangle(color, pos, (width, height))
-
-    def draw_field_lines(self):
-        color = self.background_color
-        line_thickness = 40 * c.settings['field_width'] / 2500
-
-        puck_to_mid_dist = np.abs(self.puck.pos[0] - c.settings['field_width'] / 2)
-        alpha = h.dist_alpha(puck_to_mid_dist) ** 2
-        color = h.modify_hsl(color, 0, 0, 0.15 * alpha)
-
-        mid_circle_color = h.modify_hsl(self.background_color, 0.03, 0, -0.04)
-        mid_circle_radius = int(6.75 * line_thickness)
-        mid_point_radius = int(2.125 * line_thickness)
-        g.framework.draw_circle(h.field_mid(), mid_circle_radius, color)
-        g.framework.draw_circle(h.field_mid(), mid_circle_radius - line_thickness, mid_circle_color)
-        g.framework.draw_circle(h.field_mid(), mid_point_radius, color)
-
-        mid_line_size = (line_thickness, c.settings['field_height'])
-        mid_line_pos = (h.field_mid_x() - mid_line_size[0] / 2, 0)
-        g.framework.draw_rectangle(color, mid_line_pos, mid_line_size)
 
     def total_training_steps_left(self):
         return c.training['training_steps'] - self.total_steps
@@ -528,18 +429,6 @@ class Game:
             return self.current_step > self.match_steps or scorer != 0
         else:
             return self.seconds_left() < 0 or scorer != 0
-
-    def team_1_scored(self):
-        if c.settings['blocked_goals']:
-            return False
-
-        return self.puck.pos[0] >= c.settings['field_width'] - self.puck.radius and self.puck.pos[1] > h.goal_top() and self.puck.pos[1] < h.goal_bottom()
-
-    def team_2_scored(self):
-        if c.settings['blocked_goals']:
-            return False
-
-        return self.puck.pos[0] <= self.puck.radius and self.puck.pos[1] > h.goal_top() and self.puck.pos[1] < h.goal_bottom()
 
     def close(self):
         g.framework.close()

@@ -3,9 +3,7 @@ import math
 import constants as c
 import globals as g
 import helpers as h
-import noise
 from particle import Particle
-import numpy as np
 
 class Framework():
     _instance = None
@@ -29,53 +27,70 @@ class Framework():
         self.current_resolution_idx = c.settings['resolution']
         self.fullscreen = False
         self.fps = c.settings['fps']
-
-        self.render_texture = None
-
-        self.tick()
-        self.reset()
-
-        self.keys_pressed = set()
         self.fps_locked = False
-
-        self.light_intensities = []
-        self.update_light_intensities()
-
         if c.settings['is_training']:
             pr.set_target_fps(c.settings['fps'])
             self.fps_locked = True
 
+        self.render_texture = None
+        self.tick()
+        self.reset()
+        self.keys_pressed = set()
+        self.fonts = self.load_fonts()
+
+        (self.post_shader, self.scanlines_shader,
+        self.paddle_shader, self.particle_shader,
+        self.puck_shader) = self.load_shaders()
+
+        (self.paddle_data_buffer, self.paddle_count_buffer,
+        self.light_data_buffer, self.resolution_buffer,
+        self.y_extremes_buffer, self.paddle_pos_buffer,
+        self.puck_pos_buffer, self.object_data_buffer) = self.create_shader_buffers()
+
+        self.shader = self.post_shader
+        self.set_shader_uniform(self.post_shader, "resolution", self.resolution_buffer, pr.SHADER_UNIFORM_VEC2)
+        self.set_shader_uniform(self.paddle_shader, "resolution", self.resolution_buffer, pr.SHADER_UNIFORM_VEC2)
+        self.set_shader_uniform(self.puck_shader, "resolution", self.resolution_buffer, pr.SHADER_UNIFORM_VEC2)
+        self.set_shader_uniform(self.post_shader, "yExtremes", self.y_extremes_buffer, pr.SHADER_UNIFORM_VEC2)
+
+        self.light_intensities = []
+        self.particles = []
+
+        self.set_shapes_texture()
+
+    def set_shader_uniform(self, shader, uniform_name, value, type, count=None):
+        location = pr.get_shader_location(shader, uniform_name)
+        if count is None:
+            pr.set_shader_value(shader, location, value, type)
+        else:
+            pr.set_shader_value_v(shader, location, value, type, count)
+
+    def load_shaders(self):
+        post_shader = pr.load_shader("shaders/default.vs", "shaders/post.fs")
+        scanlines_shader = pr.load_shader("shaders/scanlines.vs", "shaders/scanlines.fs")
+        paddle_shader = pr.load_shader("shaders/default.vs", "shaders/paddle.fs")
+        particle_shader = pr.load_shader("shaders/default.vs", "shaders/particle.fs")
+        puck_shader = pr.load_shader("shaders/default.vs", "shaders/puck.fs")
+
+        return post_shader, scanlines_shader, paddle_shader, particle_shader, puck_shader
+
+    def create_shader_buffers(self):
+        max_paddles = c.settings['team_size'] * 2
+        paddle_data_buffer = pr.ffi.new("float[]", max_paddles * 9)
+        paddle_count_buffer = pr.ffi.new("int *", 0)
+        light_data_buffer = pr.ffi.new("float[]", 10 * 3 * 2)
+        resolution_buffer = pr.ffi.new('float[2]', [float(self.get_resolution()[0]), float(self.get_resolution()[1])])
+        y_extremes_buffer = pr.ffi.new('float[2]', [self.world_to_screen_coord((0, 0))[1], self.world_to_screen_coord((0, c.settings['field_height']))[1]])
+        paddle_pos_buffer = pr.ffi.new('float[2]', [0,0])
+        puck_pos_buffer = pr.ffi.new('float[2]', [0,0])
+        object_data_buffer = pr.ffi.new("float[]", 5 * 3)
+
+        return paddle_data_buffer, paddle_count_buffer, light_data_buffer, resolution_buffer, y_extremes_buffer, paddle_pos_buffer, puck_pos_buffer, object_data_buffer
+
+    def load_fonts(self):
         font_bold = pr.load_font_ex("fonts/Roboto-Bold.ttf", 800, None, 0)
         font_regular = pr.load_font_ex("fonts/Roboto-Regular.ttf", 800, None, 0)
-        self.fxaa_shader = pr.load_shader("shaders/default.vs", "shaders/fxaa.fs")
-        self.scanlines_shader = pr.load_shader("shaders/scanlines.vs", "shaders/scanlines.fs")
-        self.paddle_shader = pr.load_shader("shaders/default.vs", "shaders/paddle.fs")
-        self.shader = self.fxaa_shader
-
-        self.y_extremes_loc = pr.get_shader_location(self.fxaa_shader, "yExtremes")
-        resolution = pr.ffi.new('float[2]', [float(self.get_resolution()[0]), float(self.get_resolution()[1])])
-        self.resolution_loc = pr.get_shader_location(self.fxaa_shader, "resolution")
-        pr.set_shader_value(self.fxaa_shader, self.resolution_loc, resolution, pr.SHADER_UNIFORM_VEC2)
-        resolution_loc_paddle = pr.get_shader_location(self.paddle_shader, "resolution")
-        pr.set_shader_value(self.paddle_shader, resolution_loc_paddle, resolution, pr.SHADER_UNIFORM_VEC2)
-        y_extremes = pr.ffi.new('float[2]', [self.world_to_screen_coord((0, 0))[1], self.world_to_screen_coord((0, c.settings['field_height']))[1]])
-        pr.set_shader_value(self.fxaa_shader, self.y_extremes_loc, y_extremes, pr.SHADER_UNIFORM_VEC2)
-
-        self.particle_shader = pr.load_shader("shaders/default.vs", "shaders/particle.fs")
-
-        self.max_paddles = c.settings['team_size'] * 2
-        self.paddle_buffer = pr.ffi.new("float[]", self.max_paddles * 9)  # 2 for position, 3 for color, 1 for radius
-        self.paddle_count = pr.ffi.new("int *", 0)
-
-        self.light_data = pr.ffi.new("float[]", 4 * 3)
-
-        self.create_light_data()
-
-
-
-        self.temporary_particles = []
-
-        self.fonts = {
+        fonts = {
             'reward': font_bold,
             'time_left': font_bold,
             'steps_left': font_regular,
@@ -83,44 +98,31 @@ class Framework():
             'model_name': font_bold,
             'reward_breakdown': font_regular,
         }
-
-        # In your Framework __init__ method:
-        self.shape_texture = self.set_shapes_texture()
-
-        pr.set_shapes_texture(self.shape_texture, pr.Rectangle(0.0, 0.0, 1.0, 1.0))
-
-    # def update_paddle_shader_light_dirs(self, paddle):
-    #     id = f"{paddle.team}{paddle.player}"
-    #     positions = [self.get_light_pos(i) for i in range(4)]
-    #     array = self.paddle_light_dir_dict[id]
-    #     for i, position in enumerate(positions):
-    #         dir = (paddle.pos - position) / np.linalg.norm(paddle.pos - position)
-    #         array[i*2] = dir[0]
-    #         array[i*2 + 1] = dir[1]
-
-    #     location = pr.get_shader_location(self.paddle_shader, "LightDir")
-    #     pr.set_shader_value_v(self.paddle_shader, location, array, pr.SHADER_UNIFORM_VEC2, len(positions) * 2)
+        return fonts
 
     def set_shapes_texture(self):
-        # Create a 1x1 white image
         image = pr.gen_image_color(1, 1, pr.WHITE)
-
-        # Load the image as a texture
         texture = pr.load_texture_from_image(image)
-
-        # Use the texture for shape drawing
         pr.set_texture_filter(texture, pr.TEXTURE_FILTER_POINT)
-
-        # Unload the image (texture is still valid)
         pr.unload_image(image)
-
-        return texture
+        pr.set_shapes_texture(texture, pr.Rectangle(0.0, 0.0, 1.0, 1.0))
 
     def begin_drawing_paddle(self, paddle):
-        paddle_pos_loc_paddle = pr.get_shader_location(self.paddle_shader, "paddlePos")
-        paddle_pos = pr.ffi.new('float[2]', [self.world_to_screen_coord(paddle.pos)[0], self.world_to_screen_coord(paddle.pos)[1]])
-        pr.set_shader_value(self.paddle_shader, paddle_pos_loc_paddle, paddle_pos, pr.SHADER_UNIFORM_VEC2)
+        paddle_pos_screen = self.world_to_screen_coord(paddle.pos)
+        self.paddle_pos_buffer[0] = paddle_pos_screen[0]
+        self.paddle_pos_buffer[1] = paddle_pos_screen[1]
+        self.set_shader_uniform(self.paddle_shader, "paddlePos", self.paddle_pos_buffer, pr.SHADER_UNIFORM_VEC2)
         pr.begin_shader_mode(self.paddle_shader)
+
+    def begin_drawing_puck(self, puck):
+        puck_pos_screen = self.world_to_screen_coord(puck.pos)
+        self.puck_pos_buffer[0] = puck_pos_screen[0]
+        self.puck_pos_buffer[1] = puck_pos_screen[1]
+        self.set_shader_uniform(self.puck_shader, "puckPos", self.puck_pos_buffer, pr.SHADER_UNIFORM_VEC2)
+        pr.begin_shader_mode(self.puck_shader)
+
+    def end_drawing_puck(self):
+        pr.end_shader_mode()
 
     def end_drawing_paddle(self):
         pr.end_shader_mode()
@@ -137,17 +139,13 @@ class Framework():
         # pr.set_texture_filter(self.render_texture.texture, pr.TEXTURE_FILTER_ANISOTROPIC_16X)
 
     def update_particles(self):
-        # self.particles = list(filter(lambda x: x.is_alive(), self.particles))
-        self.temporary_particles = list(filter(lambda x: x.is_alive(), self.temporary_particles))
-        for particle in self.temporary_particles:
+        self.particles = list(filter(lambda x: x.is_alive(), self.particles))
+        for particle in self.particles:
             particle.update()
-
-        # while len(self.particles) < 20:
-        #     self.particles.append(Particle.random_particle(h.field_mid()))
 
     def draw_particles(self):
         pr.begin_shader_mode(self.particle_shader)
-        for particle in self.temporary_particles:
+        for particle in self.particles:
             particle.draw()
 
         pr.end_shader_mode()
@@ -155,56 +153,33 @@ class Framework():
     def add_temporary_particles(self, pos, vel, colors):
         n = int(vel / 10)
         particles = Particle.random_particles(pos, n, colors)
-        self.temporary_particles += particles
+        self.particles += particles
 
-    def update_light_intensities(self):
-        intensity = 0.75
-        intensities = [intensity] * 4
-        scale = 5
-        t = g.current_time
-        noise_value = noise.pnoise1(t * scale)
-        amplitude = 0.05
-        light_intensity = intensity + amplitude * noise_value
-        light_intensity = max(0.0, min(1.0, light_intensity))
-        intensities[0] = light_intensity
+    def update_light_data(self, lights):
+        for i, light in enumerate(lights):
+            pos = self.world_to_screen_coord(light.pos)
+            base_i = 3 * 2 * i
+            color = h.color_float(light.color)
+            self.light_data_buffer[base_i] = pos[0]
+            self.light_data_buffer[base_i + 1] = pos[1]
+            self.light_data_buffer[base_i + 2] = light.intensity
+            self.light_data_buffer[base_i + 3] = color[0]
+            self.light_data_buffer[base_i + 4] = color[1]
+            self.light_data_buffer[base_i + 5] = color[2]
 
-        scale = 10
-        t = g.current_time
-        noise_value = noise.pnoise1(t * scale)
-        amplitude = 0.1
-        light_intensity = intensity + amplitude * noise_value
-        light_intensity = max(0.0, min(1.0, light_intensity))
-        intensities[3] = light_intensity
+        self.set_shader_uniform(self.post_shader, "LightBuffer", self.light_data_buffer, pr.SHADER_UNIFORM_VEC3, 6 * 10)
+        self.set_shader_uniform(self.paddle_shader, "LightBuffer", self.light_data_buffer, pr.SHADER_UNIFORM_VEC3, 6 * 10)
+        self.set_shader_uniform(self.puck_shader, "LightBuffer", self.light_data_buffer, pr.SHADER_UNIFORM_VEC3, 6 * 10)
 
-        self.light_intensities = intensities
+    def update_object_data(self, objects):
+        for i, object in enumerate(objects):
+            pos = self.world_to_screen_coord(object.pos)
+            radius = self.world_to_screen_length(object.radius)
+            self.object_data_buffer[3*i] = pos[0]
+            self.object_data_buffer[3*i + 1] = pos[1]
+            self.object_data_buffer[3*i + 2] = radius
 
-    def get_light_pos(self, idx):
-        y_offset = 0
-        match idx:
-            case 0:
-                return (c.settings['field_width'] / 4, y_offset)
-            case 1:
-                return (3 * c.settings['field_width'] / 4, y_offset)
-            case 2:
-                return (c.settings['field_width'] / 4, c.settings['field_height'] - y_offset)
-            case 3:
-                return (3 * c.settings['field_width'] / 4, c.settings['field_height'] - y_offset)
-
-    def create_light_data(self):
-        positions = [self.get_light_pos(i) for i in range(4)]
-        self.update_light_intensities()
-
-        positions = list(map(self.world_to_screen_coord, positions))
-        for i, position in enumerate(positions):
-            self.light_data[3*i] = position[0]
-            self.light_data[3*i + 1] = position[1]
-            self.light_data[3*i + 2] = self.light_intensities[i]
-
-        location = pr.get_shader_location(self.fxaa_shader, "LightBuffer")
-        pr.set_shader_value_v(self.fxaa_shader, location, self.light_data, pr.SHADER_UNIFORM_VEC3, len(positions) * 3)
-
-        location = pr.get_shader_location(self.paddle_shader, "LightBuffer")
-        pr.set_shader_value_v(self.paddle_shader, location, self.light_data, pr.SHADER_UNIFORM_VEC3, len(positions) * 3)
+        self.set_shader_uniform(self.post_shader, "ObjectBuffer", self.object_data_buffer, pr.SHADER_UNIFORM_VEC3, 3 * len(objects))
 
 
     def get_resolution(self):
@@ -214,22 +189,20 @@ class Framework():
         self.draw_text(f"FPS: {pr.get_fps()}", 'steps_left', (255,255,255), (x, y), 'left', 0, 40)
 
     def update_paddle_data(self, paddles):
-        self.paddle_count[0] = len(paddles)
+        self.paddle_count_buffer[0] = len(paddles)
         for i, paddle in enumerate(paddles):
             screen_pos = self.world_to_screen_coord(paddle.pos)
             base_index = i * 9
-            self.paddle_buffer[base_index] = paddle.color[0] / 255.0
-            self.paddle_buffer[base_index + 1] = paddle.color[1] / 255.0
-            self.paddle_buffer[base_index + 2] = paddle.color[2] / 255.0
-            self.paddle_buffer[base_index + 3] = screen_pos[0]
-            self.paddle_buffer[base_index + 4] = screen_pos[1]
-            self.paddle_buffer[base_index + 5] = self.world_to_screen_length(paddle.radius)
-            self.paddle_buffer[base_index + 6] = paddle.charging_alpha() if paddle.charging_dash else 0
+            self.paddle_data_buffer[base_index] = paddle.color[0] / 255.0
+            self.paddle_data_buffer[base_index + 1] = paddle.color[1] / 255.0
+            self.paddle_data_buffer[base_index + 2] = paddle.color[2] / 255.0
+            self.paddle_data_buffer[base_index + 3] = screen_pos[0]
+            self.paddle_data_buffer[base_index + 4] = screen_pos[1]
+            self.paddle_data_buffer[base_index + 5] = self.world_to_screen_length(paddle.radius)
+            self.paddle_data_buffer[base_index + 6] = paddle.charging_alpha() if paddle.charging_dash else 0
 
-        location = pr.get_shader_location(self.fxaa_shader, "PaddleBuffer")
-        pr.set_shader_value_v(self.fxaa_shader, location, self.paddle_buffer, pr.SHADER_UNIFORM_VEC3, len(paddles) * 3)
-        location = pr.get_shader_location(self.fxaa_shader, "paddleCount")
-        pr.set_shader_value(self.fxaa_shader, location, self.paddle_count, pr.SHADER_UNIFORM_INT)
+        self.set_shader_uniform(self.post_shader, "PaddleBuffer", self.paddle_data_buffer, pr.SHADER_UNIFORM_VEC3, len(paddles) * 3)
+        self.set_shader_uniform(self.post_shader, "paddleCount", self.paddle_count_buffer, pr.SHADER_UNIFORM_INT)
 
     def calculate_scaling_and_shift(self):
         x_stretch = (self.get_resolution()[0]) / c.settings['field_width']
@@ -320,22 +293,15 @@ class Framework():
         self.current_resolution_idx = (self.current_resolution_idx + 1) % len(c.resolutions)
         self.scaling_factor, self.shift = self.calculate_scaling_and_shift()
         self.render_texture = pr.load_render_texture(*self.get_resolution())
-        resolution = pr.ffi.new('float[2]', [float(self.get_resolution()[0]), float(self.get_resolution()[1])])
-        pr.set_shader_value(self.fxaa_shader, self.resolution_loc, resolution, pr.SHADER_UNIFORM_VEC2)
-        y_extremes = pr.ffi.new('float[2]', [self.world_to_screen_coord((0, 0))[1], self.world_to_screen_coord((0, c.settings['field_height']))[1]])
-        pr.set_shader_value(self.fxaa_shader, self.y_extremes_loc, y_extremes, pr.SHADER_UNIFORM_VEC2)
-        resolution_loc_paddle = pr.get_shader_location(self.paddle_shader, "resolution")
-        pr.set_shader_value(self.paddle_shader, resolution_loc_paddle, resolution, pr.SHADER_UNIFORM_VEC2)
-
-
-        if self.get_resolution()[0] > 600:
-            # self.shader = None
-            self.shader = self.fxaa_shader
-        else:
-            # self.shader = self.scanlines_shader
-            self.shader = None
-
-        # pr.set_window_size(*self.get_resolution())
+        self.resolution_buffer[0] = float(self.get_resolution()[0])
+        self.resolution_buffer[1] = float(self.get_resolution()[1])
+        self.y_extremes_buffer[0] = self.world_to_screen_coord((0, 0))[1]
+        self.y_extremes_buffer[1] = self.world_to_screen_coord((0, c.settings['field_height']))[1]
+        self.set_shader_uniform(self.post_shader, "resolution", self.resolution_buffer, pr.SHADER_UNIFORM_VEC2)
+        self.set_shader_uniform(self.paddle_shader, "resolution", self.resolution_buffer, pr.SHADER_UNIFORM_VEC2)
+        self.set_shader_uniform(self.puck_shader, "resolution", self.resolution_buffer, pr.SHADER_UNIFORM_VEC2)
+        self.set_shader_uniform(self.post_shader, "yExtremes", self.y_extremes_buffer, pr.SHADER_UNIFORM_VEC2)
+        self.shader = self.post_shader
 
     def handle_events(self):
         self.handle_keyboard_input()
@@ -446,8 +412,6 @@ class Framework():
         font_size = self.world_to_screen_length(font_size)
         font = self.fonts[font_name]
         text_width = pr.measure_text_ex(font, text, font_size, 0).x
-
-
         if alignment == 'center':
             position = (position[0] - text_width // 2, position[1])
         elif alignment == 'right':
@@ -479,9 +443,6 @@ class Framework():
             int_part, _, frac_part = f"{value}".partition('.')
             int_x = x - max_frac_width - pr.measure_text('.', font_size)
             self.draw_text(int_part, font_name, (255,255,255), (int_x, y), 'right', 0, font_size)
-            # self.draw_text('.', font_name, (255,255,255), (int_x + pr.measure_text(int_part, font_size), y), 'left', 0, font_size)
-            # self.draw_text(frac_part, font_name, (255,255,255), (int_x + pr.measure_text(int_part + '.', font_size), y), 'left', 0, font_size)
-
             y += line_height
 
     def draw_rotated_line_centered(self, pos, length, angle, color, width=1):

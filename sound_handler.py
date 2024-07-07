@@ -38,13 +38,8 @@ class SoundHandler:
         self.active_sounds = deque(maxlen=64)
         self.sound_lock = threading.Lock()
 
-        self.active_channels = {
-            'ambience': None,
-        }
-
-        self.active_volumes = {
-            'ambience': None,
-        }
+        self.active_channels = { 'ambience': None }
+        self.active_volumes = { 'ambience': None }
 
         self.load_sounds()
         self.create_octave_up_sounds()
@@ -261,18 +256,6 @@ class SoundHandler:
         self.set_pan(channel, volume, x_coord)
 
     def update_paddle_sound(self, paddle):
-        # sound_name = f"overload{(paddle.team - 1) * 2 + paddle.player}"
-        # channel = self.active_channels[sound_name]
-        # volume = self.active_volumes[sound_name]
-        # if paddle.is_overloaded():
-        #     if channel is not None:
-        #         self.change_pan(channel, paddle.pos[0], volume)
-        #     else:
-        #         self.play_sound(0.3, paddle.pos[0], sound_name, active=True)
-        # elif channel is not None:
-        #     self.stop_sound(sound_name)
-        #     self.active_channels[sound_name] = None
-
         sound_name = f"charge{(paddle.team - 1) * 2 + paddle.player}"
         channel = self.active_channels[sound_name]
         volume = self.active_volumes[sound_name]

@@ -71,6 +71,12 @@ def interpolate_color_rgb(color1, color2, t):
         int(color1[2] + (color2[2] - color1[2]) * t)
     )
 
+def color_float(color):
+    r = max(0.0, min(1.0, color[0] / 255.0))
+    g = max(0.0, min(1.0, color[1] / 255.0))
+    b = max(0.0, min(1.0, color[2] / 255.0))
+    return (r,g,b)
+
 def rgb_to_hsl(r, g, b):
     r, g, b = r/255.0, g/255.0, b/255.0
     max_val = max(r, g, b)

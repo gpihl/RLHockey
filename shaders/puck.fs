@@ -7,7 +7,7 @@ in vec4 fragColor;
 
 uniform vec3 LightBuffer[20];
 uniform vec2 resolution;
-uniform vec2 paddlePos;
+uniform vec2 puckPos;
 
 out vec4 finalColor;
 
@@ -15,7 +15,7 @@ void main()
 {
     vec4 color = fragColor;
     vec2 coord = vec2(gl_FragCoord.x, resolution.y - gl_FragCoord.y);
-    vec2 localRelativeCoord = coord - paddlePos;
+    vec2 localRelativeCoord = coord - puckPos;
     float localDist = length(localRelativeCoord);
     vec2 localDir = localRelativeCoord / localDist;
 
