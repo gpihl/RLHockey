@@ -5,12 +5,12 @@ import numpy as np
 class Controls:
     def __init__(self):
         self.control_params = {
-            'dash': 'x',
-            'magnet': 'l1',
+            "dash": "x",
+            "magnet": "l1",
         }
         ps5_controller = {
-            'x': 7,
-            'l1': 9
+            "x": 7,
+            "l1": 9
         }
         self.controller_type = ps5_controller
         self.stick = None
@@ -31,15 +31,15 @@ class Controls:
             action = self.get_joystick_action()
 
         if pr.is_key_down(pr.KEY_W):
-            action['acceleration'][1] = -1.0
+            action["acceleration"][1] = -1.0
         if pr.is_key_down(pr.KEY_S):
-            action['acceleration'][1] = 1.0
+            action["acceleration"][1] = 1.0
         if pr.is_key_down(pr.KEY_A):
-            action['acceleration'][0] = -1.0
+            action["acceleration"][0] = -1.0
         if pr.is_key_down(pr.KEY_D):
-            action['acceleration'][0] = 1.0
+            action["acceleration"][0] = 1.0
         if pr.is_key_down(pr.KEY_LEFT_SHIFT) or pr.is_key_down(pr.KEY_SPACE) or pr.is_key_down(pr.KEY_RIGHT_SHIFT):
-            action['dash'] = True
+            action["dash"] = True
         return action
 
     def get_joystick_action(self):
@@ -52,9 +52,9 @@ class Controls:
             ])
             input_vector = self.apply_non_linear_response(input_vector)
             return {
-                'acceleration': np.array([input_vector[0] * 1.0, input_vector[1] * 1.0]),
-                'dash': self.button_pressed('dash'),
-                'magnet': self.button_pressed('magnet'),
+                "acceleration": np.array([input_vector[0] * 1.0, input_vector[1] * 1.0]),
+                "dash": self.button_pressed("dash"),
+                "magnet": self.button_pressed("magnet"),
             }
         except:
             return Controls.empty_action()
@@ -83,14 +83,14 @@ class Controls:
     @staticmethod
     def empty_action():
         return {
-            'acceleration': np.array([0.0, 0.0]),
-            'dash': False,
+            "acceleration": np.array([0.0, 0.0]),
+            "dash": False,
         }
 
     @staticmethod
     def game_action_from_model_action(model_action):
         action = {
-            'acceleration': h.clip_vector_length_inplace(np.array([model_action[0], model_action[1]])),
-            'dash': model_action[1] > 0.0,
+            "acceleration": h.clip_vector_length_inplace(np.array([model_action[0], model_action[1]])),
+            "dash": model_action[1] > 0.0,
         }
         return action

@@ -38,8 +38,8 @@ class SoundHandler:
         self.active_sounds = deque(maxlen=64)
         self.sound_lock = threading.Lock()
 
-        self.active_channels = { 'ambience': None }
-        self.active_volumes = { 'ambience': None }
+        self.active_channels = { "ambience": None }
+        self.active_volumes = { "ambience": None }
 
         self.load_sounds()
         self.create_octave_up_sounds()
@@ -50,12 +50,12 @@ class SoundHandler:
         self.bg_music_last_played = -100
         self.pitch_octaves = 3
 
-        self.current_scale = ''
+        self.current_scale = ""
 
         self.last_played = dict.fromkeys(self.sounds, 0)
         self.play_ambience()
 
-        print('Sound handler init done')
+        print("Sound handler init done")
 
     def pitch_hash(self, shift_amount):
         idx = int(self.pitch_buckets_per_octave * shift_amount)
@@ -107,55 +107,55 @@ class SoundHandler:
 
     def create_scales(self):
         self.scale_order = [
-            'maj9',
-            'major',
-            'lydian',
-            'mixolydian',
-            'dorian',
-            'phrygian',
-            'chromatic',
-            'minor',
-            'minor-pentatonic',
-            'major-pentatonic',
+            "maj9",
+            "major",
+            "lydian",
+            "mixolydian",
+            "dorian",
+            "phrygian",
+            "chromatic",
+            "minor",
+            "minor-pentatonic",
+            "major-pentatonic",
             ]
 
         self.scales = {
-            'minor-pentatonic': [1, 4, 6, 8, 11],
-            'major-pentatonic': [1, 5, 6, 8, 10],
-            'minor': [1,3,4,6,8,9,11],
-            'dorian': [1,3,4,6,8,10,11],
-            'mixolydian': [1,3,5,6,8,10,11],
-            'lydian': [1,3,5,7,8,10,12],
-            'major': [1,3,5,6,8,10,12],
-            'maj9': [1,3,5,8,12],
-            'phrygian': [1,2,4,6,8,9,11],
-            'chromatic': [1,2,3,4,5,6,7,8,9,10,11],
+            "minor-pentatonic": [1, 4, 6, 8, 11],
+            "major-pentatonic": [1, 5, 6, 8, 10],
+            "minor": [1,3,4,6,8,9,11],
+            "dorian": [1,3,4,6,8,10,11],
+            "mixolydian": [1,3,5,6,8,10,11],
+            "lydian": [1,3,5,7,8,10,12],
+            "major": [1,3,5,6,8,10,12],
+            "maj9": [1,3,5,8,12],
+            "phrygian": [1,2,4,6,8,9,11],
+            "chromatic": [1,2,3,4,5,6,7,8,9,10,11],
         }
 
         self.chords = {
-            'minor-pentatonic': [1, 4, 6, 8, 11, 16],
-            'major-pentatonic': [1, 6, 8, 10, 17],
-            'minor': [1,8,14,23],
-            'dorian': [1,4,8,10,11],
-            'mixolydian': [1,8,17,23],
-            'lydian': [1,7,8,17,24],
-            'major': [1,8,17,24],
-            'maj9': [1,3,5,8,12],
-            'phrygian': [1,8,16,23],
-            'chromatic': [1,7,16,22],
+            "minor-pentatonic": [1, 4, 6, 8, 11, 16],
+            "major-pentatonic": [1, 6, 8, 10, 17],
+            "minor": [1,8,14,23],
+            "dorian": [1,4,8,10,11],
+            "mixolydian": [1,8,17,23],
+            "lydian": [1,7,8,17,24],
+            "major": [1,8,17,24],
+            "maj9": [1,3,5,8,12],
+            "phrygian": [1,8,16,23],
+            "chromatic": [1,7,16,22],
         }
 
         self.colors = {
-            'minor-pentatonic': (59, 120, 63),
-            'major-pentatonic': (171, 171, 51),
-            'minor': (80, 50, 168),
-            'dorian': (12, 35, 168),
-            'mixolydian': (204, 121, 27),
-            'lydian': (27, 198, 204),
-            'major': (97, 242, 109),
-            'maj9': (230, 90, 90),
-            'phrygian': (50, 47, 138),
-            'chromatic': (7, 6, 43),
+            "minor-pentatonic": (59, 120, 63),
+            "major-pentatonic": (171, 171, 51),
+            "minor": (80, 50, 168),
+            "dorian": (12, 35, 168),
+            "mixolydian": (204, 121, 27),
+            "lydian": (27, 198, 204),
+            "major": (97, 242, 109),
+            "maj9": (230, 90, 90),
+            "phrygian": (50, 47, 138),
+            "chromatic": (7, 6, 43),
         }
 
         for k, _ in self.colors.items():
@@ -175,23 +175,23 @@ class SoundHandler:
             return
 
         clip_name = random.choice(clip_names)
-        x_coord = int(np.clip(np.random.normal(c.settings['field_width'] / 2, c.settings['field_width'] / 4, 1), 0, c.settings['field_width']))
+        x_coord = int(np.clip(np.random.normal(c.settings["field_width"] / 2, c.settings["field_width"] / 4, 1), 0, c.settings["field_width"]))
         self.play_sound(0.5, x_coord, clip_name, priority=True)
 
     def get_scale_clip_names(self, scale):
-        clips_names = list(filter(lambda name: name.rsplit('-', 1)[0] == scale, self.sounds))
+        clips_names = list(filter(lambda name: name.rsplit("-", 1)[0] == scale, self.sounds))
         return clips_names
 
     def map_to_scale(self, number, scale):
         return self.scales[scale][(number - 1) % len(self.scales[scale])]
 
     def get_wav_files(self, folder_path):
-        return [os.path.splitext(f)[0] for f in os.listdir(folder_path) if f.endswith('.wav')]
+        return [os.path.splitext(f)[0] for f in os.listdir(folder_path) if f.endswith(".wav")]
 
     def play_ambience(self):
-        self.play_sound(0.5, c.settings['field_width'] / 2, 'ambience', -1, priority=True)
-        self.active_channels['ambience'] = None
-        self.active_volumes['ambience'] = None
+        self.play_sound(0.5, c.settings["field_width"] / 2, "ambience", -1, priority=True)
+        self.active_channels["ambience"] = None
+        self.active_volumes["ambience"] = None
 
     def load_sounds(self):
         filenames = self.get_wav_files("sounds/")
@@ -203,7 +203,7 @@ class SoundHandler:
             else:
                 print(f"Warning: Sound file {path} not found.")
 
-        for name in ['overload', 'charge']:
+        for name in ["overload", "charge"]:
             for i in range(16):
                 self.sounds[f"{name}{i}"] = self.sounds[name]
                 self.active_channels[f"{name}{i}"] = None
@@ -243,8 +243,8 @@ class SoundHandler:
         return pitched_sound
 
     def set_pan(self, channel, volume, x_coord):
-        left_vol = volume * (c.settings['field_width'] - x_coord) / c.settings['field_width']
-        right_vol = volume * x_coord / c.settings['field_width']
+        left_vol = volume * (c.settings["field_width"] - x_coord) / c.settings["field_width"]
+        right_vol = volume * x_coord / c.settings["field_width"]
         channel.set_volume(left_vol, right_vol)
 
     def change_pan(self, channel, x_coord, volume=None):
@@ -291,14 +291,14 @@ class SoundHandler:
 
     def play_sound(self, volume, x_coord, sound_name, loops=0, pitch_shift=False, active=False, priority=False):
         volume *= 0.7
-        if c.settings['is_training'] and c.settings['no_sound']:
+        if c.settings["is_training"] and c.settings["no_sound"]:
             return
 
-        if sound_name == 'paddle':
+        if sound_name == "paddle":
             sound_name = self.velocity_to_sound_index(volume)
 
         if sound_name in self.sounds:
-            if g.current_time - self.last_played[sound_name] < 0.05 and priority == False and (not sound_name == 'dash'):
+            if g.current_time - self.last_played[sound_name] < 0.05 and priority == False and (not sound_name == "dash"):
                 return
 
             if volume < 0.01:

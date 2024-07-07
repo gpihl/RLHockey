@@ -34,8 +34,8 @@ class Game:
         self.last_scorer = 2
         self.paddles_1 = []
         self.paddles_2 = []
-        self.reward_breakdown_1 = {'total': 0}
-        self.reward_breakdown_2 = {'total': 0}
+        self.reward_breakdown_1 = {"total": 0}
+        self.reward_breakdown_2 = {"total": 0}
         self.current_step = 0
         self.current_reward = 0.0
         self.round_reward = 0.0
@@ -45,7 +45,7 @@ class Game:
         self.team_2_model = None
         self.score = [0, 0]
         self.stats = Stats()
-        self.match_steps = 60 * c.settings['fps']
+        self.match_steps = 60 * c.settings["fps"]
         self.create_objects()
         g.controls.stick = g.controls.init_controls()
         self.reset()
@@ -53,14 +53,14 @@ class Game:
         print("Game initialization done")
 
     def create_objects(self):
-        for i in range(c.settings['team_size']):
+        for i in range(c.settings["team_size"]):
             paddle = Paddle(1, i+1)
-            paddle.team_mates = c.settings['team_size']
+            paddle.team_mates = c.settings["team_size"]
             self.paddles_1.append(paddle)
 
-        for i in range(c.settings['team_size']):
+        for i in range(c.settings["team_size"]):
             paddle = Paddle(2, i+1)
-            paddle.team_mates = c.settings['team_size']
+            paddle.team_mates = c.settings["team_size"]
             self.paddles_2.append(paddle)
 
         g.paddles = self.paddles_1 + self.paddles_2
@@ -90,19 +90,19 @@ class Game:
         if team == 1:
             if name in self.reward_breakdown_1:
                 self.reward_breakdown_1[name] += reward / c.rewards["normalization"]
-                self.reward_breakdown_1['total'] += reward / c.rewards["normalization"]
+                self.reward_breakdown_1["total"] += reward / c.rewards["normalization"]
             else:
                 self.reward_breakdown_1[name] = 0
         else:
             if name in self.reward_breakdown_2:
                 self.reward_breakdown_2[name] += reward / c.rewards["normalization"]
-                self.reward_breakdown_2['total'] += reward / c.rewards["normalization"]
+                self.reward_breakdown_2["total"] += reward / c.rewards["normalization"]
             else:
                 self.reward_breakdown_2[name] = 0
 
 
     def get_reward(self, paddle, team_mates, action, scorer):
-        acceleration = action['acceleration']
+        acceleration = action["acceleration"]
         reward = 0
 
         vel_reward = np.linalg.norm(paddle.vel) * c.rewards["vel_reward"]
@@ -115,26 +115,26 @@ class Game:
             reward += goal_reward
 
         dist_to_puck = min([np.linalg.norm(self.puck.pos - team_player.pos) for team_player in team_mates + [paddle]])
-        proximity_reward = ((c.settings['field_width'] - dist_to_puck) / c.settings['field_width']) * c.rewards["puck_proximity"]
+        proximity_reward = ((c.settings["field_width"] - dist_to_puck) / c.settings["field_width"]) * c.rewards["puck_proximity"]
         self.register_reward(proximity_reward, "puck_proximity", paddle.team)
         reward += proximity_reward
 
         closest_team_mate_dist = min([np.linalg.norm(team_mate.pos - paddle.pos) for team_mate in team_mates])
-        team_mate_proximity_reward = ((c.settings['field_width'] - closest_team_mate_dist) / c.settings['field_width']) * c.rewards["team_mate_proximity"]
+        team_mate_proximity_reward = ((c.settings["field_width"] - closest_team_mate_dist) / c.settings["field_width"]) * c.rewards["team_mate_proximity"]
         self.register_reward(team_mate_proximity_reward, "team_mate_proximity", paddle.team)
         reward += team_mate_proximity_reward
 
         puck_delta_x = self.puck.pos[0] - paddle.pos[0]
         if paddle.team == 1:
-            wrong_side_of_puck_reward = c.rewards['wrong_side_of_puck'] if puck_delta_x < 0 else -c.rewards['wrong_side_of_puck']
+            wrong_side_of_puck_reward = c.rewards["wrong_side_of_puck"] if puck_delta_x < 0 else -c.rewards["wrong_side_of_puck"]
         else:
-            wrong_side_of_puck_reward = c.rewards['wrong_side_of_puck'] if puck_delta_x > 0 else -c.rewards['wrong_side_of_puck']
+            wrong_side_of_puck_reward = c.rewards["wrong_side_of_puck"] if puck_delta_x > 0 else -c.rewards["wrong_side_of_puck"]
         self.register_reward(wrong_side_of_puck_reward, "wrong_side_of_puck", paddle.team)
         reward += wrong_side_of_puck_reward
 
         goal_pos = h.goal_pos(2) if paddle.team == 1 else h.goal_pos(1)
         puck_to_goal_dist = np.linalg.norm(goal_pos - self.puck.pos)
-        puck_to_goal_reward = ((c.settings['field_width'] - puck_to_goal_dist) / c.settings['field_width']) * c.rewards["goal_puck_proximity"]
+        puck_to_goal_reward = ((c.settings["field_width"] - puck_to_goal_dist) / c.settings["field_width"]) * c.rewards["goal_puck_proximity"]
         self.register_reward(puck_to_goal_reward, "goal_puck_proximity", paddle.team)
         reward += puck_to_goal_reward
 
@@ -142,11 +142,11 @@ class Game:
         self.register_reward(pointless_reward, "pointless_motion", paddle.team)
         reward += pointless_reward
 
-        shot_toward_goal_reward = self.puck.collect_shot_reward('shot_toward_goal', paddle) * c.rewards["shot_toward_goal"]
+        shot_toward_goal_reward = self.puck.collect_shot_reward("shot_toward_goal", paddle) * c.rewards["shot_toward_goal"]
         self.register_reward(shot_toward_goal_reward, "shot_toward_goal", paddle.team)
         reward += shot_toward_goal_reward
 
-        shot_reward = self.puck.collect_shot_reward('shot', paddle) * c.rewards["shot"]
+        shot_reward = self.puck.collect_shot_reward("shot", paddle) * c.rewards["shot"]
         self.register_reward(shot_reward, "shot", paddle.team)
         reward += shot_reward
 
@@ -164,7 +164,7 @@ class Game:
         team_1_actions = [player_1_action]
         team_2_actions = []
 
-        for i in range(c.settings['team_size']):
+        for i in range(c.settings["team_size"]):
             team_2_model_action = self.team_2_model.predict(self.get_observation(2, i+1))[0]
             team_2_action = g.controls.game_action_from_model_action(team_2_model_action)
             team_2_actions.append(team_2_action)
@@ -177,12 +177,12 @@ class Game:
         scorer = self.update(team_1_actions, team_2_actions)
         reward = self.handle_rewards(team_1_actions, team_2_actions, scorer)
 
-        return self.get_observation(1, 1), reward, self.is_done(scorer), { 'reward_breakdown_1': self.reward_breakdown_1, 'reward_breakdown_2': self.reward_breakdown_2 }
+        return self.get_observation(1, 1), reward, self.is_done(scorer), { "reward_breakdown_1": self.reward_breakdown_1, "reward_breakdown_2": self.reward_breakdown_2 }
 
     def step(self):
         self.curr_t = g.current_time
         delta_t = self.curr_t - self.prev_t
-        c.settings['delta_t'] = min(92 * delta_t, 3)
+        c.settings["delta_t"] = min(92 * delta_t, 3)
         self.prev_t = self.curr_t
 
         team_1_actions = [g.controls.empty_action() for _ in range(len(self.paddles_1))]
@@ -211,7 +211,7 @@ class Game:
 
     def update(self, team_1_actions, team_2_actions):
         i = 0
-        while c.settings['paused']:
+        while c.settings["paused"]:
             i += 1
             running = g.framework.handle_events()
             if not running:
@@ -249,7 +249,7 @@ class Game:
             self.score[1] += 1
 
         if scorer == 1:
-            g.sound_handler.play_goal_sound(c.settings['field_width'])
+            g.sound_handler.play_goal_sound(c.settings["field_width"])
         elif scorer == 2:
             g.sound_handler.play_goal_sound(0)
 
@@ -260,8 +260,8 @@ class Game:
         paddle_lights = list(map(lambda x: x.light, all_paddles))
         g.framework.update_light_data(g.field.lights + paddle_lights + [self.puck.light])
 
-        if not c.settings['no_render']:
-            if c.settings['is_training'] and (not g.framework.fps_locked):
+        if not c.settings["no_render"]:
+            if c.settings["is_training"] and (not g.framework.fps_locked):
                 if self.current_step % 10 == 0:
                     self.render()
             else:
@@ -298,11 +298,11 @@ class Game:
         return reward
 
     def goal_scored_sequence(self, scorer):
-        if not c.settings['is_training']:
+        if not c.settings["is_training"]:
             goal_time = g.current_time
             scorer = self.paddles_1[0] if scorer == 1 else self.paddles_2[0]
             position = h.field_mid()
-            radius = c.settings['field_height'] / 5.4
+            radius = c.settings["field_height"] / 5.4
             g.framework.begin_drawing()
             scorer.draw_paddle(position, radius, scorer.color, draw_indicator=False)
             g.framework.end_drawing()
@@ -324,7 +324,7 @@ class Game:
         if team == 1:
             obs = {
                 "puck_pos":         self.paddles_1[player].get_relative_pos_of_puck_obs(self.puck),
-                "puck_vel":         h.scale(self.puck.vel, c.gameplay['max_puck_speed'], c.gameplay['max_puck_speed']),
+                "puck_vel":         h.scale(self.puck.vel, c.gameplay["max_puck_speed"], c.gameplay["max_puck_speed"]),
                 "goal_1_top_pos":   self.paddles_1[player].get_relative_pos_of_goal_1_top(),
                 "goal_1_bot_pos":   self.paddles_1[player].get_relative_pos_of_goal_1_bot(),
                 "goal_2_top_pos":   self.paddles_1[player].get_relative_pos_of_goal_2_top(),
@@ -336,8 +336,8 @@ class Game:
 
             players_positions_team_1 = { f"paddle_{1}_{i+2}_pos": self.paddles_1[player].get_relative_pos_of_paddle_obs(paddle) for i, paddle in enumerate(other_paddles_on_team) }
             players_positions_team_2 = { f"paddle_{2}_{i+1}_pos": self.paddles_1[player].get_relative_pos_of_paddle_obs(paddle) for i, paddle in enumerate(self.paddles_2) }
-            players_velocities_team_1 = { f"paddle_{1}_{i+1}_vel": h.scale(paddle.vel, c.gameplay['max_paddle_speed'], c.gameplay['max_paddle_speed']) for i, paddle in enumerate(all_paddles_on_team) }
-            players_velocities_team_2 = { f"paddle_{2}_{i+1}_vel": h.scale(paddle.vel, c.gameplay['max_paddle_speed'], c.gameplay['max_paddle_speed']) for i, paddle in enumerate(self.paddles_2) }
+            players_velocities_team_1 = { f"paddle_{1}_{i+1}_vel": h.scale(paddle.vel, c.gameplay["max_paddle_speed"], c.gameplay["max_paddle_speed"]) for i, paddle in enumerate(all_paddles_on_team) }
+            players_velocities_team_2 = { f"paddle_{2}_{i+1}_vel": h.scale(paddle.vel, c.gameplay["max_paddle_speed"], c.gameplay["max_paddle_speed"]) for i, paddle in enumerate(self.paddles_2) }
 
             obs |= {
                 **players_positions_team_1,
@@ -349,7 +349,7 @@ class Game:
         elif team == 2:
             obs = {
                 "puck_pos":         self.paddles_2[player].get_relative_pos_of_puck_obs(self.puck),
-                "puck_vel":         h.scale(self.puck.vel, c.gameplay['max_puck_speed'], c.gameplay['max_puck_speed']),
+                "puck_vel":         h.scale(self.puck.vel, c.gameplay["max_puck_speed"], c.gameplay["max_puck_speed"]),
                 "goal_1_top_pos":   self.paddles_2[player].get_relative_pos_of_goal_2_top(),
                 "goal_1_bot_pos":   self.paddles_2[player].get_relative_pos_of_goal_2_bot(),
                 "goal_2_top_pos":   self.paddles_2[player].get_relative_pos_of_goal_1_top(),
@@ -361,8 +361,8 @@ class Game:
 
             players_positions_team_1 = { f"paddle_{1}_{i+2}_pos": self.paddles_2[player].get_relative_pos_of_paddle_obs(paddle) for i, paddle in enumerate(other_paddles_on_team) }
             players_positions_team_2 = { f"paddle_{2}_{i+1}_pos": self.paddles_2[player].get_relative_pos_of_paddle_obs(paddle) for i, paddle in enumerate(self.paddles_1) }
-            players_velocities_team_1 = { f"paddle_{1}_{i+1}_vel": h.scale(paddle.vel, c.gameplay['max_paddle_speed'], c.gameplay['max_paddle_speed']) for i, paddle in enumerate(all_paddles_on_team) }
-            players_velocities_team_2 = { f"paddle_{2}_{i+1}_vel": h.scale(paddle.vel, c.gameplay['max_paddle_speed'], c.gameplay['max_paddle_speed']) for i, paddle in enumerate(self.paddles_1) }
+            players_velocities_team_1 = { f"paddle_{1}_{i+1}_vel": h.scale(paddle.vel, c.gameplay["max_paddle_speed"], c.gameplay["max_paddle_speed"]) for i, paddle in enumerate(all_paddles_on_team) }
+            players_velocities_team_2 = { f"paddle_{2}_{i+1}_vel": h.scale(paddle.vel, c.gameplay["max_paddle_speed"], c.gameplay["max_paddle_speed"]) for i, paddle in enumerate(self.paddles_1) }
 
             obs |= {
                 **players_positions_team_1,
@@ -379,7 +379,7 @@ class Game:
         g.framework.begin_drawing()
         g.field.draw_bottom_layer(self.puck)
         self.puck.draw()
-        if c.settings['is_training']:
+        if c.settings["is_training"]:
             reward_alpha_1 = self.get_reward_alpha(self.paddles_1, self.paddles_2)
             for paddle in self.paddles_1:
                 paddle.draw(self.puck, reward_alpha_1)
@@ -390,7 +390,7 @@ class Game:
             for paddle in self.paddles_1 + self.paddles_2:
                 paddle.draw(self.puck)
         g.field.draw_top_layer(self.puck)
-        if not c.settings['is_training']:
+        if not c.settings["is_training"]:
             g.framework.draw_particles()
         self.draw_ui()
         g.framework.end_drawing()
@@ -409,23 +409,23 @@ class Game:
         g.ui.draw_time_left(self.seconds_left())
         g.ui.draw_score(self.score, self.paddles_1[0], self.paddles_2[0])
         # g.framework.draw_fps(0,0)
-        if c.settings['is_training']:
+        if c.settings["is_training"]:
             g.ui.draw_steps_left(str(self.total_training_steps_left()))
             g.ui.draw_reward_breakdown(self.reward_breakdown_1, self.reward_breakdown_2)
 
     def total_training_steps_left(self):
-        return c.training['training_steps'] - self.total_steps
+        return c.training["training_steps"] - self.total_steps
 
     def seconds_left(self):
-        if c.settings['is_training']:
-            seconds_left = math.ceil((self.match_steps - self.current_step) / c.settings['fps'])
+        if c.settings["is_training"]:
+            seconds_left = math.ceil((self.match_steps - self.current_step) / c.settings["fps"])
         else:
-            # seconds_left = math.ceil((self.match_steps - self.current_step) / c.settings['fps'])
-            seconds_left = math.ceil((self.match_steps / c.settings['fps']) - (g.current_time - self.start_time))
+            # seconds_left = math.ceil((self.match_steps - self.current_step) / c.settings["fps"])
+            seconds_left = math.ceil((self.match_steps / c.settings["fps"]) - (g.current_time - self.start_time))
         return seconds_left
 
     def is_done(self, scorer):
-        if c.settings['is_training']:
+        if c.settings["is_training"]:
             return self.current_step > self.match_steps or scorer != 0
         else:
             return self.seconds_left() < 0 or scorer != 0
@@ -435,18 +435,18 @@ class Game:
 
 def main(ai=False):
     g.initialize()
-    c.settings['no_sound'] = False
-    c.settings['is_training'] = False
+    c.settings["no_sound"] = False
+    c.settings["is_training"] = False
 
     game = Game(ai)
 
-    latest_model_path, opponent_algorithm = h.get_latest_model_path_with_algorithm(c.training['base_path'], 'PPO')
+    latest_model_path, opponent_algorithm = h.get_latest_model_path_with_algorithm(c.training["base_path"], "PPO")
 
-    if opponent_algorithm == 'PPO':
+    if opponent_algorithm == "PPO":
         opponent_algorithm = PPO
-    elif opponent_algorithm == 'SAC':
+    elif opponent_algorithm == "SAC":
         opponent_algorithm = SAC
-    elif opponent_algorithm == 'TD3':
+    elif opponent_algorithm == "TD3":
         opponent_algorithm = TD3
 
     if latest_model_path:
@@ -457,8 +457,8 @@ def main(ai=False):
         game.team_1_model = opponent_algorithm.load(latest_model_path, env=env)
 
     if latest_model_path is not None:
-        g.team_1_model_name = latest_model_path.split('/')[-1].split('.')[0].split('_', 1)[1]
-        g.team_2_model_name = latest_model_path.split('/')[-1].split('.')[0].split('_', 1)[1]
+        g.team_1_model_name = latest_model_path.split("/")[-1].split(".")[0].split("_", 1)[1]
+        g.team_2_model_name = latest_model_path.split("/")[-1].split(".")[0].split("_", 1)[1]
 
     running = True
     while running:
@@ -476,12 +476,12 @@ if __name__ == "__main__":
     parser.add_argument("-a", "--ai", action="store_true", help="AI vs AI")
     parser.add_argument("-n", "--number", type=int, default=2, help="Number of players per team")
     args = parser.parse_args()
-    c.settings['team_size'] = args.number
+    c.settings["team_size"] = args.number
 
     if args.profile:
         print("Running game with profiling...")
-        cProfile.run('main()', 'profile_output.prof')
-        print("Profiling complete. Results saved to 'profile_output.prof'")
+        cProfile.run("main()", "profile_output.prof")
+        print("Profiling complete. Results saved to profile_output.prof")
         print("You can visualize the results using snakeviz: snakeviz profile_output.prof")
     else:
         main(args.ai)

@@ -92,7 +92,8 @@ vec3 getLightGlow(vec3 color, vec2 fragCoord) {
         alpha = pow(alpha, 3);
 
         // float dither = random(fragCoord * 0.05) * 0.02;
-        // alpha += dither;
+        float dither = random(fragCoord * 0.05) * 0.01;
+        alpha += dither;
 
         vec3 light_color = LightBuffer[i*2 + 1];
 

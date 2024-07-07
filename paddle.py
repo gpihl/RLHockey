@@ -28,12 +28,12 @@ class Paddle:
         self.velocity_history = deque(maxlen=5)
         self.average_velocity = np.zeros(2)
         self.current_reward = 0.0
-        self.light = Light(self.pos, 0.45, 0, 0, None, self.color, light_type='paddle')
+        self.light = Light(self.pos, 0.45, 0, 0, None, self.color, light_type="paddle")
         self.reset()
 
     def reset(self):
-        if c.settings['is_training']:
-            if c.settings['random_starting_locations']:
+        if c.settings["is_training"]:
+            if c.settings["random_starting_locations"]:
                 self.pos = self.get_starting_pos_random()
             else:
                 self.pos = self.get_starting_pos_regular()
@@ -46,25 +46,25 @@ class Paddle:
         self.vel = np.zeros(2)
 
     def get_starting_pos_random(self):
-        starting_pos = np.array([random.uniform(2*self.radius, c.settings['field_width'] - 2*self.radius),
-                                 random.uniform(2*self.radius, c.settings['field_height'] - 2*self.radius)],
+        starting_pos = np.array([random.uniform(2*self.radius, c.settings["field_width"] - 2*self.radius),
+                                 random.uniform(2*self.radius, c.settings["field_height"] - 2*self.radius)],
                                  dtype=np.float32)
         return starting_pos
 
     def get_starting_pos_regular(self):
-        y_spacing = c.settings['field_height'] / (self.team_mates + 1)
+        y_spacing = c.settings["field_height"] / (self.team_mates + 1)
         y_coord = round(self.player * y_spacing)
 
         if self.team == 1:
             starting_pos = np.array([self.radius*3.0, y_coord])
         else:
-            starting_pos = np.array([c.settings['field_width'] - self.radius*3.0, y_coord])
+            starting_pos = np.array([c.settings["field_width"] - self.radius*3.0, y_coord])
 
         return starting_pos
 
     def dash(self, puck):
         current_time = g.current_time
-        if current_time - self.last_dash_time > c.gameplay['dash_cooldown']:
+        if current_time - self.last_dash_time > c.gameplay["dash_cooldown"]:
             self.last_dash_time = current_time
             self.charging_dash = False
             self.charging_dash_initial = False
@@ -72,11 +72,11 @@ class Paddle:
             dash_direction = self.dash_direction(puck)
 
             average_speed = np.linalg.norm(self.average_velocity)
-            self.vel += dash_direction * self.dash_charge_power * c.gameplay['dash_impulse'] * (average_speed / c.gameplay['max_paddle_speed'])
+            self.vel += dash_direction * self.dash_charge_power * c.gameplay["dash_impulse"] * (average_speed / c.gameplay["max_paddle_speed"])
             self.limit_speed()
 
-            sound_vel = c.gameplay['max_paddle_speed'] * self.dash_charge_power
-            g.sound_handler.play_sound_velocity_based('dash', sound_vel, c.gameplay['max_paddle_speed'], 1.5, self.pos[0], exponent=2, pitch_shift=True)
+            sound_vel = c.gameplay["max_paddle_speed"] * self.dash_charge_power
+            g.sound_handler.play_sound_velocity_based("dash", sound_vel, c.gameplay["max_paddle_speed"], 1.5, self.pos[0], exponent=2, pitch_shift=True)
 
     def dash_direction(self, puck):
         if np.linalg.norm(self.average_velocity) > 0:
@@ -92,25 +92,25 @@ class Paddle:
         return dash_direction
 
     def velocity_alpha(self):
-        return min(1, np.linalg.norm(self.vel) / c.gameplay['max_paddle_speed'])
+        return min(1, np.linalg.norm(self.vel) / c.gameplay["max_paddle_speed"])
 
     def limit_speed(self):
         speed = np.linalg.norm(self.vel)
         if not self.is_dashing():
-            if speed > c.gameplay['max_paddle_speed']:
-                self.vel = (self.vel / speed) * c.gameplay['max_paddle_speed']
+            if speed > c.gameplay["max_paddle_speed"]:
+                self.vel = (self.vel / speed) * c.gameplay["max_paddle_speed"]
         else:
-            if speed > c.gameplay['max_paddle_speed'] + 45:
-                self.vel = (self.vel / speed) * (c.gameplay['max_paddle_speed'] + 45)
+            if speed > c.gameplay["max_paddle_speed"] + 45:
+                self.vel = (self.vel / speed) * (c.gameplay["max_paddle_speed"] + 45)
 
     def is_dashing(self):
-        return (g.current_time - self.last_dash_time) < c.gameplay['dash_duration'] * self.dash_charge_power
+        return (g.current_time - self.last_dash_time) < c.gameplay["dash_duration"] * self.dash_charge_power
 
     def is_power_dashing(self):
         return self.is_dashing() and self.charging_alpha() == 1.0
 
     def full_charge_alpha(self):
-        res = min(1.0, max(0.0, (self.charging_time() / c.gameplay['dash_max_charge_time'] - 1)) * 2)
+        res = min(1.0, max(0.0, (self.charging_time() / c.gameplay["dash_max_charge_time"] - 1)) * 2)
         return res
 
     def apply_aim_assist(self, puck, max_assist_strength=0.7):
@@ -122,14 +122,14 @@ class Paddle:
 
         ideal_vel = to_puck / future_time
 
-        max_speed = c.gameplay['max_paddle_speed']
+        max_speed = c.gameplay["max_paddle_speed"]
         if np.linalg.norm(ideal_vel) > max_speed:
             ideal_vel = ideal_vel / np.linalg.norm(ideal_vel) * max_speed
 
         relative_velocity = np.linalg.norm(self.vel - puck.vel)
-        velocity_factor = min(relative_velocity / c.gameplay['max_paddle_speed'] + c.gameplay['max_puck_speed'], 1.0)
+        velocity_factor = min(relative_velocity / c.gameplay["max_paddle_speed"] + c.gameplay["max_puck_speed"], 1.0)
         velocity_factor = velocity_factor ** 2
-        proximity_factor = 1 - min(distance_to_puck / (c.settings['field_width'] / 2), 1)
+        proximity_factor = 1 - min(distance_to_puck / (c.settings["field_width"] / 2), 1)
         proximity_factor = proximity_factor ** 4
         assist_strength = max_assist_strength * velocity_factor * proximity_factor
 
@@ -164,10 +164,10 @@ class Paddle:
         if action == None:
             return
 
-        if 'magnet' in action:
-            self.set_magnetic_effect(action['magnet'])
+        if "magnet" in action:
+            self.set_magnetic_effect(action["magnet"])
 
-        if action['dash']:
+        if action["dash"]:
             if not self.charging_dash:
                 self.charge_start_time = g.current_time
                 self.charging_dash_initial = True
@@ -177,15 +177,15 @@ class Paddle:
             self.charging_dash_initial = False
             self.dash(puck)
 
-        if (self.team == 2 and not c.settings['player_2_human']):
-            acc = action['acceleration']
+        if (self.team == 2 and not c.settings["player_2_human"]):
+            acc = action["acceleration"]
             reversed_x_acc = np.array([-acc[0], acc[1]])
             self.apply_force(reversed_x_acc)
         else:
-            self.apply_force(action['acceleration'])
+            self.apply_force(action["acceleration"])
 
     def apply_force(self, acc):
-        self.vel += acc * c.settings['delta_t'] * self.max_acceleration
+        self.vel += acc * c.settings["delta_t"] * self.max_acceleration
 
     def update(self, puck, action=None):
         self.handle_controls(puck, action)
@@ -201,29 +201,29 @@ class Paddle:
         if self.charging_dash_initial:
             if charging_alpha >= 1.0:
                 self.charging_dash_initial = False
-                # g.sound_handler.play_sound(0.5, self.pos[0], 'full-charge')
+                # g.sound_handler.play_sound(0.5, self.pos[0], "full-charge")
 
         g.sound_handler.update_paddle_sound(self)
 
         if self.is_dashing():
             self.apply_aim_assist(puck)
         else:
-            self.vel *= (self.friction ** c.settings['delta_t'])
+            self.vel *= (self.friction ** c.settings["delta_t"])
 
         self.limit_speed()
         self.update_velocity_history()
-        self.pos += self.vel * c.settings['delta_t']
+        self.pos += self.vel * c.settings["delta_t"]
 
-        if c.settings['field_split']:
+        if c.settings["field_split"]:
             if self.team == 1:
                 left_wall = self.radius
-                right_wall = c.settings['field_width'] / 2 - self.radius
+                right_wall = c.settings["field_width"] / 2 - self.radius
             else:
-                left_wall = c.settings['field_width'] / 2 + self.radius
-                right_wall = c.settings['field_width'] - self.radius
+                left_wall = c.settings["field_width"] / 2 + self.radius
+                right_wall = c.settings["field_width"] - self.radius
         else:
             left_wall = self.radius
-            right_wall = c.settings['field_width'] - self.radius
+            right_wall = c.settings["field_width"] - self.radius
 
         corner_collision = self.handle_corner_collision()
         if not corner_collision:
@@ -237,14 +237,14 @@ class Paddle:
             if self.pos[1] < self.radius:
                 self.pos[1] = self.radius
                 self.vel[1] = 0.0
-            elif self.pos[1] > c.settings['field_height'] - self.radius:
-                self.pos[1] = c.settings['field_height'] - self.radius
+            elif self.pos[1] > c.settings["field_height"] - self.radius:
+                self.pos[1] = c.settings["field_height"] - self.radius
                 self.vel[1] = 0.0
 
         self.light.update(object=self)
 
     def handle_corner_collision(self):
-        corner_radius = c.settings['corner_radius']
+        corner_radius = c.settings["corner_radius"]
         corner_circle_pos = None
 
         if self.pos[0] < corner_radius and self.pos[1] < corner_radius:
@@ -291,16 +291,16 @@ class Paddle:
 
             sound_vel = np.linalg.norm(relative_velocity)
             if sound_vel != 0:
-                g.sound_handler.play_sound_velocity_based('paddle', sound_vel, 2 * c.gameplay['max_paddle_speed'], 0.6, self.pos[0], exponent=2)
+                g.sound_handler.play_sound_velocity_based("paddle", sound_vel, 2 * c.gameplay["max_paddle_speed"], 0.6, self.pos[0], exponent=2)
                 g.framework.add_temporary_particles(self.pos - self.radius * normal, sound_vel, [self.color, paddle.color])
 
     def draw(self, puck, reward_alpha=None, draw_indicator=True):
-        # if c.settings['is_training'] or (not (self.player == 1 and self.team == 1)):
-        if c.settings['is_training']:
+        # if c.settings["is_training"] or (not (self.player == 1 and self.team == 1)):
+        if c.settings["is_training"]:
             model_name = g.team_1_model_name if self.team == 1 else g.team_2_model_name
-            g.framework.draw_text(model_name, 'model_name', (255,255,255), (self.pos[0], self.pos[1] - self.radius * 1.4), 'center')
+            g.framework.draw_text(model_name, "model_name", (255,255,255), (self.pos[0], self.pos[1] - self.radius * 1.4), "center")
 
-        if not c.settings['is_training']:
+        if not c.settings["is_training"]:
             g.framework.begin_drawing_paddle(self)
 
         theme_color = g.sound_handler.target_color()
@@ -313,7 +313,7 @@ class Paddle:
             self.color = h.modify_hsl(self.color, 0, charge_color_shift * 0.5, charge_color_shift * 0.2)
 
         self.draw_paddle(self.pos, self.radius, self.color, reward_alpha, draw_indicator)
-        if not c.settings['is_training']:
+        if not c.settings["is_training"]:
             g.framework.end_drawing_paddle()
 
     def charging_time(self):
@@ -321,7 +321,7 @@ class Paddle:
 
     def charging_alpha(self):
         charging_time = self.charging_time()
-        return max(0.0, min(1.0, charging_time / c.gameplay['dash_max_charge_time'])) ** 1.2
+        return max(0.0, min(1.0, charging_time / c.gameplay["dash_max_charge_time"])) ** 1.2
 
     def draw_paddle(self, position, radius, color, reward_alpha=None, draw_indicator=True):
         if reward_alpha is not None:
@@ -353,24 +353,24 @@ class Paddle:
         return self.normalize_relative_pos(relative_pos)
 
     def get_relative_pos_of_goal_1_top(self):
-        relative_pos = np.array([0, (c.settings['field_height'] - c.settings['goal_height']) / 2]) - self.pos
+        relative_pos = np.array([0, (c.settings["field_height"] - c.settings["goal_height"]) / 2]) - self.pos
         return self.normalize_relative_pos(relative_pos)
 
     def get_relative_pos_of_goal_1_bot(self):
-        relative_pos = np.array([0, c.settings['field_height'] - (c.settings['field_height'] - c.settings['goal_height']) / 2]) - self.pos
+        relative_pos = np.array([0, c.settings["field_height"] - (c.settings["field_height"] - c.settings["goal_height"]) / 2]) - self.pos
         return self.normalize_relative_pos(relative_pos)
 
     def get_relative_pos_of_goal_2_top(self):
-        relative_pos = np.array([c.settings['field_width'], (c.settings['field_height'] - c.settings['goal_height']) / 2]) - self.pos
+        relative_pos = np.array([c.settings["field_width"], (c.settings["field_height"] - c.settings["goal_height"]) / 2]) - self.pos
         return self.normalize_relative_pos(relative_pos)
 
     def get_relative_pos_of_goal_2_bot(self):
-        relative_pos = np.array([c.settings['field_width'], c.settings['field_height'] - (c.settings['field_height'] - c.settings['goal_height']) / 2]) - self.pos
+        relative_pos = np.array([c.settings["field_width"], c.settings["field_height"] - (c.settings["field_height"] - c.settings["goal_height"]) / 2]) - self.pos
         return self.normalize_relative_pos(relative_pos)
 
     def normalize_relative_pos(self, relative_pos):
-        relative_pos[0] /= c.settings['field_width']
-        relative_pos[1] /= c.settings['field_height']
+        relative_pos[0] /= c.settings["field_width"]
+        relative_pos[1] /= c.settings["field_height"]
         return relative_pos
 
     def wall_collision_factor(self, acceleration):
@@ -380,9 +380,9 @@ class Paddle:
         bottom_wall_normal = np.array([0, -1])
 
         dist_to_left = self.pos[0] - self.radius
-        dist_to_right = c.settings['field_width'] - self.pos[0] - self.radius
+        dist_to_right = c.settings["field_width"] - self.pos[0] - self.radius
         dist_to_top = self.pos[1] - self.radius
-        dist_to_bottom = c.settings['field_height'] - self.pos[1] - self.radius
+        dist_to_bottom = c.settings["field_height"] - self.pos[1] - self.radius
 
         total_factor = 0.0
 

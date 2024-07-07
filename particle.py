@@ -11,9 +11,9 @@ class Particle:
         self.color = color
 
     def update(self):
-        self.vel *= (0.95 ** c.settings['delta_t'])
-        self.radius *= (0.98 ** c.settings['delta_t'])
-        self.pos += self.vel * c.settings['delta_t']
+        self.vel *= (0.95 ** c.settings["delta_t"])
+        self.radius *= (0.98 ** c.settings["delta_t"])
+        self.pos += self.vel * c.settings["delta_t"]
 
     def is_alive(self):
         return self.radius > 0.1

@@ -4,7 +4,7 @@ import constants as c
 import numpy as np
 
 class Light:
-    def __init__(self, pos, spawn_intensity, amplitude, time_scale, top, color=(255,255,255), light_type='wall'):
+    def __init__(self, pos, spawn_intensity, amplitude, time_scale, top, color=(255,255,255), light_type="wall"):
         self.pos = pos
         self.spawn_intensity = spawn_intensity
         self.base_intensity = spawn_intensity
@@ -23,13 +23,13 @@ class Light:
         self.base_intensity = self.spawn_intensity
 
     def update(self, puck=None, object=None):
-        if self.type == 'wall':
+        if self.type == "wall":
             self.handle_puck_collision(puck)
             t = g.current_time
             noise_value = noise.pnoise1(t * self.time_scale)
             self.intensity = self.base_intensity + self.amplitude * noise_value
             self.intensity = max(0.0, min(1.0, self.intensity))
-        elif self.type == 'paddle' or self.type == 'puck':
+        elif self.type == "paddle" or self.type == "puck":
             self.pos = object.pos
             self.color = object.color
             # if paddle.charging_dash:
@@ -59,7 +59,7 @@ class Light:
             self.broken = True
             self.base_intensity = 0
             g.framework.add_temporary_particles(self.pos, 400, [(100,100,230)])
-            g.sound_handler.play_sound(0.2, self.pos[0], 'light-broken')
+            g.sound_handler.play_sound(0.2, self.pos[0], "light-broken")
 
 
 

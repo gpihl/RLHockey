@@ -10,7 +10,7 @@ class AirHockeyEnv(gym.Env):
         super(AirHockeyEnv, self).__init__()
         self.game = game.Game()
 
-        team_size = c.settings['team_size']
+        team_size = c.settings["team_size"]
 
         self.observation_space = {
             "puck_pos":     spaces.Box(low=-1, high=1, shape=(2,), dtype=np.float32),
@@ -48,10 +48,10 @@ class AirHockeyEnv(gym.Env):
         observation, reward, done, info = self.game.step_training(action)
         if done:
             print("Team 1 reward breakdown:")
-            pprint(info['reward_breakdown_1'], width=1)
+            pprint(info["reward_breakdown_1"], width=1)
             print("")
             print("Team 2 reward breakdown:")
-            pprint(info['reward_breakdown_2'], width=1)
+            pprint(info["reward_breakdown_2"], width=1)
             print("")
             print("")
         truncated = False

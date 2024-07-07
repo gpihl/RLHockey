@@ -6,10 +6,10 @@ import constants as c
 import globals as g
 
 def field_mid_x():
-    return c.settings['field_width'] / 2
+    return c.settings["field_width"] / 2
 
 def field_mid_y():
-    return c.settings['field_height'] / 2
+    return c.settings["field_height"] / 2
 
 def field_mid():
     return np.array([field_mid_x(), field_mid_y()])
@@ -18,25 +18,25 @@ def field_left():
     return 0.0
 
 def field_right():
-    return c.settings['field_width']
+    return c.settings["field_width"]
 
 def field_top():
     return 0.0
 
 def field_bot():
-    return c.settings['field_height']
+    return c.settings["field_height"]
 
 def corner_top_left():
-    return np.array([c.settings['corner_radius'], c.settings['corner_radius']])
+    return np.array([c.settings["corner_radius"], c.settings["corner_radius"]])
 
 def corner_top_right():
-    return np.array([field_right() - c.settings['corner_radius'], c.settings['corner_radius']])
+    return np.array([field_right() - c.settings["corner_radius"], c.settings["corner_radius"]])
 
 def corner_bot_left():
-    return np.array([c.settings['corner_radius'], field_bot() - c.settings['corner_radius']])
+    return np.array([c.settings["corner_radius"], field_bot() - c.settings["corner_radius"]])
 
 def corner_bot_right():
-    return np.array([field_right() - c.settings['corner_radius'], field_bot() - c.settings['corner_radius']])
+    return np.array([field_right() - c.settings["corner_radius"], field_bot() - c.settings["corner_radius"]])
 
 def goal_pos(goal_idx):
     if goal_idx == 1:
@@ -50,19 +50,19 @@ def scale(vec, x_max, y_max):
     return np.array([vec[0] / x_max, vec[1] / y_max])
 
 def goal_top():
-    return (c.settings['field_height'] - c.settings['goal_height']) / 2
+    return (c.settings["field_height"] - c.settings["goal_height"]) / 2
 
 def goal_top_pos(goal_idx):
-    return (0, goal_top()) if goal_idx == 1 else (c.settings['field_width'], goal_top())
+    return (0, goal_top()) if goal_idx == 1 else (c.settings["field_width"], goal_top())
 
 def goal_bot_pos(goal_idx):
-    return (0, goal_bottom()) if goal_idx == 1 else (c.settings['field_width'], goal_bottom())
+    return (0, goal_bottom()) if goal_idx == 1 else (c.settings["field_width"], goal_bottom())
 
 def goal_bottom():
-    return c.settings['goal_height'] + (c.settings['field_height'] - c.settings['goal_height']) / 2
+    return c.settings["goal_height"] + (c.settings["field_height"] - c.settings["goal_height"]) / 2
 
 def dist_alpha(dist):
-    return 1.0 - min(1.0, dist / c.settings['field_width'])
+    return 1.0 - min(1.0, dist / c.settings["field_width"])
 
 def interpolate_color_rgb(color1, color2, t):
     return (
@@ -179,76 +179,76 @@ def clamp_l(rgb, minl, maxl):
 
 def save_text_to_file(text, file_path):
     try:
-        with open(file_path, 'a') as file:
-            file.write(text + '\n\n')
+        with open(file_path, "a") as file:
+            file.write(text + "\n\n")
         print(f"File saved successfully at {file_path}")
     except Exception as e:
         print(f"An error occurred: {e}")
 
 def get_latest_model_path(base_path, prefix):
-    models = [f for f in os.listdir(base_path) if f.startswith(prefix) and f.endswith('.zip')]
+    models = [f for f in os.listdir(base_path) if f.startswith(prefix) and f.endswith(".zip")]
     if not models:
         return None
-    latest_model = max(models, key=lambda x: int(x.split('_')[-1].split('.')[0]))
+    latest_model = max(models, key=lambda x: int(x.split("_")[-1].split(".")[0]))
     return os.path.join(base_path, latest_model)
 
 def get_latest_model_path_with_algorithm(base_path, algorithm=None):
     if algorithm is None:
-        algorithm = random.choice(['PPO'])
+        algorithm = random.choice(["PPO"])
 
-    models = [f for f in os.listdir(base_path) if f.startswith(f"{c.settings['team_size']}_{algorithm}") and f.endswith('.zip')]
+    models = [f for f in os.listdir(base_path) if f.startswith(f"{c.settings["team_size"]}_{algorithm}") and f.endswith(".zip")]
     if not models:
         return None, algorithm
 
-    latest_model = max(models, key=lambda x: int(x.split('_')[-1].split('.')[0]))
+    latest_model = max(models, key=lambda x: int(x.split("_")[-1].split(".")[0]))
 
     return os.path.join(base_path, latest_model), algorithm
 
 
 def get_random_model_path(base_path, prefix):
-    models = [f for f in os.listdir(base_path) if f.startswith(prefix) and f.endswith('.zip')]
+    models = [f for f in os.listdir(base_path) if f.startswith(prefix) and f.endswith(".zip")]
     if not models:
         return None
 
-    models.sort(key = lambda x: int(x.split('_')[-1].split('.')[0]))
+    models.sort(key = lambda x: int(x.split("_")[-1].split(".")[0]))
     random_index = max(0, len(models) - int(np.abs(np.random.normal(0, 0.25, 1)[0]) * len(models)) - 1)
     print(f"random_index: {random_index}")
     random_model = models[random_index]
     return os.path.join(base_path, random_model)
 
 def get_next_model_path(base_path, algorithm):
-    models = [f for f in os.listdir(base_path) if f.startswith(f"{c.settings['team_size']}_{algorithm}") and f.endswith('.zip')]
+    models = [f for f in os.listdir(base_path) if f.startswith(f"{c.settings["team_size"]}_{algorithm}") and f.endswith(".zip")]
     if not models:
         next_model_number = 1
     else:
-        latest_model = max(models, key=lambda x: int(x.split('_')[-1].split('.')[0]))
-        latest_number = int(latest_model.split('_')[-1].split('.')[0])
+        latest_model = max(models, key=lambda x: int(x.split("_")[-1].split(".")[0]))
+        latest_number = int(latest_model.split("_")[-1].split(".")[0])
         next_model_number = latest_number + 1
-    return os.path.join(base_path, f"{c.settings['team_size']}_{algorithm}_{next_model_number}.zip")
+    return os.path.join(base_path, f"{c.settings["team_size"]}_{algorithm}_{next_model_number}.zip")
 
 def get_sorted_zip_files(directory):
     dir_path = Path(directory).resolve()
-    zip_files = [f for f in dir_path.glob('*.zip') if f.is_file()]
+    zip_files = [f for f in dir_path.glob("*.zip") if f.is_file()]
     sorted_files = sorted(zip_files, key=lambda x: x.stat().st_mtime)
     return [f.name for f in sorted_files]
 
 def get_random_model_with_algorithm():
-    models = get_sorted_zip_files('models')
-    models = list(filter(lambda x: x.startswith(str(c.settings['team_size'])), models))
+    models = get_sorted_zip_files("models")
+    models = list(filter(lambda x: x.startswith(str(c.settings["team_size"])), models))
     if len(models) == 0:
         return None, None
 
     random_index = max(0, len(models) - int(np.abs(np.random.normal(0, 0.25, 1)[0]) * len(models)) - 1)
     random_model = models[random_index]
     algorithm = get_model_algorithm(random_model)
-    path = os.path.join('models', random_model)
+    path = os.path.join("models", random_model)
     return path, algorithm
 
 def save_model_name():
-    save_text_to_file(g.current_model_name, 'model_name/name.txt')
+    save_text_to_file(g.current_model_name, "model_name/name.txt")
 
 def get_model_algorithm(file_name):
-    return file_name.split('_')[1].strip()
+    return file_name.split("_")[1].strip()
 
 def clip_vector_length_inplace(vector, max_length=1):
     magnitude = np.linalg.norm(vector)

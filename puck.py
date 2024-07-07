@@ -22,14 +22,14 @@ class Puck:
         self.homing = False
         self.homing_target = 1
         self.last_collider = None
-        self.light = Light(self.pos, 0.45, 0, 0, None, self.color, light_type='puck')
+        self.light = Light(self.pos, 0.45, 0, 0, None, self.color, light_type="puck")
         self.reset()
 
     def reset(self, last_scorer=2):
-        if not c.settings['is_training']:
+        if not c.settings["is_training"]:
             self.pos = self.get_starting_pos_regular(last_scorer)
         else:
-            if c.settings['random_starting_locations']:
+            if c.settings["random_starting_locations"]:
                 self.pos = self.get_starting_pos_random()
             else:
                 self.pos = self.get_starting_pos_regular(last_scorer)
@@ -42,8 +42,8 @@ class Puck:
         self.homing = False
 
     def get_starting_pos_random(self):
-        starting_pos = np.array([random.uniform(2*self.radius, c.settings['field_width'] - 2*self.radius),
-                                 random.uniform(2*self.radius, c.settings['field_height'] - 2*self.radius)],
+        starting_pos = np.array([random.uniform(2*self.radius, c.settings["field_width"] - 2*self.radius),
+                                 random.uniform(2*self.radius, c.settings["field_height"] - 2*self.radius)],
                                  dtype=np.float32)
 
         return starting_pos
@@ -53,37 +53,37 @@ class Puck:
         delta = np.array([random.uniform(-var, var), random.uniform(-var, var)],dtype=np.float32)
         new_starting_pos = self.prev_puck_start_pos + delta
         self.prev_puck_start_pos += delta
-        self.prev_puck_start_pos = np.clip(self.prev_puck_start_pos, self.radius*2 + 20, c.settings['field_width'] - 2*self.radius - 20)
-        new_starting_pos = np.clip(new_starting_pos, self.radius*2 + 20, c.settings['field_width'] - 2*self.radius - 20)
+        self.prev_puck_start_pos = np.clip(self.prev_puck_start_pos, self.radius*2 + 20, c.settings["field_width"] - 2*self.radius - 20)
+        new_starting_pos = np.clip(new_starting_pos, self.radius*2 + 20, c.settings["field_width"] - 2*self.radius - 20)
         return new_starting_pos
 
     def get_starting_pos_regular(self, last_scorer):
         if last_scorer == 2:
-            return np.array([c.settings['field_width'] / 4, c.settings['field_height'] / 2])
+            return np.array([c.settings["field_width"] / 4, c.settings["field_height"] / 2])
         elif last_scorer == 1:
-            return np.array([c.settings['field_width'] * 3 / 4, c.settings['field_height'] / 2])
+            return np.array([c.settings["field_width"] * 3 / 4, c.settings["field_height"] / 2])
 
     def update(self, paddles):
-        self.vel *= (self.friction ** c.settings['delta_t'])
-        self.vel += np.random.normal(0, 0.005, 2) * c.settings['delta_t']
+        self.vel *= (self.friction ** c.settings["delta_t"])
+        self.vel += np.random.normal(0, 0.005, 2) * c.settings["delta_t"]
 
         if self.homing:
             self.vel += self.homing_acceleration()
 
         magnus_coefficient = 0.001
         magnus_force = magnus_coefficient * np.array([-self.vel[1], self.vel[0]]) * self.rot_vel
-        self.vel += magnus_force * c.settings['delta_t']
+        self.vel += magnus_force * c.settings["delta_t"]
 
         self.limit_speed()
-        self.pos += self.vel * c.settings['delta_t']
+        self.pos += self.vel * c.settings["delta_t"]
 
-        self.rot_vel *= (self.friction ** c.settings['delta_t'])
-        self.rot += self.rot_vel * c.settings['delta_t']
+        self.rot_vel *= (self.friction ** c.settings["delta_t"])
+        self.rot += self.rot_vel * c.settings["delta_t"]
 
         for paddle in paddles:
             self.handle_paddle_collision(paddle)
             magnetic_force = paddle.calculate_magnetic_force(self)
-            self.vel += magnetic_force * c.settings['delta_t']
+            self.vel += magnetic_force * c.settings["delta_t"]
 
         self.handle_wall_collision()
         self.light.update(object=self)
@@ -104,8 +104,8 @@ class Puck:
                 self.vel[1] = -self.vel[1] * self.wall_elasticity
                 sound_vel = self.vel[1]
                 normal = np.array([0,1])
-            elif self.pos[1] > c.settings['field_height'] - self.radius:
-                self.pos[1] = c.settings['field_height'] - self.radius
+            elif self.pos[1] > c.settings["field_height"] - self.radius:
+                self.pos[1] = c.settings["field_height"] - self.radius
                 self.vel[1] = -self.vel[1] * self.wall_elasticity
                 sound_vel = self.vel[1]
                 normal = np.array([0,-1])
@@ -115,21 +115,21 @@ class Puck:
                 self.vel[0] = -self.vel[0] * self.wall_elasticity
                 sound_vel = self.vel[0]
                 normal = np.array([1,0])
-            elif self.pos[0] > c.settings['field_width'] - self.radius and not (self.pos[1] < h.goal_top() and self.pos[1] > h.goal_bottom()):
-                self.pos[0] = c.settings['field_width'] - self.radius
+            elif self.pos[0] > c.settings["field_width"] - self.radius and not (self.pos[1] < h.goal_top() and self.pos[1] > h.goal_bottom()):
+                self.pos[0] = c.settings["field_width"] - self.radius
                 self.vel[0] = -self.vel[0] * self.wall_elasticity
                 sound_vel = self.vel[0]
                 normal = np.array([-1,0])
 
         if sound_vel != 0:
             sound_vel = np.abs(sound_vel)
-            g.sound_handler.play_sound_velocity_based('table_hit', sound_vel, c.gameplay['max_puck_speed'], 1.5, self.pos[0], pitch_shift=True)
+            g.sound_handler.play_sound_velocity_based("table_hit", sound_vel, c.gameplay["max_puck_speed"], 1.5, self.pos[0], pitch_shift=True)
             g.framework.add_temporary_particles(self.pos - self.radius * normal, sound_vel, [self.color])
 
     def handle_corner_collision(self):
         sound_vel = 0
 
-        corner_radius = c.settings['corner_radius']
+        corner_radius = c.settings["corner_radius"]
         corner_circle_pos = None
 
         if self.pos[0] < corner_radius and self.pos[1] < corner_radius:
@@ -161,8 +161,8 @@ class Puck:
 
     def limit_speed(self):
         speed = np.linalg.norm(self.vel)
-        if speed > c.gameplay['max_puck_speed']:
-            self.vel = (self.vel / speed) * c.gameplay['max_puck_speed']
+        if speed > c.gameplay["max_puck_speed"]:
+            self.vel = (self.vel / speed) * c.gameplay["max_puck_speed"]
 
     def check_paddle_collision(self, paddle):
         dist = np.linalg.norm(self.pos - paddle.pos)
@@ -171,11 +171,11 @@ class Puck:
     def collect_shot_reward(self, reward_type, paddle):
         key = f"{paddle.team}_{paddle.player}"
         reward = 0
-        if reward_type == 'shot_toward_goal':
+        if reward_type == "shot_toward_goal":
             if key in self.shot_on_goal_reward:
                 reward = self.shot_on_goal_reward[key]
             self.shot_on_goal_reward[key] = 0
-        elif reward_type == 'shot':
+        elif reward_type == "shot":
             if key in self.shot_reward:
                 reward = self.shot_reward[key]
             self.shot_reward[key] = 0
@@ -218,11 +218,11 @@ class Puck:
             self.pos += normal * (overlap / 2)
 
             # if paddle.is_power_dashing():
-            #     g.sound_handler.play_sound(0.5, self.pos[0], 'power')
+            #     g.sound_handler.play_sound(0.5, self.pos[0], "power")
                 # self.homing = True
                 # self.homing_target = 2 if paddle.player == 1 else 1
 
-            if c.settings['is_training']:
+            if c.settings["is_training"]:
                 key = f"{paddle.team}_{paddle.player}"
                 self.shot_reward[key] = np.linalg.norm(relative_velocity)
 
@@ -232,14 +232,14 @@ class Puck:
 
             sound_vel = np.linalg.norm(relative_velocity)
             if sound_vel != 0:
-                g.sound_handler.play_sound_velocity_based('paddle', sound_vel, c.gameplay['max_puck_speed'] + c.gameplay['max_paddle_speed'], 1.0, self.pos[0], exponent=4)
-                g.sound_handler.play_sound_velocity_based('table_hit', sound_vel, c.gameplay['max_puck_speed'] + c.gameplay['max_paddle_speed'], 1.5, self.pos[0], pitch_shift=True)
+                g.sound_handler.play_sound_velocity_based("paddle", sound_vel, c.gameplay["max_puck_speed"] + c.gameplay["max_paddle_speed"], 1.0, self.pos[0], exponent=4)
+                g.sound_handler.play_sound_velocity_based("table_hit", sound_vel, c.gameplay["max_puck_speed"] + c.gameplay["max_paddle_speed"], 1.5, self.pos[0], pitch_shift=True)
 
             g.framework.add_temporary_particles(self.pos - self.radius * normal, sound_vel, [self.color, paddle.color])
 
     def draw(self):
         g.framework.begin_drawing_puck(self)
-        intensity = np.linalg.norm(self.vel) * 1.3 / (c.gameplay['max_puck_speed'])
+        intensity = np.linalg.norm(self.vel) * 1.3 / (c.gameplay["max_puck_speed"])
         intensity = max(min(intensity, 1.0), 0.0)
         puck_color = g.sound_handler.target_color()
         puck_color = h.modify_hsl(puck_color, 0.05, 0, 0.3 * intensity + 0.2)

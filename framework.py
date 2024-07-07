@@ -21,15 +21,15 @@ class Framework():
         self._initialized = True
 
         self.flags = pr.FLAG_MSAA_4X_HINT | pr.FLAG_WINDOW_RESIZABLE
-        if not c.settings['is_training']:
+        if not c.settings["is_training"]:
             self.flags |= pr.FLAG_VSYNC_HINT
 
-        self.current_resolution_idx = c.settings['resolution']
+        self.current_resolution_idx = c.settings["resolution"]
         self.fullscreen = False
-        self.fps = c.settings['fps']
+        self.fps = c.settings["fps"]
         self.fps_locked = False
-        if c.settings['is_training']:
-            pr.set_target_fps(c.settings['fps'])
+        if c.settings["is_training"]:
+            pr.set_target_fps(c.settings["fps"])
             self.fps_locked = True
 
         self.render_texture = None
@@ -75,14 +75,14 @@ class Framework():
         return post_shader, scanlines_shader, paddle_shader, particle_shader, puck_shader
 
     def create_shader_buffers(self):
-        max_paddles = c.settings['team_size'] * 2
+        max_paddles = c.settings["team_size"] * 2
         paddle_data_buffer = pr.ffi.new("float[]", max_paddles * 9)
         paddle_count_buffer = pr.ffi.new("int *", 0)
         light_data_buffer = pr.ffi.new("float[]", 10 * 3 * 2)
-        resolution_buffer = pr.ffi.new('float[2]', [float(self.get_resolution()[0]), float(self.get_resolution()[1])])
-        y_extremes_buffer = pr.ffi.new('float[2]', [self.world_to_screen_coord((0, 0))[1], self.world_to_screen_coord((0, c.settings['field_height']))[1]])
-        paddle_pos_buffer = pr.ffi.new('float[2]', [0,0])
-        puck_pos_buffer = pr.ffi.new('float[2]', [0,0])
+        resolution_buffer = pr.ffi.new("float[2]", [float(self.get_resolution()[0]), float(self.get_resolution()[1])])
+        y_extremes_buffer = pr.ffi.new("float[2]", [self.world_to_screen_coord((0, 0))[1], self.world_to_screen_coord((0, c.settings["field_height"]))[1]])
+        paddle_pos_buffer = pr.ffi.new("float[2]", [0,0])
+        puck_pos_buffer = pr.ffi.new("float[2]", [0,0])
         object_data_buffer = pr.ffi.new("float[]", 5 * 3)
 
         return paddle_data_buffer, paddle_count_buffer, light_data_buffer, resolution_buffer, y_extremes_buffer, paddle_pos_buffer, puck_pos_buffer, object_data_buffer
@@ -91,12 +91,12 @@ class Framework():
         font_bold = pr.load_font_ex("fonts/Roboto-Bold.ttf", 800, None, 0)
         font_regular = pr.load_font_ex("fonts/Roboto-Regular.ttf", 800, None, 0)
         fonts = {
-            'reward': font_bold,
-            'time_left': font_bold,
-            'steps_left': font_regular,
-            'score': font_bold,
-            'model_name': font_bold,
-            'reward_breakdown': font_regular,
+            "reward": font_bold,
+            "time_left": font_bold,
+            "steps_left": font_regular,
+            "score": font_bold,
+            "model_name": font_bold,
+            "reward_breakdown": font_regular,
         }
         return fonts
 
@@ -186,7 +186,7 @@ class Framework():
         return c.resolutions[self.current_resolution_idx]
 
     def draw_fps(self, x, y):
-        self.draw_text(f"FPS: {pr.get_fps()}", 'steps_left', (255,255,255), (x, y), 'left', 0, 40)
+        self.draw_text(f"FPS: {pr.get_fps()}", "steps_left", (255,255,255), (x, y), "left", 0, 40)
 
     def update_paddle_data(self, paddles):
         self.paddle_count_buffer[0] = len(paddles)
@@ -205,14 +205,14 @@ class Framework():
         self.set_shader_uniform(self.post_shader, "paddleCount", self.paddle_count_buffer, pr.SHADER_UNIFORM_INT)
 
     def calculate_scaling_and_shift(self):
-        x_stretch = (self.get_resolution()[0]) / c.settings['field_width']
-        y_stretch = (self.get_resolution()[1]) / c.settings['field_height']
+        x_stretch = (self.get_resolution()[0]) / c.settings["field_width"]
+        y_stretch = (self.get_resolution()[1]) / c.settings["field_height"]
         scaling = min(x_stretch, y_stretch)
 
         if x_stretch > y_stretch:
-            shift = ((self.get_resolution()[0] - c.settings['field_width'] * scaling) / 2, 0)
+            shift = ((self.get_resolution()[0] - c.settings["field_width"] * scaling) / 2, 0)
         elif y_stretch > x_stretch:
-            shift = (0, (self.get_resolution()[1] - c.settings['field_height'] * scaling) / 2)
+            shift = (0, (self.get_resolution()[1] - c.settings["field_height"] * scaling) / 2)
         else:
             shift = (0, 0)
 
@@ -239,22 +239,22 @@ class Framework():
     def handle_keyboard_input(self):
         new_presses = self.handle_input()
         if pr.KEY_E in new_presses:
-            if c.settings['is_training']:
+            if c.settings["is_training"]:
                 self.fps_locked = not self.fps_locked
                 if self.fps_locked:
-                    pr.set_target_fps(c.settings['fps'])
+                    pr.set_target_fps(c.settings["fps"])
                 else:
                     pr.set_target_fps(0)
                 print(f"Setting FPS locked: {self.fps_locked}")
         elif pr.KEY_R in new_presses:
-            c.settings['no_render'] = not c.settings['no_render']
-            print(f"Setting rendering to {not c.settings['no_render']}")
+            c.settings["no_render"] = not c.settings["no_render"]
+            print(f"Setting rendering to {not c.settings["no_render"]}")
         elif pr.KEY_M in new_presses:
-            c.settings['no_sound'] = not c.settings['no_sound']
-            print(f"Setting sound to {not c.settings['no_sound']}")
+            c.settings["no_sound"] = not c.settings["no_sound"]
+            print(f"Setting sound to {not c.settings["no_sound"]}")
         elif pr.KEY_T in new_presses:
-            c.settings['player_2_human'] = not c.settings['player_2_human']
-            print(f"Setting player 2 human to {c.settings['player_2_human']}")
+            c.settings["player_2_human"] = not c.settings["player_2_human"]
+            print(f"Setting player 2 human to {c.settings["player_2_human"]}")
         elif pr.KEY_F in new_presses:
             self.toggle_fullscreen()
             print(f"Toggling fullscreen")
@@ -262,7 +262,7 @@ class Framework():
             self.change_resolution()
             print(f"Changing resolution")
         elif pr.KEY_P in new_presses:
-            c.settings['paused'] = not c.settings['paused']
+            c.settings["paused"] = not c.settings["paused"]
             print(f"Paused game")
         elif pr.KEY_V in new_presses:
             h.save_model_name()
@@ -296,7 +296,7 @@ class Framework():
         self.resolution_buffer[0] = float(self.get_resolution()[0])
         self.resolution_buffer[1] = float(self.get_resolution()[1])
         self.y_extremes_buffer[0] = self.world_to_screen_coord((0, 0))[1]
-        self.y_extremes_buffer[1] = self.world_to_screen_coord((0, c.settings['field_height']))[1]
+        self.y_extremes_buffer[1] = self.world_to_screen_coord((0, c.settings["field_height"]))[1]
         self.set_shader_uniform(self.post_shader, "resolution", self.resolution_buffer, pr.SHADER_UNIFORM_VEC2)
         self.set_shader_uniform(self.paddle_shader, "resolution", self.resolution_buffer, pr.SHADER_UNIFORM_VEC2)
         self.set_shader_uniform(self.puck_shader, "resolution", self.resolution_buffer, pr.SHADER_UNIFORM_VEC2)
@@ -314,7 +314,7 @@ class Framework():
         pr.end_texture_mode()
         pr.begin_drawing()
         pr.clear_background(pr.BLACK)
-        if not c.settings['is_training'] and self.shader is not None and shader:
+        if not c.settings["is_training"] and self.shader is not None and shader:
             pr.begin_shader_mode(self.shader)
 
         if self.fullscreen:
@@ -343,7 +343,7 @@ class Framework():
             pr.WHITE
         )
 
-        if not c.settings['is_training'] and self.shader is not None and shader:
+        if not c.settings["is_training"] and self.shader is not None and shader:
             pr.end_shader_mode()
 
         pr.end_drawing()
@@ -406,15 +406,15 @@ class Framework():
     def world_to_screen_length(self, length):
         return round(length * self.scaling_factor)
 
-    def draw_text(self, text, font_name, color, position, alignment='left', rotation=0.0, font_size=20):
+    def draw_text(self, text, font_name, color, position, alignment="left", rotation=0.0, font_size=20):
         color = self.tuple_to_color(color)
         position = self.world_to_screen_coord(position)
         font_size = self.world_to_screen_length(font_size)
         font = self.fonts[font_name]
         text_width = pr.measure_text_ex(font, text, font_size, 0).x
-        if alignment == 'center':
+        if alignment == "center":
             position = (position[0] - text_width // 2, position[1])
-        elif alignment == 'right':
+        elif alignment == "right":
             position = (position[0] - text_width, position[1])
 
         pr.draw_text_pro(font, text, pr.Vector2(position[0], position[1]), pr.Vector2(0, 0), rotation, font_size, 0, color)
@@ -431,18 +431,18 @@ class Framework():
         max_frac_width = 0
         for value in dictionary.values():
             value = round(value)
-            int_part, _, frac_part = f"{value}".partition('.')
+            int_part, _, frac_part = f"{value}".partition(".")
             max_int_width = max(max_int_width, pr.measure_text(int_part, font_size))
             max_frac_width = max(max_frac_width, pr.measure_text(frac_part, font_size))
 
         for key, value in reversed(items):
             value = round(value)
             label_text = f"{key}:"
-            self.draw_text(label_text, font_name, (255,255,255), (x - label_value_gap - pr.measure_text('.', font_size), y), 'left', 0, font_size)
+            self.draw_text(label_text, font_name, (255,255,255), (x - label_value_gap - pr.measure_text(".", font_size), y), "left", 0, font_size)
 
-            int_part, _, frac_part = f"{value}".partition('.')
-            int_x = x - max_frac_width - pr.measure_text('.', font_size)
-            self.draw_text(int_part, font_name, (255,255,255), (int_x, y), 'right', 0, font_size)
+            int_part, _, frac_part = f"{value}".partition(".")
+            int_x = x - max_frac_width - pr.measure_text(".", font_size)
+            self.draw_text(int_part, font_name, (255,255,255), (int_x, y), "right", 0, font_size)
             y += line_height
 
     def draw_rotated_line_centered(self, pos, length, angle, color, width=1):
