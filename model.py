@@ -76,7 +76,7 @@ class Model:
                 model = Model.get_latest_model(c.training["model_name"], "PPO", c.settings["team_size"])
         else:
             if c.settings["is_training"]:
-                model = Model.get_random_model(c.training["model_name"], "PPO", c.settings["team_size"])
+                model = Model.get_random_model(c.training["model_name"], "PPO", c.settings["team_size"], paddle)
             else:
                 model = Model.get_latest_model(c.training["model_name"], "PPO", c.settings["team_size"])
 
@@ -125,7 +125,7 @@ class Model:
         return search_path
 
     @staticmethod
-    def get_random_model(model_name, algorithm_name, team_size):
+    def get_random_model(model_name, algorithm_name, team_size, paddle):
         print(f"Trying to get random model: {model_name}, {algorithm_name}, {team_size}")
         search_path = Model.get_search_path(model_name, algorithm_name, team_size)
         Model.ensure_path_exists(search_path)
@@ -135,7 +135,13 @@ class Model:
             return Model.create_new_model(model_name, algorithm_name, team_size)
 
         models = sorted(models, key=lambda x: int(x.split('.')[0]))
-        random_index = max(0, len(models) - int(np.abs(np.random.normal(0, 0.35, 1)[0]) * len(models)) - 1)
+
+        if paddle.team == 1:
+            variance = c.training["model_selection_variance_team"]
+        else:
+            variance = c.training["model_selection_variance_opponent"]
+
+        random_index = max(0, len(models) - int(np.abs(np.random.normal(0, variance, 1)[0]) * len(models)) - 1)
         file_name = models[random_index]
         model_path = os.path.join(search_path, file_name)
         sb3_model = Model.get_model(model_path, algorithm_name)

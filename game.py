@@ -110,12 +110,10 @@ class Game:
         reward += vel_reward
 
         if scorer == paddle.team:
-            print("goal reward")
             goal_reward = c.rewards["goal"]
             self.register_reward(goal_reward, "goal", paddle.team)
             reward += goal_reward
         elif scorer != 0:
-            print("negative goal reward")
             goal_reward = -c.rewards["goal"]
             self.register_reward(goal_reward, "goal", paddle.team)
             reward += goal_reward
