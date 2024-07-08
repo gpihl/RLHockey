@@ -67,7 +67,7 @@ class Model:
         model = None
         if c.settings["all_ai"]:
             model = Model.get_latest_model(c.training["model_name"], "PPO", c.settings["team_size"])
-        elif team == 2 and not c.training["team_2_active"]:
+        elif team == 2 and not c.training["team_2_active"] and c.settings["is_training"]:
             model = None
         elif (not (team == 1 and player == 1)) and c.training["alone"]:
             model = None
