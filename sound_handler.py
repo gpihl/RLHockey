@@ -64,7 +64,12 @@ class SoundHandler:
     def reset(self):
         pass
 
-    def update(self):
+    def update(self, scorer):
+        if scorer == 1:
+            self.play_goal_sound(h.field_right())
+        elif scorer == 2:
+            self.play_goal_sound(h.field_left())
+
         id = self.current_scale_id()
         scale_name = self.scale_id_to_name(id)
         self.current_scale = scale_name

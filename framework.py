@@ -349,7 +349,13 @@ class Framework():
         pr.end_drawing()
 
     def tick(self):
-        g.current_time = pr.get_time() + 40
+        if c.settings["is_training"]:
+            g.current_time += c.settings["delta_t"] / 92
+        else:
+            g.current_time = g.clock.get_time()
+
+    def actual_time(self):
+        return pr.get_time()
 
     def tuple_to_color(self, color_tuple):
         if len(color_tuple) == 3:
@@ -419,30 +425,25 @@ class Framework():
 
         pr.draw_text_pro(font, text, pr.Vector2(position[0], position[1]), pr.Vector2(0, 0), rotation, font_size, 0, color)
 
-    def draw_dict(self, dictionary, font_name, pos, font_size=20):
+    def draw_dict(self, dictionary, font_name, pos, font_size=20, label_value_gap=440):
         x, y = pos
-        label_value_gap = 440
         line_height = 30
         items = list(dictionary.items())
         total_height = len(items) * line_height
         y -= total_height
 
-        max_int_width = 0
-        max_frac_width = 0
-        for value in dictionary.values():
-            value = round(value)
-            int_part, _, frac_part = f"{value}".partition(".")
-            max_int_width = max(max_int_width, pr.measure_text(int_part, font_size))
-            max_frac_width = max(max_frac_width, pr.measure_text(frac_part, font_size))
+        def is_numeric(value):
+            try:
+                float(value)
+                return True
+            except ValueError:
+                return False
 
         for key, value in reversed(items):
-            value = round(value)
+            value = value if not isinstance(value, float) else round(value)
             label_text = f"{key}:"
             self.draw_text(label_text, font_name, (255,255,255), (x - label_value_gap - pr.measure_text(".", font_size), y), "left", 0, font_size)
-
-            int_part, _, frac_part = f"{value}".partition(".")
-            int_x = x - max_frac_width - pr.measure_text(".", font_size)
-            self.draw_text(int_part, font_name, (255,255,255), (int_x, y), "right", 0, font_size)
+            self.draw_text(str(value), font_name, (255,255,255), (x, y), "right", 0, font_size)
             y += line_height
 
     def draw_rotated_line_centered(self, pos, length, angle, color, width=1):
@@ -475,3 +476,4 @@ class Framework():
         for font in self.fonts.values():
             pr.unload_font(font)
         pr.close_window()
+

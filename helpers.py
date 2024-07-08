@@ -1,6 +1,3 @@
-from pathlib import Path
-import random
-import os
 import numpy as np
 import constants as c
 import globals as g
@@ -187,71 +184,6 @@ def save_text_to_file(text, file_path):
         print(f"File saved successfully at {file_path}")
     except Exception as e:
         print(f"An error occurred: {e}")
-
-def get_latest_model_path(base_path, prefix):
-    models = [f for f in os.listdir(base_path) if f.startswith(prefix) and f.endswith(".zip")]
-    if not models:
-        return None
-    latest_model = max(models, key=lambda x: int(x.split("_")[-1].split(".")[0]))
-    return os.path.join(base_path, latest_model)
-
-def get_latest_model_path_with_algorithm(base_path, algorithm=None):
-    if algorithm is None:
-        algorithm = random.choice(["PPO"])
-
-    models = [f for f in os.listdir(base_path) if f.startswith(f"{c.settings["team_size"]}_{algorithm}") and f.endswith(".zip")]
-    if not models:
-        return None, algorithm
-
-    latest_model = max(models, key=lambda x: int(x.split("_")[-1].split(".")[0]))
-
-    return os.path.join(base_path, latest_model), algorithm
-
-
-def get_random_model_path(base_path, prefix):
-    models = [f for f in os.listdir(base_path) if f.startswith(prefix) and f.endswith(".zip")]
-    if not models:
-        return None
-
-    models.sort(key = lambda x: int(x.split("_")[-1].split(".")[0]))
-    random_index = max(0, len(models) - int(np.abs(np.random.normal(0, 0.25, 1)[0]) * len(models)) - 1)
-    print(f"random_index: {random_index}")
-    random_model = models[random_index]
-    return os.path.join(base_path, random_model)
-
-def get_next_model_path(base_path, algorithm):
-    models = [f for f in os.listdir(base_path) if f.startswith(f"{c.settings["team_size"]}_{algorithm}") and f.endswith(".zip")]
-    if not models:
-        next_model_number = 1
-    else:
-        latest_model = max(models, key=lambda x: int(x.split("_")[-1].split(".")[0]))
-        latest_number = int(latest_model.split("_")[-1].split(".")[0])
-        next_model_number = latest_number + 1
-    return os.path.join(base_path, f"{c.settings["team_size"]}_{algorithm}_{next_model_number}.zip")
-
-def get_sorted_zip_files(directory):
-    dir_path = Path(directory).resolve()
-    zip_files = [f for f in dir_path.glob("*.zip") if f.is_file()]
-    sorted_files = sorted(zip_files, key=lambda x: x.stat().st_mtime)
-    return [f.name for f in sorted_files]
-
-def get_random_model_with_algorithm():
-    models = get_sorted_zip_files("models")
-    models = list(filter(lambda x: x.startswith(str(c.settings["team_size"])), models))
-    if len(models) == 0:
-        return None, None
-
-    random_index = max(0, len(models) - int(np.abs(np.random.normal(0, 0.25, 1)[0]) * len(models)) - 1)
-    random_model = models[random_index]
-    algorithm = get_model_algorithm(random_model)
-    path = os.path.join("models", random_model)
-    return path, algorithm
-
-def save_model_name():
-    save_text_to_file(g.current_model_name, "model_name/name.txt")
-
-def get_model_algorithm(file_name):
-    return file_name.split("_")[1].strip()
 
 def clip_vector_length_inplace(vector, max_length=1):
     magnitude = np.linalg.norm(vector)

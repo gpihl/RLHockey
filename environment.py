@@ -1,21 +1,20 @@
-import game
 import gymnasium as gym
 from gymnasium import spaces
 import numpy as np
-from pprint import pprint
 import constants as c
+import globals as g
 
 class AirHockeyEnv(gym.Env):
     def __init__(self):
         super(AirHockeyEnv, self).__init__()
-        self.game = game.Game()
-
         team_size = c.settings["team_size"]
 
         self.observation_space = {
+            "self_pos":     spaces.Box(low=-1, high=1, shape=(2,), dtype=np.float32),
             "puck_pos":     spaces.Box(low=-1, high=1, shape=(2,), dtype=np.float32),
             "puck_vel":     spaces.Box(low=-1, high=1, shape=(2,), dtype=np.float32),
             "puck_rot_vel": spaces.Box(low=-1, high=1, shape=(1,), dtype=np.float32),
+            "charging_alpha": spaces.Box(low=-1, high=1, shape=(1,), dtype=np.float32),
             "goal_1_top_pos": spaces.Box(low=-1, high=1, shape=(2,), dtype=np.float32),
             "goal_1_bot_pos": spaces.Box(low=-1, high=1, shape=(2,), dtype=np.float32),
             "goal_2_top_pos": spaces.Box(low=-1, high=1, shape=(2,), dtype=np.float32),
@@ -41,22 +40,16 @@ class AirHockeyEnv(gym.Env):
     def reset(self, seed=None, **kwargs):
         print("Resetting environment")
         super().reset(seed=seed)
-        self.game.reset()
-        observation = self.game.get_observation(1, 1)
+        g.game.reset()
+        observation = g.game.get_observation(1, 1)
         return observation, {}
 
     def step(self, action):
-        observation, reward, done, info = self.game.step_training(action)
-        if done:
-            print("Team 1 reward breakdown:")
-            pprint(info["reward_breakdown_1"], width=1)
-            print("")
-            print("Team 2 reward breakdown:")
-            pprint(info["reward_breakdown_2"], width=1)
-            print("")
-            print("")
+        observation, reward, done, info = g.game.step_training(action)
         truncated = False
+        if done:
+            print(reward)
         return observation, reward, done, truncated, info
 
     def close(self):
-        self.game.close()
+        g.game.close()

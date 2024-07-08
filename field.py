@@ -23,7 +23,7 @@ class Field:
             light.reset()
 
     def create_lights(self):
-        light_intensity = 0.75
+        light_intensity = 0.7
         lights = [
             Light(np.array([c.settings["field_width"] / 4, 0]), light_intensity, 0.05, 5, top=True),
             Light(np.array([3 * c.settings["field_width"] / 4, 0]), light_intensity, 0.3, 3, top=True),

@@ -5,9 +5,11 @@ import constants as c
 import helpers as h
 from light import Light
 from collections import deque
+from model import Model
 
 class Paddle:
     def __init__(self, team, player):
+        print(f"Creating paddle, team: {team}, player: {player}")
         self.player = player
         self.team = team
         self.team_mates = 0
@@ -28,7 +30,9 @@ class Paddle:
         self.velocity_history = deque(maxlen=5)
         self.average_velocity = np.zeros(2)
         self.current_reward = 0.0
-        self.light = Light(self.pos, 0.45, 0, 0, None, self.color, light_type="paddle")
+        self.light = Light(self.pos, 0.35, 0, 0, None, self.color, light_type="paddle")
+        self.dash_reward = 0
+        self.load_new_model()
         self.reset()
 
     def reset(self):
@@ -62,6 +66,18 @@ class Paddle:
 
         return starting_pos
 
+    def load_new_model(self):
+        self.model = Model.get_paddle_model(self)
+
+    def get_action(self, observation):
+        if self.model is not None:
+            model_action = self.model.get_action(observation)
+            action = g.controls.game_action_from_model_action(model_action)
+        else:
+            action = g.controls.get_human_action()
+
+        return action
+
     def dash(self, puck):
         current_time = g.current_time
         if current_time - self.last_dash_time > c.gameplay["dash_cooldown"]:
@@ -77,6 +93,12 @@ class Paddle:
 
             sound_vel = c.gameplay["max_paddle_speed"] * self.dash_charge_power
             g.sound_handler.play_sound_velocity_based("dash", sound_vel, c.gameplay["max_paddle_speed"], 1.5, self.pos[0], exponent=2, pitch_shift=True)
+            self.dash_reward = self.dash_charge_power
+
+    def collect_dash_reward(self):
+        reward = self.dash_reward
+        self.dash_reward = 0
+        return reward
 
     def dash_direction(self, puck):
         if np.linalg.norm(self.average_velocity) > 0:
@@ -294,11 +316,11 @@ class Paddle:
                 g.sound_handler.play_sound_velocity_based("paddle", sound_vel, 2 * c.gameplay["max_paddle_speed"], 0.6, self.pos[0], exponent=2)
                 g.framework.add_temporary_particles(self.pos - self.radius * normal, sound_vel, [self.color, paddle.color])
 
-    def draw(self, puck, reward_alpha=None, draw_indicator=True):
-        # if c.settings["is_training"] or (not (self.player == 1 and self.team == 1)):
+    def draw(self, reward_alpha=None, draw_indicator=True):
         if c.settings["is_training"]:
-            model_name = g.team_1_model_name if self.team == 1 else g.team_2_model_name
-            g.framework.draw_text(model_name, "model_name", (255,255,255), (self.pos[0], self.pos[1] - self.radius * 1.4), "center")
+            if self.model is not None:
+                model_name = self.model.get_name()
+                g.framework.draw_text(model_name, "model_name", (255,255,255), (self.pos[0], self.pos[1] + self.radius * 1.35), "center", font_size=27)
 
         if not c.settings["is_training"]:
             g.framework.begin_drawing_paddle(self)

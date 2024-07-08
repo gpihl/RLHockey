@@ -89,8 +89,11 @@ class Controls:
 
     @staticmethod
     def game_action_from_model_action(model_action):
+        if model_action is None:
+            return None
+
         action = {
             "acceleration": h.clip_vector_length_inplace(np.array([model_action[0], model_action[1]])),
-            "dash": model_action[2] > 0.0,
+            "dash": model_action[2] > 0,
         }
         return action
