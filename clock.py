@@ -17,6 +17,7 @@ class Clock:
         self.paused_time = 0
         self.is_paused = False
         self.pause_start_time = 0
+        self.pause()
 
     def pause(self):
         if not self.is_paused:

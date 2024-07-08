@@ -57,6 +57,8 @@ class Framework():
         self.particles = []
 
         self.set_shapes_texture()
+        if not c.settings["is_training"]:
+            self.toggle_fullscreen()
 
     def set_shader_uniform(self, shader, uniform_name, value, type, count=None):
         location = pr.get_shader_location(shader, uniform_name)
@@ -88,8 +90,8 @@ class Framework():
         return paddle_data_buffer, paddle_count_buffer, light_data_buffer, resolution_buffer, y_extremes_buffer, paddle_pos_buffer, puck_pos_buffer, object_data_buffer
 
     def load_fonts(self):
-        font_bold = pr.load_font_ex("fonts/Roboto-Bold.ttf", 800, None, 0)
-        font_regular = pr.load_font_ex("fonts/Roboto-Regular.ttf", 800, None, 0)
+        font_bold = pr.load_font_ex("fonts/Roboto-Bold.ttf", 100, None, 0)
+        font_regular = pr.load_font_ex("fonts/Roboto-Regular.ttf", 100, None, 0)
         fonts = {
             "reward": font_bold,
             "time_left": font_bold,
@@ -274,10 +276,12 @@ class Framework():
             pr.set_window_size(self.monitor_width, self.monitor_height)
             pr.toggle_fullscreen()
             pr.set_window_size(self.monitor_width, self.monitor_height)
+            pr.hide_cursor()
         else:
             pr.set_window_size(1280, 720)
             pr.toggle_fullscreen()
             pr.set_window_size(1280, 720)
+            pr.show_cursor()
 
     def rendering_off_message(self):
         self.begin_drawing()
@@ -352,7 +356,7 @@ class Framework():
         if c.settings["is_training"]:
             g.current_time += c.settings["delta_t"] / 92
         else:
-            g.current_time = g.clock.get_time()
+            g.current_time = g.clock.get_time() + 85
 
     def actual_time(self):
         return pr.get_time()

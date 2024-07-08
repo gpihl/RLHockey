@@ -47,6 +47,7 @@ class Game:
         self.max_puck_speed = 0
         self.max_puck_spin = 0
         self.player_1_observation = {}
+        g.clock.unpause()
         print("Game initialization done")
 
     def create_objects(self):
