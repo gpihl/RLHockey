@@ -1,3 +1,4 @@
+import random
 import numpy as np
 import math
 import globals as g
@@ -39,7 +40,7 @@ class Game:
         self.total_reward = 0.0
         self.score = [0, 0]
         self.stats = Stats()
-        self.match_steps = 60 * c.settings["fps"]
+        self.match_steps = c.settings["round_time"] * c.settings["fps"]
         self.create_objects()
         # g.controls.stick = g.controls.init_controls()
         self.reset()
@@ -47,6 +48,7 @@ class Game:
         self.max_puck_speed = 0
         self.max_puck_spin = 0
         self.player_1_observation = {}
+        self.player_2_observation = {}
         g.clock.unpause()
         print("Game initialization done")
 
@@ -178,9 +180,12 @@ class Game:
         if not running:
             exit()
 
+        c.rewards = h.get_current_reward_spec()
+
         player_1_model_action = self.paddles_1[0].model.process_action(player_1_model_action)
         player_1_action = g.controls.game_action_from_model_action(player_1_model_action)
         self.player_1_observation = self.get_observation(1, 1)
+        self.player_2_observation = self.get_observation(1, 2)
 
         team_1_actions = [player_1_action]
         for paddle in list(filter(lambda x: not (x.player == 1 and x.team == 1), self.paddles_1)):
@@ -202,7 +207,7 @@ class Game:
     def step(self):
         self.curr_t = g.current_time
         delta_t = self.curr_t - self.prev_t
-        c.settings["delta_t"] = min(92 * delta_t, 3)
+        c.settings["delta_t"] = min(c.settings["original_delta_t"] * delta_t, 3)
         self.prev_t = self.curr_t
 
         team_1_actions = []
@@ -536,7 +541,7 @@ class Game:
         if c.settings["is_training"]:
             g.ui.draw_steps_left(str(self.total_training_steps_left()))
             g.ui.draw_reward_breakdown(self.reward_breakdown_1, self.reward_breakdown_2)
-            g.ui.draw_observation(self.player_1_observation)
+            # g.ui.draw_observation(self.player_1_observation)
 
     def total_training_steps_left(self):
         return c.training["training_steps"] - self.total_steps
@@ -558,6 +563,19 @@ class Game:
     def close(self):
         g.framework.close()
 
+def pick_training_regime():
+    random_roll = random.random()
+
+    for i, probability in enumerate(c.training_regime_probabilities):
+        if random_roll < probability:
+            selection = i
+            break
+
+    training_regime = c.training_regimes[selection]
+    print(random_roll)
+    print(training_regime)
+    return training_regime
+
 def main():
     g.initialize()
 
@@ -566,9 +584,11 @@ def main():
         non_training_paddles = g.game.non_player_1_team_1_paddles()
         while True:
             total_training_steps = c.training["training_steps"]
-            # total_training_steps = 1000
+            c.settings["agent_control_training"] = pick_training_regime()
             training_model.train_model(total_training_steps)
+            training_model.add_score(g.game.score)
             training_model.save_model()
+            print(c.rewards)
             for paddle in non_training_paddles:
                 paddle.load_new_model()
 

@@ -212,3 +212,21 @@ def signed_angle_between(v1, v2):
         angle_deg += 360
 
     return angle_deg
+
+def interpolate_dicts(dict1, dict2, t):
+    t = min(max(t, 0), 1)
+    result = {}
+
+    keys = set(dict1.keys()) | set(dict2.keys())
+
+    for key in keys:
+        value1 = dict1.get(key, 0.0)
+        value2 = dict2.get(key, 0.0)
+        result[key] = value1 + (value2 - value1) * t
+
+    return result
+
+def get_current_reward_spec():
+    t = g.current_time / c.time_to_reach_end_reward
+    res = interpolate_dicts(c.rewards_start, c.rewards_end, t)
+    return res

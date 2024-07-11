@@ -254,9 +254,6 @@ class Framework():
         elif pr.KEY_M in new_presses:
             c.settings["no_sound"] = not c.settings["no_sound"]
             print(f"Setting sound to {not c.settings["no_sound"]}")
-        elif pr.KEY_T in new_presses:
-            c.settings["player_2_human"] = not c.settings["player_2_human"]
-            print(f"Setting player 2 human to {c.settings["player_2_human"]}")
         elif pr.KEY_F in new_presses:
             self.toggle_fullscreen()
             print(f"Toggling fullscreen")
@@ -354,7 +351,7 @@ class Framework():
 
     def tick(self):
         if c.settings["is_training"]:
-            g.current_time += c.settings["delta_t"] / 92
+            g.current_time += c.settings["delta_t"] / c.settings["original_delta_t"]
         else:
             g.current_time = g.clock.get_time() + 85
 

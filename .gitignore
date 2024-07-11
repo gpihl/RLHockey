@@ -163,5 +163,6 @@ cython_debug/
 
 *.zip
 *.txt
+models/
 .DS_Store
 rl_hockey_env/

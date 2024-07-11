@@ -8,9 +8,10 @@ resolutions = [
 ]
 
 settings = {
+    "round_time": 20,
+    # "round_time": 60,
     "is_training": False,
     "paused": False,
-    "player_2_human": False,
     "no_render": False,
     "no_sound": True,
     "field_split": False,
@@ -21,68 +22,100 @@ settings = {
     "resolution": 0,
     "field_width": 3000,
     "field_height": 1500,
-    # "field_width": 2097,
-    # "field_height": 1049,
     "corner_radius": 249,
     "fps": 60,
-    # "fps": 165,
-    # "delta_t": 96,
-    "delta_t": 92,
+    "original_delta_t": 92,
+    "delta_t": 0,
     "team_size": 2,
+    # "agent_control_training": ["ai", "ai", "ai", "ai"],
+    "agent_control_training": ["ai", "off", "off", "off"],
+    # "agent_control_regular": ["ai", "ai", "ai", "ai"],
+    "agent_control_regular": ["human", "ai", "ai", "ai"],
 }
 settings["goal_height"] = 400 * settings["field_width"] / 3000
-settings["delta_t"] /= settings["fps"]
+settings["delta_t"] = settings["original_delta_t"] / settings["fps"]
 
-rewards = {
-    "time_reward": -0,
-    "vel_reward": -0,
-    "goal": 500000,
-    "team_mate_proximity": -5.0,
-    "wrong_side_of_puck": 0,
-    "puck_proximity": 0.0,
-    # "puck_vel_toward_goal": 0.8,
-    "puck_vel_toward_goal": 0.0,
-    "goal_puck_proximity": 0,
-    "shot": 0.0,
-    "shot_toward_goal": 0.0,
-    "dash": 20000,
-    "normalization": 1.0
-}
+training_regime_probabilities = [
+    0.0,
+    0.0,
+    0.0,
+    0.0,
+    1.0,
+]
+
+training_regimes = [
+    ["ai", "off", "off", "off"],
+    ["ai", "ai", "off", "off"],
+    ["ai", "off", "ai", "off"],
+    ["ai", "ai", "ai", "off"],
+    ["ai", "ai", "ai", "ai"],
+]
 
 # rewards = {
-#     "time_reward": -0.3,
-#     "vel_reward": -0.07,
-#     "goal": 300,
-#     "team_mate_proximity": -0.1,
-#     "wrong_side_of_puck": -0.3,
-#     "puck_proximity": 0.3,
-#     "goal_puck_proximity": 0.2,
-#     "shot": 3.0,
-#     "shot_toward_goal": 6.0,
+#     "time_reward": -0.0,
+#     "vel_reward": -0.0,
+#     "goal": 1000,
+#     "team_mate_proximity": -0.3,
+#     "wrong_side_of_puck": -0.0,
+#     "puck_proximity": 0.0,
+#     "puck_vel_toward_goal": 0.0,
+#     "goal_puck_proximity": 0.0,
+#     "shot": 0.0,
+#     "shot_toward_goal": 0.0,
+#     "dash": 0.0,
 #     "normalization": 1.0
 # }
 
+# bra!
+# rewards_start = {
+#     "time_reward": -0.0,
+#     "vel_reward": -0.0,
+#     "goal": 1000,
+#     "team_mate_proximity": -0.0,
+#     "wrong_side_of_puck": -0.01,
+#     "puck_proximity": 0.5,
+#     "puck_vel_toward_goal": 0.0,
+#     "goal_puck_proximity": 0.0,
+#     "shot": 5.0,
+#     "shot_toward_goal": 2.0,
+#     "dash": 0.0,
+#     "normalization": 1.0
+# }
 
+rewards_start = {'shot': 2.9393580245987914, 'dash': 0.0, 'puck_proximity': 0.29393580245987916, 'goal_puck_proximity': 0.0, 'team_mate_proximity': 0.0, 'wrong_side_of_puck': -0.005878716049197583, 'shot_toward_goal': 1.1757432098395166, 'normalization': 1.0, 'puck_vel_toward_goal': 0.0, 'goal': 1000.0, 'vel_reward': 0.0, 'time_reward': 0.0}
 
+rewards_end = {
+    "time_reward": -0.0,
+    "vel_reward": -0.0,
+    "goal": 1000,
+    "team_mate_proximity": -0.0,
+    "wrong_side_of_puck": -0.0,
+    "puck_proximity": 0.0,
+    "puck_vel_toward_goal": 0.0,
+    "goal_puck_proximity": 0.0,
+    "shot": 0.0,
+    "shot_toward_goal": 0.0,
+    "dash": 0.0,
+    "normalization": 1.0
+}
+
+rewards = rewards_start
+
+time_to_reach_end_reward = 60 * 60 * 2 * 10
 
 training = {
     "training_steps": 8000,
     # "learning_rate": 0.2e-4,
-    # "learning_rate": 1.0e-4,
-    "learning_rate": 3.0e-4,
+    "learning_rate": 1.0e-4,
     # "learning_rate": 2.0e-4,
-    "ent_coef": 0.1,
+    # "ent_coef": 0.05,
+    "ent_coef": 0.0,
     "model_selection_variance_opponent": 0.35,
-    "model_selection_variance_team": 0.001,
-    # "ent_coef": 0.0,
+    "model_selection_variance_team": 0.05,
     "base_path": "models",
     "training_iterations": 4000,
-    "team_2_active": False,
-    # "team_2_active": True,
-    # "alone": True,
-    "alone": False,
     "algorithm": "PPO",
-    "model_name": "Albert"
+    "model_name": "Brum"
 }
 
 gameplay = {

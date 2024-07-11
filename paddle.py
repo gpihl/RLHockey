@@ -32,10 +32,16 @@ class Paddle:
         self.current_reward = 0.0
         self.light = Light(self.pos, 0.35, 0, 0, None, self.color, light_type="paddle")
         self.dash_reward = 0
-        self.load_new_model()
         self.reset()
+        self.load_new_model()
 
     def reset(self):
+        agent_idx = 2 * (self.team - 1) + (self.player - 1)
+        if c.settings["is_training"]:
+            self.agent_control = c.settings["agent_control_training"][agent_idx]
+        else:
+            self.agent_control = c.settings["agent_control_regular"][agent_idx]
+
         if c.settings["is_training"]:
             if c.settings["random_starting_locations"]:
                 self.pos = self.get_starting_pos_random()
@@ -199,7 +205,7 @@ class Paddle:
             self.charging_dash_initial = False
             self.dash(puck)
 
-        if (self.team == 2 and not c.settings["player_2_human"]):
+        if self.team == 2 and not self.agent_control == "human":
             acc = action["acceleration"]
             reversed_x_acc = np.array([-acc[0], acc[1]])
             self.apply_force(reversed_x_acc)
@@ -316,7 +322,7 @@ class Paddle:
                 g.sound_handler.play_sound_velocity_based("paddle", sound_vel, 2 * c.gameplay["max_paddle_speed"], 0.6, self.pos[0], exponent=2)
                 g.framework.add_temporary_particles(self.pos - self.radius * normal, sound_vel, [self.color, paddle.color])
 
-    def draw(self, reward_alpha=None, draw_indicator=True):
+    def draw(self, reward_alpha=None):
         if c.settings["is_training"]:
             if self.model is not None:
                 model_name = self.model.get_name()
@@ -334,7 +340,7 @@ class Paddle:
             self.color = h.interpolate_color_rgb(self.color, (255,0,0), charge_color_shift)
             self.color = h.modify_hsl(self.color, 0, charge_color_shift * 0.5, charge_color_shift * 0.2)
 
-        self.draw_paddle(self.pos, self.radius, self.color, reward_alpha, draw_indicator)
+        self.draw_paddle(self.pos, self.radius, self.color, reward_alpha)
         if not c.settings["is_training"]:
             g.framework.end_drawing_paddle()
 
@@ -353,14 +359,15 @@ class Paddle:
 
         self.draw_calls(position, radius, color, outer_color, draw_indicator)
 
-    def draw_calls(self, position, radius, color, outer_color, draw_indicator=True):
+    def draw_calls(self, position, radius, color, outer_color, draw_indicator):
         g.framework.draw_circle(position, radius, outer_color)
         g.framework.draw_circle(position, int(8*radius / 9), h.interpolate_color_rgb(color, (0,0,0), 0.05))
         g.framework.draw_circle(position, int(radius / 2), h.interpolate_color_rgb(color, (0,0,0), 0.3))
         g.framework.draw_circle(position, int(radius / 3), h.interpolate_color_rgb(color, (0,0,0), 0.1))
 
-        if self.team == 1 and self.player == 1 and draw_indicator:
-            g.framework.draw_circle([position[0], position[1] - 1.3 * self.radius], 10, (255,255,255))
+        if draw_indicator:
+            if self.agent_control == "human" or (self.agent_control == "ai" and self.team == 1 and self.player == 1):
+                g.framework.draw_circle([position[0], position[1] - 1.3 * self.radius], 10, (255,255,255))
 
     def update_velocity_history(self):
         self.velocity_history.append(self.vel.copy())
