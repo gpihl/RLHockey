@@ -6,6 +6,7 @@ import helpers as h
 from light import Light
 from collections import deque
 from model import Model
+from reward import Reward
 
 class Paddle:
     def __init__(self, team, player):
@@ -17,7 +18,7 @@ class Paddle:
         self.pos = np.zeros(2)
         self.last_pos = np.zeros(2)
         self.friction = 0.87
-        self.max_acceleration = 4.0
+        self.max_acceleration = 4.3
         self.magnetic_effect_active = False
         self.original_radius = 72
         self.radius = self.original_radius
@@ -28,10 +29,12 @@ class Paddle:
         self.dash_charge_power = 0.0
         self.charge_flash_period = 0.2
         self.velocity_history = deque(maxlen=5)
+        self.velocity_history_sum = np.zeros(2)
         self.average_velocity = np.zeros(2)
         self.current_reward = 0.0
-        self.light = Light(self.pos, 0.35, 0, 0, None, self.color, light_type="paddle")
+        self.light = Light(self.pos, 0.5, 0, 0, None, self.color, light_type="paddle")
         self.dash_reward = 0
+        self.reward = None
         self.reset()
         self.load_new_model()
 
@@ -76,10 +79,11 @@ class Paddle:
         self.model = Model.get_paddle_model(self)
 
     def get_action(self, observation):
+        action = None
         if self.model is not None:
             model_action = self.model.get_action(observation)
             action = g.controls.game_action_from_model_action(model_action)
-        else:
+        elif self.agent_control == "human":
             action = g.controls.get_human_action()
 
         return action
@@ -98,7 +102,7 @@ class Paddle:
             self.limit_speed()
 
             sound_vel = c.gameplay["max_paddle_speed"] * self.dash_charge_power
-            g.sound_handler.play_sound_velocity_based("dash", sound_vel, c.gameplay["max_paddle_speed"], 1.5, self.pos[0], exponent=2, pitch_shift=True)
+            g.sound_handler.play_sound_velocity_based("dash", sound_vel, c.gameplay["max_paddle_speed"], 0.8, self.pos[0], exponent=2, pitch_shift=True)
             self.dash_reward = self.dash_charge_power
 
     def collect_dash_reward(self):
@@ -142,6 +146,8 @@ class Paddle:
         return res
 
     def apply_aim_assist(self, puck, max_assist_strength=0.7):
+        initial_speed = np.linalg.norm(self.vel)
+
         future_time = 0.3
         predicted_puck_pos = puck.pos + puck.vel * future_time
 
@@ -162,6 +168,7 @@ class Paddle:
         assist_strength = max_assist_strength * velocity_factor * proximity_factor
 
         self.vel = (1 - assist_strength) * self.vel + assist_strength * ideal_vel
+        self.vel = (self.vel / np.linalg.norm(self.vel)) * initial_speed
 
     def set_magnetic_effect(self, active):
         self.magnetic_effect_active = active
@@ -319,7 +326,7 @@ class Paddle:
 
             sound_vel = np.linalg.norm(relative_velocity)
             if sound_vel != 0:
-                g.sound_handler.play_sound_velocity_based("paddle", sound_vel, 2 * c.gameplay["max_paddle_speed"], 0.6, self.pos[0], exponent=2)
+                g.sound_handler.play_sound_velocity_based("paddle", sound_vel, 2 * c.gameplay["max_paddle_speed"], 0.4, self.pos[0], exponent=2)
                 g.framework.add_temporary_particles(self.pos - self.radius * normal, sound_vel, [self.color, paddle.color])
 
     def draw(self, reward_alpha=None):
@@ -349,7 +356,7 @@ class Paddle:
 
     def charging_alpha(self):
         charging_time = self.charging_time()
-        return max(0.0, min(1.0, charging_time / c.gameplay["dash_max_charge_time"])) ** 1.2
+        return max(0.0, min(1.0, charging_time / c.gameplay["dash_max_charge_time"])) ** 0.8
 
     def draw_paddle(self, position, radius, color, reward_alpha=None, draw_indicator=True):
         if reward_alpha is not None:
@@ -369,9 +376,13 @@ class Paddle:
             if self.agent_control == "human" or (self.agent_control == "ai" and self.team == 1 and self.player == 1):
                 g.framework.draw_circle([position[0], position[1] - 1.3 * self.radius], 10, (255,255,255))
 
+
     def update_velocity_history(self):
+        if len(self.velocity_history) == self.velocity_history.maxlen:
+            self.velocity_history_sum -= self.velocity_history[0]
         self.velocity_history.append(self.vel.copy())
-        self.average_velocity = np.mean(self.velocity_history, axis=0)
+        self.velocity_history_sum += self.vel
+        self.average_velocity = self.velocity_history_sum / len(self.velocity_history)
 
     def get_relative_pos_of_paddle_obs(self, paddle):
         relative_pos = paddle.pos - self.pos

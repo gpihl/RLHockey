@@ -209,7 +209,7 @@ class Puck:
 
             rotational_impulse = np.cross(normal, tangent) * velocity_along_tangent
             rotational_impulse = 0 if np.abs(rotational_impulse) < 0.5 else rotational_impulse
-            self.rot_vel += rotational_impulse * 0.13
+            self.rot_vel += rotational_impulse * 0.24 / c.update_multiplier
 
             overlap = self.radius + paddle.radius - dist
             paddle.pos -= normal * (overlap / 2)
@@ -232,8 +232,8 @@ class Puck:
 
             sound_vel = np.linalg.norm(relative_velocity)
             if sound_vel != 0:
-                g.sound_handler.play_sound_velocity_based("paddle", sound_vel, c.gameplay["max_puck_speed"] + c.gameplay["max_paddle_speed"], 1.0, self.pos[0], exponent=4)
-                g.sound_handler.play_sound_velocity_based("table_hit", sound_vel, c.gameplay["max_puck_speed"] + c.gameplay["max_paddle_speed"], 1.5, self.pos[0], pitch_shift=True)
+                g.sound_handler.play_sound_velocity_based("paddle", sound_vel, c.gameplay["max_puck_speed"] + c.gameplay["max_paddle_speed"], 0.4, self.pos[0], exponent=4)
+                g.sound_handler.play_sound_velocity_based("table_hit", sound_vel, c.gameplay["max_puck_speed"] + c.gameplay["max_paddle_speed"], 0.7, self.pos[0], pitch_shift=True)
 
             g.framework.add_temporary_particles(self.pos - self.radius * normal, sound_vel, [self.color, paddle.color])
 

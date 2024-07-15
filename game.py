@@ -8,7 +8,8 @@ import argparse
 from paddle import Paddle
 from puck import Puck
 import cProfile
-from stats import Stats
+from reward import Reward
+from functools import reduce
 
 class Game:
     _instance = None
@@ -31,15 +32,12 @@ class Game:
         self.last_scorer = 2
         self.paddles_1 = []
         self.paddles_2 = []
-        self.reward_breakdown_1 = {"total": 0}
-        self.reward_breakdown_2 = {"total": 0}
         self.current_step = 0
         self.current_reward = 0.0
         self.round_reward = 0.0
         self.start_time = 0
         self.total_reward = 0.0
         self.score = [0, 0]
-        self.stats = Stats()
         self.match_steps = c.settings["round_time"] * c.settings["fps"]
         self.create_objects()
         # g.controls.stick = g.controls.init_controls()
@@ -53,6 +51,8 @@ class Game:
         print("Game initialization done")
 
     def create_objects(self):
+        self.puck = Puck()
+
         for i in range(c.settings["team_size"]):
             paddle = Paddle(1, i+1)
             paddle.team_mates = c.settings["team_size"]
@@ -63,9 +63,15 @@ class Game:
             paddle.team_mates = c.settings["team_size"]
             self.paddles_2.append(paddle)
 
-        g.paddles = self.paddles_1 + self.paddles_2
+        for paddle in self.paddles_1:
+            team_mates = list(filter(lambda x: x.player != paddle.player, self.paddles_1))
+            paddle.reward = Reward(paddle, self.puck, team_mates)
 
-        self.puck = Puck()
+        for paddle in self.paddles_2:
+            team_mates = list(filter(lambda x: x.player != paddle.player, self.paddles_2))
+            paddle.reward = Reward(paddle, self.puck, team_mates)
+
+        g.paddles = self.paddles_1 + self.paddles_2
 
     def reset(self):
         self.current_step = 0
@@ -73,114 +79,23 @@ class Game:
         self.round_reward = 0.0
         self.start_time = g.current_time
 
-        for key, _ in self.reward_breakdown_1.items():
-            self.reward_breakdown_1[key] = 0
-
-        for key, _ in self.reward_breakdown_2.items():
-            self.reward_breakdown_2[key] = 0
-
         for paddle in self.paddles_1 + self.paddles_2:
             paddle.reset()
+            paddle.reward.reset()
+
         self.puck.reset(self.last_scorer)
-        self.stats = Stats()
         g.sound_handler.reset()
         g.field.reset()
-
-    def register_reward(self, reward, name, team):
-        if team == 1:
-            if name in self.reward_breakdown_1:
-                self.reward_breakdown_1[name] += reward / c.rewards["normalization"]
-                self.reward_breakdown_1["total"] += reward / c.rewards["normalization"]
-            else:
-                self.reward_breakdown_1[name] = 0
-        else:
-            if name in self.reward_breakdown_2:
-                self.reward_breakdown_2[name] += reward / c.rewards["normalization"]
-                self.reward_breakdown_2["total"] += reward / c.rewards["normalization"]
-            else:
-                self.reward_breakdown_2[name] = 0
-
-
-    def get_reward(self, paddle, team_mates, action, scorer):
-        if paddle.model is None:
-            return 0
-
-        acceleration = action["acceleration"]
-        reward = 0
-
-        vel_reward = np.linalg.norm(paddle.vel) * c.rewards["vel_reward"]
-        self.register_reward(vel_reward, "vel_reward", paddle.team)
-        reward += vel_reward
-
-        if scorer == paddle.team:
-            goal_reward = c.rewards["goal"]
-            self.register_reward(goal_reward, "goal", paddle.team)
-            reward += goal_reward
-        elif scorer != 0:
-            goal_reward = -c.rewards["goal"]
-            self.register_reward(goal_reward, "goal", paddle.team)
-            reward += goal_reward
-
-        dist_to_puck = min([np.linalg.norm(self.puck.pos - team_player.pos) for team_player in team_mates + [paddle]])
-        proximity_reward = ((c.settings["field_width"] - dist_to_puck) / c.settings["field_width"]) * c.rewards["puck_proximity"]
-        self.register_reward(proximity_reward, "puck_proximity", paddle.team)
-        reward += proximity_reward
-
-        closest_team_mate_dist = min([np.linalg.norm(team_mate.pos - paddle.pos) for team_mate in team_mates])
-        team_mate_proximity_reward = ((c.settings["field_width"] - closest_team_mate_dist) / c.settings["field_width"]) * c.rewards["team_mate_proximity"]
-        self.register_reward(team_mate_proximity_reward, "team_mate_proximity", paddle.team)
-        reward += team_mate_proximity_reward
-
-        puck_delta_x = self.puck.pos[0] - paddle.pos[0]
-        if paddle.team == 1:
-            wrong_side_of_puck_reward = c.rewards["wrong_side_of_puck"] if puck_delta_x < 0 else -c.rewards["wrong_side_of_puck"]
-        else:
-            wrong_side_of_puck_reward = c.rewards["wrong_side_of_puck"] if puck_delta_x > 0 else -c.rewards["wrong_side_of_puck"]
-        self.register_reward(wrong_side_of_puck_reward, "wrong_side_of_puck", paddle.team)
-        reward += wrong_side_of_puck_reward
-
-        goal_pos = h.goal_pos(2) if paddle.team == 1 else h.goal_pos(1)
-        puck_to_goal = goal_pos - self.puck.pos
-        puck_to_goal_dist = np.linalg.norm(puck_to_goal)
-        puck_to_goal_reward = ((c.settings["field_width"] - puck_to_goal_dist) / c.settings["field_width"]) * c.rewards["goal_puck_proximity"]
-        self.register_reward(puck_to_goal_reward, "goal_puck_proximity", paddle.team)
-        reward += puck_to_goal_reward
-
-        puck_to_goal_dir = puck_to_goal / puck_to_goal_dist
-        puck_vel_toward_goal = (np.dot(self.puck.vel, puck_to_goal_dir) + np.linalg.norm(self.puck.vel))* c.rewards["puck_vel_toward_goal"]
-        self.register_reward(puck_vel_toward_goal, "puck_vel_toward_goal", paddle.team)
-        reward += puck_vel_toward_goal
-
-        # pointless_reward = paddle.pointless_motion(acceleration) * c.rewards["pointless_motion"]
-        # self.register_reward(pointless_reward, "pointless_motion", paddle.team)
-        # reward += pointless_reward
-
-        dash_reward = paddle.collect_dash_reward() ** 2
-        dash_reward = dash_reward * c.rewards["dash"]
-        self.register_reward(dash_reward, "dash", paddle.team)
-        reward += dash_reward
-
-        shot_toward_goal_reward = self.puck.collect_shot_reward("shot_toward_goal", paddle) * c.rewards["shot_toward_goal"]
-        self.register_reward(shot_toward_goal_reward, "shot_toward_goal", paddle.team)
-        reward += shot_toward_goal_reward
-
-        shot_reward = self.puck.collect_shot_reward("shot", paddle) * c.rewards["shot"]
-        self.register_reward(shot_reward, "shot", paddle.team)
-        reward += shot_reward
-
-        reward /= c.rewards["normalization"]
-
-        return reward
 
     def non_player_1_team_1_paddles(self):
         return list(filter(lambda x: not (x.player == 1 and x.team == 1), self.paddles_1 + self.paddles_2))
 
     def step_training(self, player_1_model_action):
-        running = g.framework.handle_events()
+        running, _ = g.framework.handle_events()
         if not running:
             exit()
 
-        c.rewards = h.get_current_reward_spec()
+        Reward.update()
 
         player_1_model_action = self.paddles_1[0].model.process_action(player_1_model_action)
         player_1_action = g.controls.game_action_from_model_action(player_1_model_action)
@@ -233,29 +148,37 @@ class Game:
         self.handle_game_paused()
         self.current_step += 1
         self.total_steps += 1
-
-        for idx, action in enumerate(team_1_actions):
-            self.paddles_1[idx].update(self.puck, action)
-
-        for idx, action in enumerate(team_2_actions):
-            self.paddles_2[idx].update(self.puck, action)
-
-        all_paddles = self.paddles_1 + self.paddles_2
-        for i in range(len(all_paddles)):
-            for j in range(i+1, len(all_paddles)):
-                all_paddles[i].handle_collision(all_paddles[j])
-
-        self.puck.update(all_paddles)
-
+        delta_t_temp = c.settings["delta_t"]
+        num_updates = max(1, round(c.updates_per_delta_t * c.settings["delta_t"]))
+        c.settings["delta_t"] /= num_updates
         scorer = 0
-        if g.field.team_1_scored(self.puck):
-            scorer = 1
-            self.last_scorer = 1
-            self.score[0] += 1
-        elif g.field.team_2_scored(self.puck):
-            scorer = 2
-            self.last_scorer = 2
-            self.score[1] += 1
+
+        for i in range(num_updates):
+            for idx, action in enumerate(team_1_actions):
+                self.paddles_1[idx].update(self.puck, action)
+
+            for idx, action in enumerate(team_2_actions):
+                self.paddles_2[idx].update(self.puck, action)
+
+            all_paddles = self.paddles_1 + self.paddles_2
+            for i in range(len(all_paddles)):
+                for j in range(i+1, len(all_paddles)):
+                    all_paddles[i].handle_collision(all_paddles[j])
+
+            self.puck.update(all_paddles)
+
+            if g.field.team_1_scored(self.puck):
+                scorer = 1
+                self.last_scorer = 1
+                self.score[0] += 1
+                break
+            elif g.field.team_2_scored(self.puck):
+                scorer = 2
+                self.last_scorer = 2
+                self.score[1] += 1
+                break
+
+        c.settings["delta_t"] = delta_t_temp
 
         g.sound_handler.update(scorer)
         g.field.update(self.puck)
@@ -275,25 +198,18 @@ class Game:
 
     def handle_rewards(self, team_1_actions, team_2_actions, scorer):
         for idx, paddle in enumerate(self.paddles_1):
-            paddle.current_reward = self.get_reward(paddle, list(filter(lambda x: x.player != paddle.player, self.paddles_1)), team_1_actions[idx], scorer)
+            paddle.current_reward = paddle.reward.calculate_total_reward(team_1_actions[idx], scorer)
 
         for idx, paddle in enumerate(self.paddles_2):
-            paddle.current_reward = self.get_reward(paddle, list(filter(lambda x: x.player != paddle.player, self.paddles_2)), team_2_actions[idx], scorer)
+            paddle.current_reward = paddle.reward.calculate_total_reward(team_2_actions[idx], scorer)
 
         team1_reward = sum([paddle.current_reward for paddle in self.paddles_1])
         team2_reward = sum([paddle.current_reward for paddle in self.paddles_2])
         reward = team1_reward - team2_reward
 
-        time_reward = c.rewards["time_reward"]
-        self.register_reward(time_reward, "time_reward", 1)
-        self.register_reward(time_reward, "time_reward", 2)
-        reward += time_reward
-
         self.current_reward = reward
         self.round_reward += reward
         self.total_reward += reward
-        self.stats.update(team1_reward - team2_reward - time_reward)
-        self.stats.update(team2_reward - team1_reward - time_reward)
         return reward
 
     def handle_rendering(self):
@@ -312,12 +228,17 @@ class Game:
         while c.settings["paused"]:
             g.clock.pause()
             i += 1
-            running = g.framework.handle_events()
+            running, new_presses = g.framework.handle_events()
             if not running:
                 exit()
 
             if i % 60 == 0:
                 g.framework.paused()
+
+            if g.framework.take_paused_step(new_presses):
+                break
+
+
 
         g.clock.unpause()
 
@@ -508,31 +429,13 @@ class Game:
         g.framework.begin_drawing()
         g.field.draw_bottom_layer(self.puck)
         self.puck.draw()
-        if c.settings["is_training"]:
-            reward_alpha_1 = self.get_reward_alpha(self.paddles_1, self.paddles_2)
-            for paddle in self.paddles_1:
-                paddle.draw(reward_alpha=reward_alpha_1)
-            reward_alpha_2 = self.get_reward_alpha(self.paddles_2, self.paddles_1)
-            for paddle in self.paddles_2:
-                paddle.draw(reward_alpha=reward_alpha_2)
-        else:
-            for paddle in self.paddles_1 + self.paddles_2:
-                paddle.draw()
+        for paddle in self.paddles_1 + self.paddles_2:
+            paddle.draw()
         g.field.draw_top_layer(self.puck)
         if not c.settings["is_training"]:
             g.framework.draw_particles()
         self.draw_ui()
         g.framework.end_drawing()
-
-    def get_reward_alpha(self, paddles, other_paddles):
-        mean, std = self.stats.get_stats()
-        if std == 0:
-            return
-
-        p = ((sum([paddle.current_reward for paddle in paddles]) - sum([other_paddle.current_reward for other_paddle in other_paddles])) - mean) / std
-        alpha = (p / 4)  + 0.5
-        alpha = max(0.0, min(1.0, p))
-        return alpha
 
     def draw_ui(self):
         g.ui.draw_time_left(self.seconds_left())
@@ -540,7 +443,9 @@ class Game:
         # g.framework.draw_fps(0,0)
         if c.settings["is_training"]:
             g.ui.draw_steps_left(str(self.total_training_steps_left()))
-            g.ui.draw_reward_breakdown(self.reward_breakdown_1, self.reward_breakdown_2)
+            team_1_breakdown = reduce(lambda x, y: h.add_dicts(x.reward.reward_breakdown, y.reward.reward_breakdown), self.paddles_1)
+            team_2_breakdown = reduce(lambda x, y: h.add_dicts(x.reward.reward_breakdown, y.reward.reward_breakdown), self.paddles_2)
+            g.ui.draw_reward_breakdown(team_1_breakdown, team_2_breakdown)
             # g.ui.draw_observation(self.player_1_observation)
 
     def total_training_steps_left(self):
@@ -564,6 +469,9 @@ class Game:
         g.framework.close()
 
 def pick_training_regime():
+    if c.fixed_training_regime is not None:
+        return c.fixed_training_regime
+
     random_roll = random.random()
 
     for i, probability in enumerate(c.training_regime_probabilities):
@@ -572,23 +480,28 @@ def pick_training_regime():
             break
 
     training_regime = c.training_regimes[selection]
-    print(random_roll)
     print(training_regime)
     return training_regime
 
+def maybe_random_starting_locations():
+    random_roll = random.random()
+    return random_roll < c.settings["random_starting_locations_probability"]
+
 def main():
+    c.settings["agent_control_training"] = pick_training_regime()
     g.initialize()
 
     if c.settings["is_training"]:
         training_model = g.game.paddles_1[0].model
         non_training_paddles = g.game.non_player_1_team_1_paddles()
         while True:
+            c.settings["random_starting_locations"] = maybe_random_starting_locations()
             total_training_steps = c.training["training_steps"]
             c.settings["agent_control_training"] = pick_training_regime()
             training_model.train_model(total_training_steps)
             training_model.add_score(g.game.score)
             training_model.save_model()
-            print(c.rewards)
+            print(Reward.rewards)
             for paddle in non_training_paddles:
                 paddle.load_new_model()
 
@@ -596,7 +509,7 @@ def main():
     else:
         running = True
         while running:
-            running = g.framework.handle_events()
+            running, _ = g.framework.handle_events()
             done = g.game.step()
 
             if done:
@@ -604,23 +517,32 @@ def main():
 
         g.game.close()
 
+def validate_string(value):
+    if len(value) != 4 or not all(char in 'hao' for char in value):
+        raise argparse.ArgumentTypeError("Input must be a 4-character string containing only 'h', 'a', or 'o'")
+    return value
+
+def map_control(code):
+    mapping = {'h': 'human', 'a': 'ai', 'o': 'off'}
+    return [mapping[char] for char in code]
+
 if __name__ == "__main__":
     parser = argparse.ArgumentParser(description="Run the game with optional profiling.")
     parser.add_argument("-p", "--profile", action="store_true", help="Run the game with profiling enabled")
-    parser.add_argument("-a", "--ai", action="store_true", help="AI vs AI")
     parser.add_argument("-t", "--training", action="store_true", help="Perform training of RL agents")
     parser.add_argument("-n", "--number", type=int, default=2, help="Number of players per team")
+    parser.add_argument('-c', '--control', type=validate_string, required=False, help="A 4-character string containing only 'h', 'a', or 'o'")
     args = parser.parse_args()
     c.settings["team_size"] = args.number
     c.settings["is_training"] = args.training
     c.settings["no_sound"] = args.training
-    c.settings["all_ai"] = args.ai
+    if args.control is not None:
+        if c.settings["is_training"]:
+            c.fixed_training_regime = map_control(args.control)
+        else:
+            c.settings["agent_control_regular"] = map_control(args.control)
 
     if args.profile:
-        print("Running game with profiling...")
         cProfile.run("main()", "profile_output.prof")
-        print("Profiling complete. Results saved to profile_output.prof")
-        print("You can visualize the results using snakeviz: snakeviz profile_output.prof")
     else:
         main()
-        # main(args.ai)

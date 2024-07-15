@@ -8,6 +8,8 @@ from stable_baselines3.common.env_util import make_vec_env
 from stable_baselines3.common.vec_env import VecNormalize
 from collections import deque
 import environment
+import json
+from reward import Reward
 
 class Model:
     def __init__(self, model, version, algorithm_name, model_name, team_size, environment):
@@ -18,7 +20,7 @@ class Model:
         self.model_name = model_name
         self.team_size = team_size
         self.score_ratios = []
-        self.action_history = deque(maxlen=10)
+        self.action_history = deque(maxlen=5)
 
     @staticmethod
     def get_algorithm(algorithm_name):
@@ -65,15 +67,27 @@ class Model:
 
         self.model.clip_range = simple_clip_range
         search_path = Model.get_search_path(self.model_name, self.algorithm_name, self.team_size)
+
         model_save_path = f"{search_path}/{self.version+1}/model"
         print(f"Saving model: {model_save_path}")
         self.model.save(model_save_path)
         print("Model saved!")
+
         env_save_path = f"{search_path}/{self.version+1}/normalized_env"
         print(f"Saving environment: {env_save_path}")
         self.environment.save(env_save_path)
         print("Environment saved!")
+
+        reward_save_path = f"{search_path}/{self.version}/rewards.txt"
+        print(f"Saving reward: {reward_save_path}")
+        self.save_reward_structure(reward_save_path)
+        print(f"Reward saved!")
+
         self.version += 1
+
+    def save_reward_structure(self, path):
+        with open(path, "w") as file:
+            json.dump(Reward.rewards, file)
 
     def get_action(self, observation):
         model_action = self.model.predict(observation)[0]
@@ -108,31 +122,10 @@ class Model:
         else:
             model = Model.get_latest_model(c.training["model_name"], c.training["algorithm"], c.settings["team_size"])
 
-
-
-        # if c.settings["all_ai"]:
-        #     model = Model.get_latest_model(c.training["model_name"], c.training["algorithm"], c.settings["team_size"])
-
-        # elif (not (team == 1 and player == 1)) and c.training["alone"]:
-        #     model = None
-        # elif team == 1 and player == 1:
-        #     if c.settings["is_training"]:
-        #         model = Model.get_latest_model(c.training["model_name"], c.training["algorithm"], c.settings["team_size"])
-        # else:
-        #     if c.settings["is_training"]:
-        #         model = Model.get_random_model(c.training["model_name"], c.training["algorithm"], c.settings["team_size"], paddle)
-        #     else:
-        #         model = Model.get_latest_model(c.training["model_name"], c.training["algorithm"], c.settings["team_size"])
-
         if model is None:
             print("No model fetched")
 
         return model
-
-    # @staticmethod
-    # def get_environment():
-    #     env = make_vec_env(lambda: environment.AirHockeyEnv(), n_envs=1)
-    #     return env
 
     @staticmethod
     def get_environment_norm():
@@ -207,11 +200,6 @@ class Model:
         model = Model(sb3_model, int(version), algorithm_name, model_name, team_size, env)
         print(f"Random model: {model_path} loaded!")
         return model
-
-    # @staticmethod
-    # def get_version(model_path):
-    #     version = int(model_path.split(".")[0])
-    #     return version
 
     @staticmethod
     def get_model(path, algorithm_name):

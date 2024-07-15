@@ -48,7 +48,7 @@ class AirHockeyEnv(gym.Env):
         observation, reward, done, info = g.game.step_training(action)
         truncated = False
         if done:
-            print(reward)
+            print(g.game.round_reward)
         return observation, reward, done, truncated, info
 
     def close(self):

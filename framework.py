@@ -267,6 +267,14 @@ class Framework():
             h.save_model_name()
             print(f"Saving name of current model")
 
+        return new_presses
+
+    def take_paused_step(self, new_presses):
+        if pr.KEY_O in new_presses:
+            return True
+
+        return False
+
     def toggle_fullscreen(self):
         self.fullscreen = not self.fullscreen
         if self.fullscreen:
@@ -305,8 +313,8 @@ class Framework():
         self.shader = self.post_shader
 
     def handle_events(self):
-        self.handle_keyboard_input()
-        return not pr.window_should_close()
+        new_presses = self.handle_keyboard_input()
+        return (not pr.window_should_close(), new_presses)
 
     def begin_drawing(self):
         pr.begin_texture_mode(self.render_texture)
@@ -359,12 +367,13 @@ class Framework():
         return pr.get_time()
 
     def tuple_to_color(self, color_tuple):
-        if len(color_tuple) == 3:
-            return pr.Color(color_tuple[0], color_tuple[1], color_tuple[2], 255)
-        elif len(color_tuple) == 4:
-            return pr.Color(color_tuple[0], color_tuple[1], color_tuple[2], color_tuple[3])
-        else:
-            raise ValueError("Color tuple should have 3 or 4 elements")
+        return pr.Color(*color_tuple) if len(color_tuple) == 4 else pr.Color(*color_tuple, 255)
+        # if len(color_tuple) == 3:
+        #     return pr.Color(color_tuple[0], color_tuple[1], color_tuple[2], 255)
+        # elif len(color_tuple) == 4:
+        #     return pr.Color(color_tuple[0], color_tuple[1], color_tuple[2], color_tuple[3])
+        # else:
+        #     raise ValueError("Color tuple should have 3 or 4 elements")
 
     def fill_screen(self, color, dimensions):
         pr.clear_background(pr.BLACK)
@@ -380,6 +389,11 @@ class Framework():
         pos = self.world_to_screen_coord(pos)
         size = (self.world_to_screen_length(size[0]), self.world_to_screen_length(size[1]))
         pr.draw_rectangle(int(pos[0]), int(pos[1]), int(size[0]), int(size[1]), color)
+
+    def draw_rectangle_fast(self, pyray_color, pos, size):
+        pos = self.world_to_screen_coord_fast(pos)
+        size = (self.world_to_screen_length_fast(size[0]), self.world_to_screen_length_fast(size[1]))
+        pr.draw_rectangle(int(pos[0]), int(pos[1]), int(size[0]), int(size[1]), pyray_color)
 
     def draw_transparent_rectangle(self, color, pos, size, opacity):
         pos = self.world_to_screen_coord(pos)
@@ -410,8 +424,16 @@ class Framework():
         y = round(coord[1] * self.scaling_factor + self.shift[1])
         return (x, y)
 
+    def world_to_screen_coord_fast(self, coord):
+        x = int(coord[0] * self.scaling_factor + self.shift[0])
+        y = int(coord[1] * self.scaling_factor + self.shift[1])
+        return (x, y)
+
     def world_to_screen_length(self, length):
         return round(length * self.scaling_factor)
+
+    def world_to_screen_length_fast(self, length):
+        return int(length * self.scaling_factor)
 
     def draw_text(self, text, font_name, color, position, alignment="left", rotation=0.0, font_size=20):
         color = self.tuple_to_color(color)
@@ -426,25 +448,36 @@ class Framework():
 
         pr.draw_text_pro(font, text, pr.Vector2(position[0], position[1]), pr.Vector2(0, 0), rotation, font_size, 0, color)
 
-    def draw_dict(self, dictionary, font_name, pos, font_size=20, label_value_gap=440):
+    def draw_dict(self, dictionary, font_name, pos, font_size=20):
         x, y = pos
         line_height = 30
         items = list(dictionary.items())
         total_height = len(items) * line_height
         y -= total_height
 
-        def is_numeric(value):
-            try:
-                float(value)
-                return True
-            except ValueError:
-                return False
+        if "total" in dictionary:
+            keys = [key for key in dictionary if key != "total"] + ["total"]
+        else:
+            keys = [key for key in dictionary]
 
-        for key, value in reversed(items):
-            value = value if not isinstance(value, float) else round(value)
+        decimal_places = 2
+
+        for key in keys:
+            value = dictionary[key]
+            try:
+                value = value if not isinstance(value[0], float) else (round(value[0]), value[1])
+            except:
+                pass
             label_text = f"{key}:"
-            self.draw_text(label_text, font_name, (255,255,255), (x - label_value_gap - pr.measure_text(".", font_size), y), "left", 0, font_size)
-            self.draw_text(str(value), font_name, (255,255,255), (x, y), "right", 0, font_size)
+            try:
+                self.draw_text(label_text, font_name, (255,255,255), (x - 550 - pr.measure_text(".", font_size), y), "left", 0, font_size)
+                self.draw_text(str(value[0]), font_name, (255,255,255), (x - 120, y), "right", 0, font_size)
+                self.draw_text(f"{value[1]:.{decimal_places}f}", font_name, (255,255,255), (x, y), "right", 0, font_size)
+            except:
+                self.draw_text(label_text, font_name, (255,255,255), (x - 550 - pr.measure_text(".", font_size), y), "left", 0, font_size)
+                self.draw_text(str(value), font_name, (255,255,255), (x - 120, y), "right", 0, font_size)
+                # self.draw_text(str(value), font_name, (255,255,255), (x, y), "right", 0, font_size)
+
             y += line_height
 
     def draw_rotated_line_centered(self, pos, length, angle, color, width=1):

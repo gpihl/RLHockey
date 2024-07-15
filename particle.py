@@ -9,17 +9,18 @@ class Particle:
         self.radius = radius
         self.vel = vel
         self.color = color
+        self.pyray_color = g.framework.tuple_to_color(self.color)
 
     def update(self):
-        self.vel *= (0.95 ** c.settings["delta_t"])
-        self.radius *= (0.98 ** c.settings["delta_t"])
-        self.pos += self.vel * c.settings["delta_t"]
+        self.vel *= (0.95 ** c.settings['delta_t'])
+        self.radius *= (0.98 ** c.settings['delta_t'])
+        self.pos += self.vel * c.settings['delta_t']
 
     def is_alive(self):
-        return self.radius > 0.1
+        return self.radius > 2
 
     def draw(self):
-        g.framework.draw_rectangle(self.color, (self.pos[0] - self.radius, self.pos[1] - self.radius), (self.radius*2, self.radius*2))
+        g.framework.draw_rectangle_fast(self.pyray_color, (self.pos[0] - self.radius, self.pos[1] - self.radius), (self.radius*2, self.radius*2))
 
     @staticmethod
     def random_particle(pos, color):

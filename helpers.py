@@ -15,13 +15,22 @@ def field_left():
     return 0.0
 
 def field_right():
-    return c.settings["field_width"]
+    return field_width()
 
 def field_top():
     return 0.0
 
 def field_bot():
+    return field_height()
+
+def field_width():
+    return c.settings["field_width"]
+
+def field_height():
     return c.settings["field_height"]
+
+def max_dist():
+    return (field_height() ** 2 + field_width() ** 2) ** 0.5
 
 def corner_top_left():
     return np.array([c.settings["corner_radius"], c.settings["corner_radius"]])
@@ -226,7 +235,39 @@ def interpolate_dicts(dict1, dict2, t):
 
     return result
 
-def get_current_reward_spec():
-    t = g.current_time / c.time_to_reach_end_reward
-    res = interpolate_dicts(c.rewards_start, c.rewards_end, t)
-    return res
+def map_value_to_range(value, min_value, max_value):
+    value = max(min_value, min(max_value, value))
+    normalized_value = (value - min_value) / (max_value - min_value)
+    mapped_value = 1 - 2 * normalized_value
+    return mapped_value
+
+def add_dicts(dict1, dict2):
+    result = {}
+    keys = set(dict1.keys()) | set(dict2.keys())
+    for key in keys:
+        if key in dict1:
+            value1 = dict1.get(key)
+        else:
+            value1 = (0, 0)
+
+        if key in dict2:
+            value2 = dict2.get(key)
+        else:
+            value2 = (0, 0)
+
+        result[key] = (value1[0] + value2[0], value1[1] + value2[1])
+
+    return result
+
+import numpy as np
+
+def point_to_line_distance(line_point1, line_point2, point):
+    line_vector = line_point2 - line_point1
+    point_vector = point - line_point1
+    line_length = np.linalg.norm(line_vector)
+    line_unit_vector = line_vector / line_length
+    projection = np.dot(point_vector, line_unit_vector)
+    projection_vector = projection * line_unit_vector
+    perpendicular_vector = point_vector - projection_vector
+    distance = np.linalg.norm(perpendicular_vector)
+    return distance

@@ -47,8 +47,8 @@ class UI():
         g.framework.draw_text(str(time_left), "time_left", TEXT_COLOR, TIME_POS, alignment="center", font_size=TIME_FONT_SIZE)
 
     def draw_reward_breakdown(self, reward_breakdown_1, reward_breakdown_2):
-        g.framework.draw_dict(reward_breakdown_1, "reward_breakdown", (500, c.settings["field_height"] - 50), REWARD_BREAKDOWN_FONT_SIZE)
+        g.framework.draw_dict(reward_breakdown_1, "reward_breakdown", (600, c.settings["field_height"] - 50), REWARD_BREAKDOWN_FONT_SIZE)
         g.framework.draw_dict(reward_breakdown_2, "reward_breakdown", (c.settings["field_width"] - 100, c.settings["field_height"] - 50), REWARD_BREAKDOWN_FONT_SIZE)
 
     def draw_observation(self, observation):
-        g.framework.draw_dict(observation, "reward_breakdown", (1100, 600), REWARD_BREAKDOWN_FONT_SIZE, label_value_gap=1000)
+        g.framework.draw_dict(observation, "reward_breakdown", (1100, 600), REWARD_BREAKDOWN_FONT_SIZE)
