@@ -18,7 +18,7 @@ class Paddle:
         self.pos = np.zeros(2)
         self.last_pos = np.zeros(2)
         self.friction = 0.87
-        self.max_acceleration = 4.3
+        self.max_acceleration = 6.0
         self.magnetic_effect_active = False
         self.original_radius = 72
         self.radius = self.original_radius
@@ -32,8 +32,11 @@ class Paddle:
         self.velocity_history_sum = np.zeros(2)
         self.average_velocity = np.zeros(2)
         self.current_reward = 0.0
+        self.rotation = 0
+        self.rot_vel = 0
         self.light = Light(self.pos, 0.5, 0, 0, None, self.color, light_type="paddle")
         self.dash_reward = 0
+        self.dash_shot_reward = 0
         self.reward = None
         self.reset()
         self.load_new_model()
@@ -98,16 +101,25 @@ class Paddle:
             dash_direction = self.dash_direction(puck)
 
             average_speed = np.linalg.norm(self.average_velocity)
-            self.vel += dash_direction * self.dash_charge_power * c.gameplay["dash_impulse"] * (average_speed / c.gameplay["max_paddle_speed"])
+            self.vel += dash_direction * self.dash_charge_power * c.gameplay["dash_impulse"]
             self.limit_speed()
 
             sound_vel = c.gameplay["max_paddle_speed"] * self.dash_charge_power
-            g.sound_handler.play_sound_velocity_based("dash", sound_vel, c.gameplay["max_paddle_speed"], 0.8, self.pos[0], exponent=2, pitch_shift=True)
+            if self.agent_control == "human":
+                g.sound_handler.play_sound_velocity_based("dash", sound_vel, c.gameplay["max_paddle_speed"], 0.8, self.pos[0], exponent=2, pitch_shift=True)
             self.dash_reward = self.dash_charge_power
+
+    def add_dash_shot_reward(self):
+        self.dash_shot_reward = self.dash_charge_power
 
     def collect_dash_reward(self):
         reward = self.dash_reward
         self.dash_reward = 0
+        return reward
+
+    def collect_dash_shot_reward(self):
+        reward = self.dash_shot_reward
+        self.dash_shot_reward = 0
         return reward
 
     def dash_direction(self, puck):
@@ -117,10 +129,10 @@ class Paddle:
 
             epsilon = 0.3
             dash_direction = epsilon * puck_direction + (1 - epsilon) * velocity_direction
-            dash_direction = dash_direction / np.linalg.norm(dash_direction)
         else:
-            dash_direction = np.linalg.norm(puck.pos - self.pos)
+            dash_direction = (puck.pos - self.pos)
 
+        dash_direction = dash_direction / np.linalg.norm(dash_direction)
         return dash_direction
 
     def velocity_alpha(self):
@@ -229,7 +241,7 @@ class Paddle:
         charging_alpha = self.charging_alpha()
         if self.charging_dash:
             self.radius = int((1.0 + 0.3 * charging_alpha) * self.original_radius)
-            self.apply_force(np.random.normal(0, (self.charging_alpha() ** 4) * 0.7, 2))
+            # self.apply_force(np.random.normal(0, (self.charging_alpha() ** 4) * 0.7, 2))
         else:
             self.radius = self.original_radius
 
@@ -248,6 +260,12 @@ class Paddle:
         self.limit_speed()
         self.update_velocity_history()
         self.pos += self.vel * c.settings["delta_t"]
+        self.rotation += self.rot_vel * c.settings["delta_t"]
+
+        if self.charging_dash:
+            self.rot_vel = self.charging_alpha() * 0.2
+        else:
+            self.rot_vel *= (0.95 ** c.settings["delta_t"])
 
         if c.settings["field_split"]:
             if self.team == 1:
@@ -326,7 +344,7 @@ class Paddle:
 
             sound_vel = np.linalg.norm(relative_velocity)
             if sound_vel != 0:
-                g.sound_handler.play_sound_velocity_based("paddle", sound_vel, 2 * c.gameplay["max_paddle_speed"], 0.4, self.pos[0], exponent=2)
+                g.sound_handler.play_sound_velocity_based("paddle", sound_vel, 2 * c.gameplay["max_paddle_speed"], 0.2, self.pos[0], exponent=2)
                 g.framework.add_temporary_particles(self.pos - self.radius * normal, sound_vel, [self.color, paddle.color])
 
     def draw(self, reward_alpha=None):
@@ -371,6 +389,14 @@ class Paddle:
         g.framework.draw_circle(position, int(8*radius / 9), h.interpolate_color_rgb(color, (0,0,0), 0.05))
         g.framework.draw_circle(position, int(radius / 2), h.interpolate_color_rgb(color, (0,0,0), 0.3))
         g.framework.draw_circle(position, int(radius / 3), h.interpolate_color_rgb(color, (0,0,0), 0.1))
+
+        for i in range(3):
+            dot_pos = h.point_on_circle(position, radius * 25 / 36, i, self.rotation)
+            dot_color = h.interpolate_color_rgb(color, (0,0,0), 0.3)
+            if self.charging_dash:
+                dot_color = h.interpolate_color_rgb(dot_color, outer_color, self.charging_alpha())
+            g.framework.draw_circle(dot_pos, radius * 0.065, dot_color)
+
 
         if draw_indicator:
             if self.agent_control == "human" or (self.agent_control == "ai" and self.team == 1 and self.player == 1):

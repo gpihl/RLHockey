@@ -3,22 +3,55 @@ import helpers as h
 import globals as g
 
 class Reward:
-    rewards_start = {
-        "velocity": -0.03,
-        "goal": 1000,
-        "team_mate_proximity": 0.0,
-        "wrong_side_of_puck": -0.0,
-        "puck_proximity": 0.0,
-        "puck_vel_toward_goal": 0.0,
-        "goal_puck_proximity": 0.,
-        "shot": 0.0,
-        "shot_toward_goal": 0.0,
-        "dash": 0.0,
-        "defender_goal_prox": 0.0,
-        "defensive_positioning": 0.0,
-    }
+    # rewards_start = {
+    #     "velocity": -0.03,
+    #     "goal": 1000,
+    #     "team_mate_proximity": 0.0,
+    #     "wrong_side_of_puck": -0.0,
+    #     "puck_proximity": 0.0,
+    #     "puck_vel_toward_goal": 0.0,
+    #     "goal_puck_proximity": 0.,
+    #     "shot": 0.0,
+    #     "shot_toward_goal": 0.0,
+    #     "dash": 0.0,
+    #     "defender_goal_prox": 0.0,
+    #     "defensive_positioning": 0.0,
+    # }
+
+    rewards_start = {"velocity": -0.01, "goal": 1000, "team_mate_proximity": 0.8, "wrong_side_of_puck": -0.1, "puck_proximity": 1.3, "puck_vel_toward_goal": 0.05, "goal_puck_proximity": 0.2, "shot": 0.0, "shot_toward_goal": 7.0, "dash": 150.0, "defender_goal_prox": 0.3, "defensive_positioning": 0.5}
+
+    # rewards_start = {
+    #     "velocity": -0.01,
+    #     "goal": 1500,
+    #     "team_mate_proximity": 0.8,
+    #     "wrong_side_of_puck": -0.1,
+    #     "puck_proximity": 3.0,
+    #     "puck_vel_toward_goal": 0.05,
+    #     "goal_puck_proximity": 0.2,
+    #     "shot": 0.0,
+    #     "shot_toward_goal": 7.0,
+    #     "dash": 70.0,
+    #     "defender_goal_prox": 0.3,
+    #     "defensive_positioning": 0.5
+    #     }
 
     rewards_end = None
+
+    # rewards_end = {
+    #     "velocity": -0.03,
+    #     "goal": 1000,
+    #     "team_mate_proximity": 0.0,
+    #     "wrong_side_of_puck": -0.0,
+    #     "puck_proximity": 0.0,
+    #     "puck_vel_toward_goal": 0.0,
+    #     "goal_puck_proximity": 0.0,
+    #     "shot": 0.0,
+    #     "shot_toward_goal": 0.0,
+    #     "dash": 0.0,
+    #     "defender_goal_prox": 0.0,
+    #     "defensive_positioning": 0.0,
+    # }
+
 
     # bra!
     # rewards_start = {
@@ -115,7 +148,7 @@ class Reward:
 
     def puck_proximity(self):
         dist_to_puck = min([np.linalg.norm(self.puck.pos - team_player.pos) for team_player in self.team_mates + [self.paddle]])
-        reward = h.map_value_to_range(dist_to_puck, 0, h.max_dist())
+        reward = h.map_value_to_range(dist_to_puck, 0, h.max_dist() / 2)
         # reward = (dist_to_puck / h.field_width())
         return reward
 
@@ -155,7 +188,13 @@ class Reward:
         return reward
 
     def dash(self):
-        reward = self.paddle.collect_dash_reward() ** 2
+        reward = 0
+        if self.paddle.collect_dash_reward() > 0:
+            reward -= 1
+
+        reward += self.paddle.collect_dash_shot_reward() * 6
+        # if reward != 0:
+        #     print(reward)
         return reward
 
     def shot_toward_goal(self):

@@ -38,7 +38,10 @@ class Game:
         self.start_time = 0
         self.total_reward = 0.0
         self.score = [0, 0]
-        self.match_steps = c.settings["round_time"] * c.settings["fps"]
+        if c.settings["is_training"]:
+            self.match_steps = c.settings["round_time"] * c.settings["fps"]
+        else:
+            self.match_steps = 60 * c.settings["fps"]
         self.create_objects()
         # g.controls.stick = g.controls.init_controls()
         self.reset()
@@ -74,6 +77,9 @@ class Game:
         g.paddles = self.paddles_1 + self.paddles_2
 
     def reset(self):
+        if c.settings["is_training"]:
+            c.settings["random_starting_locations"] = maybe_random_starting_locations()
+
         self.current_step = 0
         self.current_reward = 0.0
         self.round_reward = 0.0
@@ -86,6 +92,7 @@ class Game:
         self.puck.reset(self.last_scorer)
         g.sound_handler.reset()
         g.field.reset()
+        # g.sound_handler.play_sound(0.4, h.field_mid()[0], "light-broken")
 
     def non_player_1_team_1_paddles(self):
         return list(filter(lambda x: not (x.player == 1 and x.team == 1), self.paddles_1 + self.paddles_2))
@@ -495,7 +502,6 @@ def main():
         training_model = g.game.paddles_1[0].model
         non_training_paddles = g.game.non_player_1_team_1_paddles()
         while True:
-            c.settings["random_starting_locations"] = maybe_random_starting_locations()
             total_training_steps = c.training["training_steps"]
             c.settings["agent_control_training"] = pick_training_regime()
             training_model.train_model(total_training_steps)

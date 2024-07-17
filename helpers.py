@@ -271,3 +271,9 @@ def point_to_line_distance(line_point1, line_point2, point):
     perpendicular_vector = point_vector - projection_vector
     distance = np.linalg.norm(perpendicular_vector)
     return distance
+
+def point_on_circle(position, radius, index, rotation):
+    angle = 2 * np.pi * index / 3 + rotation
+    new_position = np.array([position[0] + radius * np.cos(angle),
+                             position[1] + radius * np.sin(angle)])
+    return new_position

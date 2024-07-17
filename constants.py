@@ -7,7 +7,7 @@ resolutions = [
     (160, 90),
 ]
 
-update_multiplier = 10
+update_multiplier = 7
 updates_per_delta_t = update_multiplier * 15 / 23
 
 settings = {
@@ -19,9 +19,9 @@ settings = {
     "field_split": False,
     "blocked_goals": False,
     # "blocked_goals": True,
-    # "random_starting_locations": True,
-    "random_starting_locations": False,
-    "random_starting_locations_probability": 0.0,
+    "random_starting_locations": True,
+    # "random_starting_locations": False,
+    "random_starting_locations_probability": 0.7,
     "resolution": 0,
     "field_width": 3400,
     "field_height": 1700,
@@ -57,11 +57,12 @@ fixed_training_regime = None
 
 training = {
     "training_steps": 8000,
-    "learning_rate": 1.0e-4,
-    # "ent_coef": 0.07,
-    "ent_coef": 0.0,
-    "model_selection_variance_opponent": 0.10,
-    "model_selection_variance_team": 0.02,
+    "learning_rate": 0.4e-3,
+    # "learning_rate": 1.0e-4,
+    "ent_coef": 0.01,
+    # "ent_coef": 0.0,
+    "model_selection_variance_opponent": 0.30,
+    "model_selection_variance_team": 0.00001,
     "base_path": "models",
     "algorithm": "PPO",
     "model_name": "Herbert"
@@ -69,7 +70,7 @@ training = {
 
 gameplay = {
     "dash_cooldown": 0.4,
-    "dash_impulse": 600,
+    "dash_impulse": 65,
     "dash_duration": 0.22,
     "dash_max_charge_time": 1.0,
     "max_paddle_speed": 40,

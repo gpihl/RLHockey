@@ -230,6 +230,9 @@ class Puck:
                 goal_dir = (goal_pos - self.pos) / np.linalg.norm(goal_pos - self.pos)
                 self.shot_on_goal_reward[key] = np.dot(self.vel, goal_dir)
 
+                if paddle.is_dashing():
+                    paddle.add_dash_shot_reward()
+
             sound_vel = np.linalg.norm(relative_velocity)
             if sound_vel != 0:
                 g.sound_handler.play_sound_velocity_based("paddle", sound_vel, c.gameplay["max_puck_speed"] + c.gameplay["max_paddle_speed"], 0.4, self.pos[0], exponent=4)
