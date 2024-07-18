@@ -1,0 +1,1 @@
+{"velocity": -0.01, "goal": 1000, "team_mate_proximity": 1.0, "wrong_side_of_puck": -0.8, "puck_proximity": 3.0, "puck_vel_toward_goal": 0.07, "goal_puck_proximity": 0.2, "shot": 0.0, "shot_toward_goal": 4.0, "dash": 20.0, "defender_goal_prox": 1.0, "defensive_positioning": 1.0}
