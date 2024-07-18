@@ -8,6 +8,7 @@ in vec4 fragColor;
 uniform vec3 LightBuffer[20];
 uniform vec2 resolution;
 uniform vec2 puckPos;
+uniform vec2 resolution;
 
 out vec4 finalColor;
 
@@ -29,7 +30,7 @@ void main()
 
         float intensity = dot(localDir, lightDir);
         intensity *= pow(1 - (lightDist / length(resolution)), 2);
-        intensity *= -sin(localDist * 300 / length(resolution));
+        intensity *= -sin(localDist * 300 / 2938.0);
 
         float light_intensity = LightBuffer[i*2].z;
         vec4 light_color = vec4(LightBuffer[i*2 + 1], 1.0);
