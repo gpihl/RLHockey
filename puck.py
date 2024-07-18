@@ -4,6 +4,7 @@ import globals as g
 import constants as c
 import helpers as h
 from light import Light
+from collections import deque
 
 class Puck:
     def __init__(self):
@@ -18,7 +19,10 @@ class Puck:
         self.rot = 0.0
         self.friction = 0.997
         self.restitution = 0.95
+        self.path_update_t = 0.4
+        self.last_path_update = 0
         self.color = (0,0,0)
+        self.puck_path = deque(maxlen=60)
         self.homing = False
         self.homing_target = 1
         self.last_collider = None
@@ -87,6 +91,12 @@ class Puck:
 
         self.handle_wall_collision()
         self.light.update(object=self)
+        # self.update_puck_path()
+
+    # def update_puck_path(self):
+    #     if g.current_time - self.last_path_update > self.path_update_t:
+    #         self.puck_path.append(self.pos.copy())
+    #         self.last_path_update = g.current_time
 
     def homing_acceleration(self):
         goal_pos = h.goal_pos(self.homing_target)
@@ -263,3 +273,9 @@ class Puck:
 
         if not c.settings["is_training"]:
             g.framework.end_drawing_puck()
+            # self.draw_puck_path()
+
+
+    # def draw_puck_path(self):
+    #     g.framework.draw_gradient_rectangles(self.puck_path, self.radius * 0.8)
+

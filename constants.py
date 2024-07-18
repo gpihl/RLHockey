@@ -21,7 +21,7 @@ settings = {
     # "blocked_goals": True,
     "random_starting_locations": True,
     # "random_starting_locations": False,
-    "random_starting_locations_probability": 0.7,
+    "random_starting_locations_probability": 0.5,
     "resolution": 0,
     "field_width": 3400,
     "field_height": 1700,
@@ -57,15 +57,15 @@ fixed_training_regime = None
 
 training = {
     "training_steps": 8000,
-    "learning_rate": 0.4e-3,
+    "learning_rate": 0.3e-3,
     # "learning_rate": 1.0e-4,
-    "ent_coef": 0.01,
+    "ent_coef": 0.005,
     # "ent_coef": 0.0,
     "model_selection_variance_opponent": 0.30,
-    "model_selection_variance_team": 0.00001,
+    "model_selection_variance_team": 0.0001,
     "base_path": "models",
     "algorithm": "PPO",
-    "model_name": "Herbert"
+    "model_name": "Gilbert"
 }
 
 gameplay = {

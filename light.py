@@ -2,6 +2,7 @@ import noise
 import globals as g
 import constants as c
 import numpy as np
+import helpers as h
 
 class Light:
     def __init__(self, pos, spawn_intensity, amplitude, time_scale, top, color=(255,255,255), light_type="wall"):
@@ -29,13 +30,16 @@ class Light:
             noise_value = noise.pnoise1(t * self.time_scale)
             self.intensity = self.base_intensity + self.amplitude * noise_value
             self.intensity = max(0.0, min(1.0, self.intensity))
-        elif self.type == "paddle" or self.type == "puck":
+        elif self.type == "paddle":
             self.pos = object.pos
-            self.color = object.color
-            # if paddle.charging_dash:
-            #     self.intensity = self.base_intensity + paddle.charging_alpha() * (1.0 - self.base_intensity) * 2
+            self.color = h.modify_hsl(object.color, 0, 0, 0.05)
+            # if object.charging_dash:
+            #     self.intensity = self.base_intensity + object.charging_alpha() * (1.0 - self.base_intensity) * 2
             # else:
             #     self.intensity = self.base_intensity
+        elif self.type == "puck":
+            self.pos = object.pos
+            self.color = h.modify_hsl(object.color, 0, 0, 0.05)
 
     def draw(self):
         if self.top:

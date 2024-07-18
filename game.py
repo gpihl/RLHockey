@@ -268,8 +268,13 @@ class Game:
             scorer = self.paddles_1[0] if scorer == 1 else self.paddles_2[0]
             position = h.field_mid()
             radius = c.settings["field_height"] / 5.4
+            scorer.pos = position
+            scorer.radius = radius
+            g.framework.update_paddle_data([scorer])
             g.framework.begin_drawing()
+            g.framework.begin_drawing_paddle(scorer)
             scorer.draw_paddle(position, radius, scorer.color, draw_indicator=False)
+            g.framework.end_drawing_paddle()
             g.framework.end_drawing()
             prev_time = None
             while g.current_time - goal_time < 0.9:

@@ -18,22 +18,22 @@ class Reward:
     #     "defensive_positioning": 0.0,
     # }
 
-    rewards_start = {"velocity": -0.01, "goal": 1000, "team_mate_proximity": 0.8, "wrong_side_of_puck": -0.1, "puck_proximity": 1.3, "puck_vel_toward_goal": 0.05, "goal_puck_proximity": 0.2, "shot": 0.0, "shot_toward_goal": 7.0, "dash": 150.0, "defender_goal_prox": 0.3, "defensive_positioning": 0.5}
+    # rewards_start = {"velocity": -0.01, "goal": 1000, "team_mate_proximity": 0.8, "wrong_side_of_puck": -0.1, "puck_proximity": 1.3, "puck_vel_toward_goal": 0.05, "goal_puck_proximity": 0.2, "shot": 0.0, "shot_toward_goal": 7.0, "dash": 150.0, "defender_goal_prox": 0.3, "defensive_positioning": 0.5}
 
-    # rewards_start = {
-    #     "velocity": -0.01,
-    #     "goal": 1500,
-    #     "team_mate_proximity": 0.8,
-    #     "wrong_side_of_puck": -0.1,
-    #     "puck_proximity": 3.0,
-    #     "puck_vel_toward_goal": 0.05,
-    #     "goal_puck_proximity": 0.2,
-    #     "shot": 0.0,
-    #     "shot_toward_goal": 7.0,
-    #     "dash": 70.0,
-    #     "defender_goal_prox": 0.3,
-    #     "defensive_positioning": 0.5
-    #     }
+    rewards_start = {
+        "velocity": -0.01,
+        "goal": 1000,
+        "team_mate_proximity": 1.0,
+        "wrong_side_of_puck": -0.8,
+        "puck_proximity": 3.0,
+        "puck_vel_toward_goal": 0.07,
+        "goal_puck_proximity": 0.2,
+        "shot": 0.0,
+        "shot_toward_goal": 4.0,
+        "dash": 20.0,
+        "defender_goal_prox": 1.0,
+        "defensive_positioning": 1.0
+        }
 
     rewards_end = None
 

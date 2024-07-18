@@ -78,7 +78,7 @@ class Model:
         self.environment.save(env_save_path)
         print("Environment saved!")
 
-        reward_save_path = f"{search_path}/{self.version}/rewards.txt"
+        reward_save_path = f"{search_path}/{self.version+1}/rewards.txt"
         print(f"Saving reward: {reward_save_path}")
         self.save_reward_structure(reward_save_path)
         print(f"Reward saved!")

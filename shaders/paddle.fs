@@ -8,6 +8,7 @@ in vec4 fragColor;
 uniform vec3 LightBuffer[20];
 uniform vec2 resolution;
 uniform vec2 paddlePos;
+uniform float paddleRadius;
 
 out vec4 finalColor;
 
@@ -18,6 +19,7 @@ void main()
     vec2 localRelativeCoord = coord - paddlePos;
     float localDist = length(localRelativeCoord);
     vec2 localDir = localRelativeCoord / localDist;
+    localDist = localDist * 54.0 / paddleRadius;
 
     for (int i = 0; i < 10; i++) {
         if (LightBuffer[i*2].x == 0 && LightBuffer[i*2].y == 0) {
@@ -34,7 +36,7 @@ void main()
         float light_intensity = LightBuffer[i*2].z;
         vec4 light_color = vec4(LightBuffer[i*2 + 1], 1.0);
 
-        color = mix(color, light_color, intensity * 0.35 * light_intensity);
+        color = mix(color, light_color, intensity * 0.50 * light_intensity);
     }
 
     finalColor = color;

@@ -1,5 +1,6 @@
 import pyray as pr
 import math
+import numpy as np
 import constants as c
 import globals as g
 import helpers as h
@@ -45,7 +46,8 @@ class Framework():
         (self.paddle_data_buffer, self.paddle_count_buffer,
         self.light_data_buffer, self.resolution_buffer,
         self.y_extremes_buffer, self.paddle_pos_buffer,
-        self.puck_pos_buffer, self.object_data_buffer) = self.create_shader_buffers()
+        self.puck_pos_buffer, self.object_data_buffer,
+        self.paddle_radius_buffer) = self.create_shader_buffers()
 
         self.shader = self.post_shader
         self.set_shader_uniform(self.post_shader, "resolution", self.resolution_buffer, pr.SHADER_UNIFORM_VEC2)
@@ -73,6 +75,7 @@ class Framework():
         paddle_shader = pr.load_shader("shaders/default.vs", "shaders/paddle.fs")
         particle_shader = pr.load_shader("shaders/default.vs", "shaders/particle.fs")
         puck_shader = pr.load_shader("shaders/default.vs", "shaders/puck.fs")
+        # path_shader = pr.load_shader("shaders/default.vs", "shaders/path.fs")
 
         return post_shader, scanlines_shader, paddle_shader, particle_shader, puck_shader
 
@@ -80,14 +83,17 @@ class Framework():
         max_paddles = c.settings["team_size"] * 2
         paddle_data_buffer = pr.ffi.new("float[]", max_paddles * 9)
         paddle_count_buffer = pr.ffi.new("int *", 0)
+        paddle_radius_buffer = pr.ffi.new("float *", 0)
         light_data_buffer = pr.ffi.new("float[]", 10 * 3 * 2)
         resolution_buffer = pr.ffi.new("float[2]", [float(self.get_resolution()[0]), float(self.get_resolution()[1])])
         y_extremes_buffer = pr.ffi.new("float[2]", [self.world_to_screen_coord((0, 0))[1], self.world_to_screen_coord((0, c.settings["field_height"]))[1]])
         paddle_pos_buffer = pr.ffi.new("float[2]", [0,0])
         puck_pos_buffer = pr.ffi.new("float[2]", [0,0])
+        # path_col_start_buffer = pr.ffi.new("float[4]", [0,0,0,0])
+        # path_col_end_buffer = pr.ffi.new("float[4]", [0,0,0,0])
         object_data_buffer = pr.ffi.new("float[]", 5 * 3)
 
-        return paddle_data_buffer, paddle_count_buffer, light_data_buffer, resolution_buffer, y_extremes_buffer, paddle_pos_buffer, puck_pos_buffer, object_data_buffer
+        return paddle_data_buffer, paddle_count_buffer, light_data_buffer, resolution_buffer, y_extremes_buffer, paddle_pos_buffer, puck_pos_buffer, object_data_buffer, paddle_radius_buffer
 
     def load_fonts(self):
         font_bold = pr.load_font_ex("fonts/Roboto-Bold.ttf", 100, None, 0)
@@ -113,7 +119,10 @@ class Framework():
         paddle_pos_screen = self.world_to_screen_coord(paddle.pos)
         self.paddle_pos_buffer[0] = paddle_pos_screen[0]
         self.paddle_pos_buffer[1] = paddle_pos_screen[1]
+        paddle_radius_screen = self.world_to_screen_length(paddle.radius)
+        self.paddle_radius_buffer[0] = paddle_radius_screen
         self.set_shader_uniform(self.paddle_shader, "paddlePos", self.paddle_pos_buffer, pr.SHADER_UNIFORM_VEC2)
+        self.set_shader_uniform(self.paddle_shader, "paddleRadius", self.paddle_radius_buffer, pr.SHADER_UNIFORM_FLOAT)
         pr.begin_shader_mode(self.paddle_shader)
 
     def begin_drawing_puck(self, puck):
@@ -505,6 +514,42 @@ class Framework():
         end_y = pos[1] + length * math.sin(angle_rad)
 
         pr.draw_line_ex(pr.Vector2(pos[0], pos[1]), pr.Vector2(end_x, end_y), width, color)
+
+    # def draw_gradient_rectangles(self, points, radius):
+    #     num_points = len(points)
+    #     if num_points > 1:
+    #         for i in range(num_points - 1):
+    #             pr.begin_shader_mode(self.path_shader)
+    #             x1, y1 = self.world_to_screen_coord(points[i])
+    #             x2, y2 = self.world_to_screen_coord(points[i+1])
+    #             angle = math.atan2(y2 - y1, x2 - x1)
+    #             length = math.sqrt((x2 - x1) ** 2 + (y2 - y1) ** 2)
+
+    #             alpha_1 = (float(i) / float(num_points)) * 0.5
+    #             alpha_2 = ((float(i + 1)) / float(num_points)) * 0.5
+
+    #             colStart = (1.0, 1.0, 1.0, alpha_1)
+    #             colEnd = (1.0, 1.0, 1.0, alpha_2)
+
+    #             self.path_col_start_buffer[0] = colStart[0]
+    #             self.path_col_start_buffer[1] = colStart[1]
+    #             self.path_col_start_buffer[2] = colStart[2]
+    #             self.path_col_start_buffer[3] = colStart[3]
+    #             self.path_col_end_buffer[0] = colEnd[0]
+    #             self.path_col_end_buffer[1] = colEnd[1]
+    #             self.path_col_end_buffer[2] = colEnd[2]
+    #             self.path_col_end_buffer[3] = colEnd[3]
+    #             self.set_shader_uniform(self.path_shader, "colStart", self.path_col_start_buffer, pr.SHADER_UNIFORM_VEC4)
+    #             self.set_shader_uniform(self.path_shader, "colEnd", self.path_col_end_buffer, pr.SHADER_UNIFORM_VEC4)
+
+    #             pr.draw_rectangle_pro(
+    #                 pr.Rectangle((x1 + x2) / 2, (y1 + y2) / 2, length, radius * 2),
+    #                 pr.Vector2(length / 2, radius),
+    #                 np.degrees(angle),
+    #                 pr.WHITE
+    #             )
+    #             pr.end_shader_mode()
+
 
     def close(self):
         for font in self.fonts.values():
