@@ -22,7 +22,7 @@ class Reward:
 
     rewards_start = {
         "velocity": -0.01,
-        "goal": 1000,
+        "goal": 1500,
         "team_mate_proximity": 1.0,
         "wrong_side_of_puck": -0.8,
         "puck_proximity": 3.0,

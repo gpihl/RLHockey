@@ -1,6 +1,7 @@
 import numpy as np
 import constants as c
 import globals as g
+import helpers as h
 import random
 
 class Particle:
@@ -30,7 +31,8 @@ class Particle:
         r = int(min(255, max(0, np.random.normal(color[0], 20))))
         g = int(min(255, max(0, np.random.normal(color[1], 20))))
         b = int(min(255, max(0, np.random.normal(color[2], 20))))
-        return Particle(pos, vel, color, radius)
+        particle_color = (r,g,b)
+        return Particle(pos, vel, particle_color, radius)
 
     @staticmethod
     def random_particles(pos, n, colors=[(220,220,100)]):

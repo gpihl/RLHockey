@@ -74,6 +74,6 @@ gameplay = {
     "dash_duration": 0.22,
     "dash_max_charge_time": 1.0,
     "max_paddle_speed": 40,
-    "max_puck_speed": 60,
+    "max_puck_speed": 75,
 }
 

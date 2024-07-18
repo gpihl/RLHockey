@@ -209,7 +209,7 @@ class Puck:
 
             impulse_scalar = -(1 + self.restitution) * velocity_along_normal
             impulse_scalar /= (1 / self.radius + 1 / paddle.radius)
-            impulse = 0.87 * impulse_scalar * normal
+            impulse = 0.70 * impulse_scalar * normal
 
             self.vel += impulse / self.radius
             self.limit_speed()

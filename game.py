@@ -296,8 +296,8 @@ class Game:
     # Absolute positions
     def get_observation(self, team, player):
         player = player - 1
-        max_puck_speed = 60
-        max_paddle_speed = 110
+        max_puck_speed = c.gameplay["max_puck_speed"]
+        max_paddle_speed = 85
         max_puck_spin = 130
 
         if team == 1:
