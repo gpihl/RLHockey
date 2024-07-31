@@ -3,43 +3,60 @@ import helpers as h
 import globals as g
 
 class Reward:
+    rewards_start = {
+        "velocity": -0.02,
+        "goal": 3000,
+        "team_mate_proximity": 0.5,
+        "wrong_side_of_puck": -0.3,
+        "puck_proximity": 1.4,
+        "puck_vel_toward_goal": 0.1,
+        "goal_puck_proximity": 0.3,
+        "shot": 0.0,
+        "shot_toward_goal": 1.0,
+        "dash": 6.0,
+        "defender_goal_prox": 0.5,
+        "defensive_positioning": 0.5,
+    }
+
     # rewards_start = {
-    #     "velocity": -0.03,
-    #     "goal": 1000,
+    #     "velocity": -0.02,
+    #     "goal": 4000,
     #     "team_mate_proximity": 0.0,
     #     "wrong_side_of_puck": -0.0,
-    #     "puck_proximity": 0.0,
+    #     "puck_proximity": 1.0,
     #     "puck_vel_toward_goal": 0.0,
-    #     "goal_puck_proximity": 0.,
-    #     "shot": 0.0,
-    #     "shot_toward_goal": 0.0,
-    #     "dash": 0.0,
+    #     "goal_puck_proximity": 0.0,
+    #     "shot": 1.0,
+    #     "shot_toward_goal": 2.0,
+    #     "dash": 8.0,
     #     "defender_goal_prox": 0.0,
     #     "defensive_positioning": 0.0,
     # }
 
     # rewards_start = {"velocity": -0.01, "goal": 1000, "team_mate_proximity": 0.8, "wrong_side_of_puck": -0.1, "puck_proximity": 1.3, "puck_vel_toward_goal": 0.05, "goal_puck_proximity": 0.2, "shot": 0.0, "shot_toward_goal": 7.0, "dash": 150.0, "defender_goal_prox": 0.3, "defensive_positioning": 0.5}
 
-    rewards_start = {
-        "velocity": -0.01,
-        "goal": 1500,
-        "team_mate_proximity": 1.0,
-        "wrong_side_of_puck": -0.8,
-        "puck_proximity": 3.0,
-        "puck_vel_toward_goal": 0.07,
-        "goal_puck_proximity": 0.2,
-        "shot": 0.0,
-        "shot_toward_goal": 4.0,
-        "dash": 20.0,
-        "defender_goal_prox": 1.0,
-        "defensive_positioning": 1.0
-        }
+    # rewards_start = {"velocity": -0.02, "goal": 1000, "team_mate_proximity": 0.8, "wrong_side_of_puck": -0.1, "puck_proximity": 1.3, "puck_vel_toward_goal": 0.05, "goal_puck_proximity": 0.2, "shot": 0.0, "shot_toward_goal": 7.0, "dash": 0.0, "defender_goal_prox": 0.1, "defensive_positioning": 0.3}
+
+    # rewards_start = {
+    #     "velocity": -0.01,
+    #     "goal": 1500,
+    #     "team_mate_proximity": 1.0,
+    #     "wrong_side_of_puck": -0.8,
+    #     "puck_proximity": 3.0,
+    #     "puck_vel_toward_goal": 0.07,
+    #     "goal_puck_proximity": 0.2,
+    #     "shot": 0.0,
+    #     "shot_toward_goal": 4.0,
+    #     "dash": 20.0,
+    #     "defender_goal_prox": 1.0,
+    #     "defensive_positioning": 1.0
+    #     }
 
     rewards_end = None
 
     # rewards_end = {
-    #     "velocity": -0.03,
-    #     "goal": 1000,
+    #     "velocity": -0.00,
+    #     "goal": 4000,
     #     "team_mate_proximity": 0.0,
     #     "wrong_side_of_puck": -0.0,
     #     "puck_proximity": 0.0,

@@ -89,8 +89,6 @@ class Framework():
         y_extremes_buffer = pr.ffi.new("float[2]", [self.world_to_screen_coord((0, 0))[1], self.world_to_screen_coord((0, c.settings["field_height"]))[1]])
         paddle_pos_buffer = pr.ffi.new("float[2]", [0,0])
         puck_pos_buffer = pr.ffi.new("float[2]", [0,0])
-        # path_col_start_buffer = pr.ffi.new("float[4]", [0,0,0,0])
-        # path_col_end_buffer = pr.ffi.new("float[4]", [0,0,0,0])
         object_data_buffer = pr.ffi.new("float[]", 5 * 3)
 
         return paddle_data_buffer, paddle_count_buffer, light_data_buffer, resolution_buffer, y_extremes_buffer, paddle_pos_buffer, puck_pos_buffer, object_data_buffer, paddle_radius_buffer
@@ -162,6 +160,9 @@ class Framework():
         pr.end_shader_mode()
 
     def add_temporary_particles(self, pos, vel, colors):
+        if not h.full_visuals():
+            return
+
         n = int(vel / 10)
         particles = Particle.random_particles(pos, n, colors)
         self.particles += particles
@@ -332,7 +333,7 @@ class Framework():
         pr.end_texture_mode()
         pr.begin_drawing()
         pr.clear_background(pr.BLACK)
-        if not c.settings["is_training"] and self.shader is not None and shader:
+        if h.full_visuals() and self.shader is not None and shader:
             pr.begin_shader_mode(self.shader)
 
         if self.fullscreen:
@@ -361,7 +362,7 @@ class Framework():
             pr.WHITE
         )
 
-        if not c.settings["is_training"] and self.shader is not None and shader:
+        if h.full_visuals() and self.shader is not None and shader:
             pr.end_shader_mode()
 
         pr.end_drawing()
@@ -415,6 +416,11 @@ class Framework():
         pos = self.world_to_screen_coord(pos)
         radius = self.world_to_screen_length(radius)
         pr.draw_circle_sector(pr.Vector2(*pos), radius, 0, 360, max(30, int(radius/2)), color)
+
+    def draw_circle_fast(self, pos, radius, pyray_color):
+        pos = self.world_to_screen_coord(pos)
+        radius = self.world_to_screen_length(radius)
+        pr.draw_circle_sector(pr.Vector2(*pos), radius, 0, 360, max(30, int(radius/2)), pyray_color)
 
     def draw_circle_simple(self, pos, radius, color):
         color = self.tuple_to_color(color)
@@ -514,6 +520,20 @@ class Framework():
         end_y = pos[1] + length * math.sin(angle_rad)
 
         pr.draw_line_ex(pr.Vector2(pos[0], pos[1]), pr.Vector2(end_x, end_y), width, color)
+
+    # def draw_puck_path(self, puck):
+    #     color = (255,255,255)
+    #     # target_color = g.sound_handler.target_color()
+    #     for pos, alpha in puck.puck_path:
+    #         curr_color = (*color, int(30 * alpha))
+    #         self.draw_circle(pos, puck.radius * (alpha ** (1/6)), curr_color)
+
+    # def draw_trail(self, trail):
+    #     color = (255,255,255)
+    #     # target_color = g.sound_handler.target_color()
+    #     for pos, alpha in puck.puck_path:
+    #         curr_color = (*color, int(30 * alpha))
+    #         self.draw_circle(pos, puck.radius * (alpha ** (1/6)), curr_color)
 
     # def draw_gradient_rectangles(self, points, radius):
     #     num_points = len(points)

@@ -4,6 +4,7 @@ import globals as g
 import constants as c
 import helpers as h
 from light import Light
+from trail import Trail
 from collections import deque
 from model import Model
 from reward import Reward
@@ -34,10 +35,11 @@ class Paddle:
         self.current_reward = 0.0
         self.rotation = 0
         self.rot_vel = 0
-        self.light = Light(self.pos, 0.5, 0, 0, None, self.color, light_type="paddle")
+        self.light = Light(self.pos, 0.45, 0, 0, None, self.color, light_type="paddle")
         self.dash_reward = 0
         self.dash_shot_reward = 0
         self.reward = None
+        self.trail = Trail(0.96, (200,200,0), self.radius)
         self.reset()
         self.load_new_model()
 
@@ -295,6 +297,14 @@ class Paddle:
                 self.vel[1] = 0.0
 
         self.light.update(object=self)
+        self.update_trail()
+
+    def update_trail(self):
+        def get_speed_alpha(s):
+            return min(1.0, max(0.0, (s / (c.gameplay["max_paddle_speed"] * 2)))) ** 3
+
+        self.trail.update((self.pos.copy(), get_speed_alpha(np.linalg.norm(self.vel))))
+        self.trail.color = self.color
 
     def handle_corner_collision(self):
         corner_radius = c.settings["corner_radius"]
@@ -353,20 +363,21 @@ class Paddle:
                 model_name = self.model.get_name()
                 g.framework.draw_text(model_name, "model_name", (255,255,255), (self.pos[0], self.pos[1] + self.radius * 1.35), "center", font_size=27)
 
-        if not c.settings["is_training"]:
+        if h.full_visuals():
+            self.trail.draw()
             g.framework.begin_drawing_paddle(self)
 
         theme_color = g.sound_handler.target_color()
-        hue_change = 0.2 if self.team == 1 else -0.2
+        hue_change = 0.16 if self.team == 1 else -0.16
         self.color = h.modify_hsl(theme_color, hue_change, 0.25, 0.2)
 
         if self.charging_dash:
-            charge_color_shift = min(0.9, self.charging_alpha() * 0.5)
+            charge_color_shift = min(0.9, self.charging_alpha() * 0.2)
             self.color = h.interpolate_color_rgb(self.color, (255,0,0), charge_color_shift)
             self.color = h.modify_hsl(self.color, 0, charge_color_shift * 0.5, charge_color_shift * 0.2)
 
         self.draw_paddle(self.pos, self.radius, self.color, reward_alpha)
-        if not c.settings["is_training"]:
+        if h.full_visuals():
             g.framework.end_drawing_paddle()
 
     def charging_time(self):

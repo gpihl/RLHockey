@@ -8,7 +8,6 @@ in vec4 fragColor;
 uniform vec3 LightBuffer[20];
 uniform vec2 resolution;
 uniform vec2 puckPos;
-uniform vec2 resolution;
 
 out vec4 finalColor;
 

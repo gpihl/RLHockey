@@ -189,7 +189,7 @@ class Game:
 
         g.sound_handler.update(scorer)
         g.field.update(self.puck)
-        if not c.settings["is_training"]:
+        if h.full_visuals():
             g.framework.update_particles()
             g.framework.update_paddle_data(all_paddles)
 
@@ -245,8 +245,6 @@ class Game:
             if g.framework.take_paused_step(new_presses):
                 break
 
-
-
         g.clock.unpause()
 
     def print_max_speeds(self):
@@ -264,6 +262,12 @@ class Game:
 
     def goal_scored_sequence(self, scorer):
         if not c.settings["is_training"]:
+            g.framework.particles = []
+            for paddle in self.paddles_1 + self.paddles_2:
+                paddle.trail.entries = []
+            self.puck.trail.entries = []
+
+            self.render()
             goal_time = g.current_time
             scorer = self.paddles_1[0] if scorer == 1 else self.paddles_2[0]
             position = h.field_mid()
@@ -440,12 +444,12 @@ class Game:
     def render(self):
         g.framework.begin_drawing()
         g.field.draw_bottom_layer(self.puck)
+        if h.full_visuals():
+            g.framework.draw_particles()
         self.puck.draw()
         for paddle in self.paddles_1 + self.paddles_2:
             paddle.draw()
         g.field.draw_top_layer(self.puck)
-        if not c.settings["is_training"]:
-            g.framework.draw_particles()
         self.draw_ui()
         g.framework.end_drawing()
 

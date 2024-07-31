@@ -143,7 +143,8 @@ class Model:
         print(f"Creating new model: {model_name}, {algorithm_name}, {team_size}")
         training_algorithm = Model.get_algorithm(algorithm_name)
         env = Model.get_environment_norm()
-        sb3_model = training_algorithm("MultiInputPolicy", env, learning_rate=c.training["learning_rate"], ent_coef=c.training["ent_coef"], verbose=1, device=g.device)
+        policy_kwargs = dict(net_arch=dict(pi=[64, 128, 64], vf=[64, 128, 64]))
+        sb3_model = training_algorithm("MultiInputPolicy", env, learning_rate=c.training["learning_rate"], ent_coef=c.training["ent_coef"], verbose=1, device=g.device, policy_kwargs=policy_kwargs)
         version = 0
         model = Model(sb3_model, version, algorithm_name, model_name, team_size, env)
         print("Model created")

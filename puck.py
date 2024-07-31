@@ -4,6 +4,7 @@ import globals as g
 import constants as c
 import helpers as h
 from light import Light
+from trail import Trail
 from collections import deque
 
 class Puck:
@@ -19,14 +20,12 @@ class Puck:
         self.rot = 0.0
         self.friction = 0.997
         self.restitution = 0.95
-        self.path_update_t = 0.4
-        self.last_path_update = 0
         self.color = (0,0,0)
-        self.puck_path = deque(maxlen=60)
         self.homing = False
         self.homing_target = 1
         self.last_collider = None
         self.light = Light(self.pos, 0.45, 0, 0, None, self.color, light_type="puck")
+        self.trail = Trail(0.96, (200,200,200), self.radius)
         self.reset()
 
     def reset(self, last_scorer=2):
@@ -91,12 +90,13 @@ class Puck:
 
         self.handle_wall_collision()
         self.light.update(object=self)
-        # self.update_puck_path()
+        self.update_trail()
 
-    # def update_puck_path(self):
-    #     if g.current_time - self.last_path_update > self.path_update_t:
-    #         self.puck_path.append(self.pos.copy())
-    #         self.last_path_update = g.current_time
+    def update_trail(self):
+        def get_speed_alpha(s):
+            return max(0.0, (s / c.gameplay["max_puck_speed"]) ** 3)
+
+        self.trail.update((self.pos.copy(), get_speed_alpha(np.linalg.norm(self.vel))))
 
     def homing_acceleration(self):
         goal_pos = h.goal_pos(self.homing_target)
@@ -209,7 +209,7 @@ class Puck:
 
             impulse_scalar = -(1 + self.restitution) * velocity_along_normal
             impulse_scalar /= (1 / self.radius + 1 / paddle.radius)
-            impulse = 0.70 * impulse_scalar * normal
+            impulse = 0.75 * impulse_scalar * normal
 
             self.vel += impulse / self.radius
             self.limit_speed()
@@ -218,12 +218,12 @@ class Puck:
             velocity_along_tangent = np.dot(relative_velocity, tangent)
 
             rotational_impulse = np.cross(normal, tangent) * velocity_along_tangent
-            rotational_impulse = 0 if np.abs(rotational_impulse) < 0.5 else rotational_impulse
-            self.rot_vel += rotational_impulse * 0.24 / c.update_multiplier
+            # rotational_impulse = 0 if np.abs(rotational_impulse) < 0.5 else rotational_impulse
+            self.rot_vel += rotational_impulse * 0.10 / c.update_multiplier
 
             overlap = self.radius + paddle.radius - dist
             paddle.pos -= normal * (overlap / 2)
-            paddle.vel -= 0.8 * impulse / paddle.radius
+            paddle.vel -= 1.0 * impulse / paddle.radius
             paddle.limit_speed()
             self.pos += normal * (overlap / 2)
 
@@ -251,7 +251,8 @@ class Puck:
             g.framework.add_temporary_particles(self.pos - self.radius * normal, sound_vel, [self.color, paddle.color])
 
     def draw(self):
-        if not c.settings["is_training"]:
+        if h.full_visuals():
+            self.trail.draw()
             g.framework.begin_drawing_puck(self)
 
         intensity = np.linalg.norm(self.vel) * 1.3 / (c.gameplay["max_puck_speed"])
@@ -271,11 +272,11 @@ class Puck:
         g.framework.draw_circle(self.pos, int(8*self.radius / 9), h.modify_hsl(puck_color, 0, 0, -0.2))
         g.framework.draw_rotated_line_centered(self.pos, self.radius * 1.5, self.rot, puck_color, int(self.radius / 5.0))
 
-        if not c.settings["is_training"]:
+        if h.full_visuals():
             g.framework.end_drawing_puck()
-            # self.draw_puck_path()
 
 
-    # def draw_puck_path(self):
-    #     g.framework.draw_gradient_rectangles(self.puck_path, self.radius * 0.8)
+
+    def draw_puck_path(self):
+        g.framework.draw_puck_path(self)
 

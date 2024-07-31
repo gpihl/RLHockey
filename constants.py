@@ -27,7 +27,8 @@ settings = {
     "field_height": 1700,
     "corner_radius": 249,
     "fps": 60,
-    "original_delta_t": 86,
+    # "original_delta_t": 86,
+    "original_delta_t": 74,
     "delta_t": 0,
     "team_size": 2,
     "agent_control_training": ["ai", "ai", "ai", "ai"],
@@ -57,15 +58,15 @@ fixed_training_regime = None
 
 training = {
     "training_steps": 8000,
-    "learning_rate": 0.3e-3,
-    # "learning_rate": 1.0e-4,
-    "ent_coef": 0.005,
-    # "ent_coef": 0.0,
+    # "learning_rate": 0.3e-3,
+    "learning_rate": 1.0e-4,
+    # "ent_coef": 0.005,
+    "ent_coef": 0.0,
     "model_selection_variance_opponent": 0.30,
     "model_selection_variance_team": 0.0001,
     "base_path": "models",
     "algorithm": "PPO",
-    "model_name": "Gilbert"
+    "model_name": "ShooterBigger"
 }
 
 gameplay = {

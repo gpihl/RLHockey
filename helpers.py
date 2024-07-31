@@ -74,11 +74,19 @@ def dist_alpha(dist):
     return 1.0 - min(1.0, dist / c.settings["field_width"])
 
 def interpolate_color_rgb(color1, color2, t):
-    return (
-        int(color1[0] + (color2[0] - color1[0]) * t),
-        int(color1[1] + (color2[1] - color1[1]) * t),
-        int(color1[2] + (color2[2] - color1[2]) * t)
-    )
+    if len(color1) == 3:
+        return (
+            int(color1[0] + (color2[0] - color1[0]) * t),
+            int(color1[1] + (color2[1] - color1[1]) * t),
+            int(color1[2] + (color2[2] - color1[2]) * t)
+        )
+    elif len(color1) == 4:
+        return (
+            int(color1[0] + (color2[0] - color1[0]) * t),
+            int(color1[1] + (color2[1] - color1[1]) * t),
+            int(color1[2] + (color2[2] - color1[2]) * t),
+            int(color1[3] + (color2[3] - color1[3]) * t)
+        )
 
 def color_float(color):
     r = max(0.0, min(1.0, color[0] / 255.0))
@@ -277,3 +285,6 @@ def point_on_circle(position, radius, index, rotation):
     new_position = np.array([position[0] + radius * np.cos(angle),
                              position[1] + radius * np.sin(angle)])
     return new_position
+
+def full_visuals():
+    return not c.settings["is_training"] or g.framework.fps_locked

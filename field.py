@@ -64,10 +64,10 @@ class Field:
         line_thickness = 40 * c.settings["field_width"] / 2500
 
         puck_to_mid_dist = np.abs(puck.pos[0] - c.settings["field_width"] / 2)
-        alpha = h.dist_alpha(puck_to_mid_dist) ** 2
-        color = h.modify_hsl(color, 0, 0, 0.15 * alpha)
+        alpha = (h.dist_alpha(puck_to_mid_dist) ** 2) / 2
+        color = h.modify_hsl(color, 0, 0, 0.05 + 0.09 * alpha)
 
-        mid_circle_color = h.modify_hsl(self.background_color, 0.03, 0, -0.04)
+        mid_circle_color = h.modify_hsl(self.background_color, 0.025, 0, -0.025)
         mid_circle_radius = int(6.75 * line_thickness)
         mid_point_radius = int(2.125 * line_thickness)
         g.framework.draw_circle(h.field_mid(), mid_circle_radius, color)
