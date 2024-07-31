@@ -14,7 +14,7 @@ class Particle:
 
     def update(self):
         self.vel *= (0.95 ** c.settings['delta_t'])
-        self.radius *= (0.98 ** c.settings['delta_t'])
+        self.radius *= (0.97 ** c.settings['delta_t'])
         self.pos += self.vel * c.settings['delta_t']
 
     def is_alive(self):

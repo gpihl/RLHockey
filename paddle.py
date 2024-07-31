@@ -39,7 +39,7 @@ class Paddle:
         self.dash_reward = 0
         self.dash_shot_reward = 0
         self.reward = None
-        self.trail = Trail(0.96, (200,200,0), self.radius)
+        self.trail = Trail(0.93, (200,200,0), self.radius)
         self.reset()
         self.load_new_model()
 

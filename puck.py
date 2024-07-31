@@ -25,7 +25,7 @@ class Puck:
         self.homing_target = 1
         self.last_collider = None
         self.light = Light(self.pos, 0.45, 0, 0, None, self.color, light_type="puck")
-        self.trail = Trail(0.96, (200,200,200), self.radius)
+        self.trail = Trail(0.93, (200,200,200), self.radius)
         self.reset()
 
     def reset(self, last_scorer=2):

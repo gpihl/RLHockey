@@ -28,7 +28,7 @@ settings = {
     "corner_radius": 249,
     "fps": 60,
     # "original_delta_t": 86,
-    "original_delta_t": 74,
+    "original_delta_t": 76,
     "delta_t": 0,
     "team_size": 2,
     "agent_control_training": ["ai", "ai", "ai", "ai"],

@@ -163,7 +163,7 @@ class Framework():
         if not h.full_visuals():
             return
 
-        n = int(vel / 10)
+        n = int(vel / 15)
         particles = Particle.random_particles(pos, n, colors)
         self.particles += particles
 
@@ -417,10 +417,11 @@ class Framework():
         radius = self.world_to_screen_length(radius)
         pr.draw_circle_sector(pr.Vector2(*pos), radius, 0, 360, max(30, int(radius/2)), color)
 
-    def draw_circle_fast(self, pos, radius, pyray_color):
-        pos = self.world_to_screen_coord(pos)
-        radius = self.world_to_screen_length(radius)
-        pr.draw_circle_sector(pr.Vector2(*pos), radius, 0, 360, max(30, int(radius/2)), pyray_color)
+    def draw_circle_fast(self, pos, radius, color):
+        color = self.tuple_to_color(color)
+        pos = self.world_to_screen_coord_fast(pos)
+        radius = self.world_to_screen_length_fast(radius)
+        pr.draw_circle_sector(pr.Vector2(*pos), radius, 0, 360, max(30, int(radius/2)), color)
 
     def draw_circle_simple(self, pos, radius, color):
         color = self.tuple_to_color(color)

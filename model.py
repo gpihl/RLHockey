@@ -211,7 +211,7 @@ class Model:
         env = VecNormalize.load(env_path, Model.get_environment())
         custom_objects = { "learning_rate": c.training["learning_rate"], "ent_coef": c.training["ent_coef"] }
         print(f"loading model from: {model_path}")
-        sb3_model = training_algorithm.load(model_path, env, custom_objects=custom_objects)
+        sb3_model = training_algorithm.load(model_path, env, custom_objects=custom_objects, device=g.device)
         return sb3_model, env
 
     @staticmethod
