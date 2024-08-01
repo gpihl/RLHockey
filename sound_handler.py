@@ -46,6 +46,7 @@ class SoundHandler:
 
         self.pitch_buckets_per_octave = 50
         self.scale_change_period = 20
+        # self.scale_change_period = 1
         self.bg_music_period = 15
         self.bg_music_last_played = -100
         self.pitch_octaves = 3
@@ -107,6 +108,7 @@ class SoundHandler:
         return theme_alpha
 
     def target_color(self):
+        # return self.colors[self.scale_id_to_name(1)]
         if c.settings["is_training"]:
             return self.colors[self.scale_id_to_name(6)]
         target_color = h.interpolate_color(self.current_color(), self.next_color(), self.theme_alpha())
@@ -154,12 +156,13 @@ class SoundHandler:
 
         self.colors = {
             "minor-pentatonic": (59, 120, 63),
-            "major-pentatonic": (171, 171, 51),
+            "major-pentatonic": (51, 153, 255),
+            # "major-pentatonic": (171, 171, 51),
             "minor": (80, 50, 168),
             "dorian": (12, 35, 168),
             "mixolydian": (204, 121, 27),
             "lydian": (27, 198, 204),
-            "major": (97, 242, 109),
+            "major": (204, 204, 0), #(97, 242, 109),
             "maj9": (230, 90, 90),
             "phrygian": (50, 47, 138),
             "chromatic": (7, 6, 43),
