@@ -10,6 +10,7 @@ from collections import deque
 import environment
 import json
 from reward import Reward
+import random
 
 class Model:
     def __init__(self, model, version, algorithm_name, model_name, team_size, environment):
@@ -114,13 +115,24 @@ class Model:
         if paddle.agent_control == "human" or paddle.agent_control == "off":
             return None
 
-        if c.settings["is_training"]:
-            if team == 1 and player == 1:
-                model = Model.get_latest_model(c.training["model_name"], c.training["algorithm"], c.settings["team_size"])
-            else:
-                model = Model.get_random_model(c.training["model_name"], c.training["algorithm"], c.settings["team_size"], paddle)
+        if team == 1 and player == 1:
+            model = Model.get_latest_model(c.model_names[0], c.training["algorithm"], c.settings["team_size"])
         else:
-            model = Model.get_latest_model(c.training["model_name"], c.training["algorithm"], c.settings["team_size"])
+            if c.settings["is_training"]:
+                if team == 1:
+                    model_name = c.model_names[1]
+                else:
+                    random.seed(g.seed)
+                    idx = random.choice([2, 3])
+                    if player == 2:
+                        idx = 2 if idx == 3 else 3
+
+                    model_name = c.model_names[idx]
+
+                model = Model.get_random_model(model_name, c.training["algorithm"], c.settings["team_size"], paddle)
+            else:
+                model_name = c.model_names[(team - 1) * 2 + player - 1]
+                model = Model.get_latest_model(model_name, c.training["algorithm"], c.settings["team_size"], paddle)
 
         if model is None:
             print("No model fetched")
@@ -143,8 +155,8 @@ class Model:
         print(f"Creating new model: {model_name}, {algorithm_name}, {team_size}")
         training_algorithm = Model.get_algorithm(algorithm_name)
         env = Model.get_environment_norm()
-        policy_kwargs = dict(net_arch=dict(pi=[64, 128, 64], vf=[64, 128, 64]))
-        sb3_model = training_algorithm("MultiInputPolicy", env, learning_rate=c.training["learning_rate"], ent_coef=c.training["ent_coef"], verbose=1, device=g.device, policy_kwargs=policy_kwargs)
+        # policy_kwargs = dict(net_arch=dict(pi=[32, 32], vf=[32, 32]))
+        sb3_model = training_algorithm("MultiInputPolicy", env, learning_rate=c.training["learning_rate"], ent_coef=c.training["ent_coef"], verbose=1, device=g.device) #, policy_kwargs=policy_kwargs)
         version = 0
         model = Model(sb3_model, version, algorithm_name, model_name, team_size, env)
         print("Model created")
@@ -219,8 +231,6 @@ class Model:
         if not os.path.exists(file_path):
             os.makedirs(file_path, exist_ok=True)
 
-    # def save_model_name():
-    #     save_text_to_file(g.current_model_name, "model_name/name.txt")
 
 
 

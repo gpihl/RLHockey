@@ -6,6 +6,7 @@ from controls import Controls
 from field import Field
 from game import Game
 from clock import Clock
+import time
 
 current_time = 0
 device = None
@@ -19,10 +20,10 @@ paddles = []
 def initialize():
     global field, sound_handler, \
         ui, framework, controls, device, \
-        current_time, current_model_name, \
-        team_1_model_name, team_2_model_name, \
-        game, clock
+        current_time, game, clock, seed
 
+
+    seed = time.time()
     device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
     print("Creating global singletons")
     clock = Clock()
@@ -33,6 +34,4 @@ def initialize():
     field = Field()
     game = Game()
     print("Done creating global singletons")
-    current_model_name = ""
-    team_1_model_name = ""
-    team_2_model_name = ""
+

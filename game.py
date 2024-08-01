@@ -204,15 +204,20 @@ class Game:
         return scorer
 
     def handle_rewards(self, team_1_actions, team_2_actions, scorer):
-        for idx, paddle in enumerate(self.paddles_1):
-            paddle.current_reward = paddle.reward.calculate_total_reward(team_1_actions[idx], scorer)
+        if Reward.solipsistic_rewards:
+            paddle = self.paddles_1[0]
+            paddle.current_reward = paddle.reward.calculate_total_reward(team_1_actions[0], scorer)
+            reward = paddle.current_reward
+        else:
+            for idx, paddle in enumerate(self.paddles_1):
+                paddle.current_reward = paddle.reward.calculate_total_reward(team_1_actions[idx], scorer)
 
-        for idx, paddle in enumerate(self.paddles_2):
-            paddle.current_reward = paddle.reward.calculate_total_reward(team_2_actions[idx], scorer)
+            for idx, paddle in enumerate(self.paddles_2):
+                paddle.current_reward = paddle.reward.calculate_total_reward(team_2_actions[idx], scorer)
 
-        team1_reward = sum([paddle.current_reward for paddle in self.paddles_1])
-        team2_reward = sum([paddle.current_reward for paddle in self.paddles_2])
-        reward = team1_reward - team2_reward
+            team1_reward = sum([paddle.current_reward for paddle in self.paddles_1])
+            team2_reward = sum([paddle.current_reward for paddle in self.paddles_2])
+            reward = team1_reward - team2_reward
 
         self.current_reward = reward
         self.round_reward += reward

@@ -273,9 +273,6 @@ class Framework():
         elif pr.KEY_P in new_presses:
             c.settings["paused"] = not c.settings["paused"]
             print(f"Paused game")
-        elif pr.KEY_V in new_presses:
-            h.save_model_name()
-            print(f"Saving name of current model")
 
         return new_presses
 

@@ -1,29 +1,15 @@
 import numpy as np
 import helpers as h
 import globals as g
+import constants as c
 
 class Reward:
-    rewards_start = {
-        "velocity": -0.02,
-        "goal": 3000,
-        "team_mate_proximity": 0.5,
-        "wrong_side_of_puck": -0.3,
-        "puck_proximity": 1.4,
-        "puck_vel_toward_goal": 0.1,
-        "goal_puck_proximity": 0.3,
-        "shot": 0.0,
-        "shot_toward_goal": 1.0,
-        "dash": 6.0,
-        "defender_goal_prox": 0.5,
-        "defensive_positioning": 0.5,
-    }
-
     # rewards_start = {
-    #     "velocity": -0.02,
+    #     "velocity": -0.0,
     #     "goal": 4000,
     #     "team_mate_proximity": 0.0,
     #     "wrong_side_of_puck": -0.0,
-    #     "puck_proximity": 1.0,
+    #     "puck_proximity": 0.2,
     #     "puck_vel_toward_goal": 0.0,
     #     "goal_puck_proximity": 0.0,
     #     "shot": 1.0,
@@ -33,57 +19,24 @@ class Reward:
     #     "defensive_positioning": 0.0,
     # }
 
-    # rewards_start = {"velocity": -0.01, "goal": 1000, "team_mate_proximity": 0.8, "wrong_side_of_puck": -0.1, "puck_proximity": 1.3, "puck_vel_toward_goal": 0.05, "goal_puck_proximity": 0.2, "shot": 0.0, "shot_toward_goal": 7.0, "dash": 150.0, "defender_goal_prox": 0.3, "defensive_positioning": 0.5}
+    rewards_start = {
+        "velocity": -0.0,
+        "goal": 1000,
+        "team_mate_proximity": 0.0,
+        "wrong_side_of_puck": -0.0,
+        "puck_proximity": 0.0,
+        "puck_vel_toward_goal": 0.0,
+        "goal_puck_proximity": 0.0,
+        "shot": 0.0,
+        "shot_toward_goal": 0.0,
+        "dash": 4.0,
+        "puck_in_defense_zone": -3.0,
+        "self_in_defense_zone": 3.0,
+    }
 
-    # rewards_start = {"velocity": -0.02, "goal": 1000, "team_mate_proximity": 0.8, "wrong_side_of_puck": -0.1, "puck_proximity": 1.3, "puck_vel_toward_goal": 0.05, "goal_puck_proximity": 0.2, "shot": 0.0, "shot_toward_goal": 7.0, "dash": 0.0, "defender_goal_prox": 0.1, "defensive_positioning": 0.3}
-
-    # rewards_start = {
-    #     "velocity": -0.01,
-    #     "goal": 1500,
-    #     "team_mate_proximity": 1.0,
-    #     "wrong_side_of_puck": -0.8,
-    #     "puck_proximity": 3.0,
-    #     "puck_vel_toward_goal": 0.07,
-    #     "goal_puck_proximity": 0.2,
-    #     "shot": 0.0,
-    #     "shot_toward_goal": 4.0,
-    #     "dash": 20.0,
-    #     "defender_goal_prox": 1.0,
-    #     "defensive_positioning": 1.0
-    #     }
+    solipsistic_rewards = True
 
     rewards_end = None
-
-    # rewards_end = {
-    #     "velocity": -0.00,
-    #     "goal": 4000,
-    #     "team_mate_proximity": 0.0,
-    #     "wrong_side_of_puck": -0.0,
-    #     "puck_proximity": 0.0,
-    #     "puck_vel_toward_goal": 0.0,
-    #     "goal_puck_proximity": 0.0,
-    #     "shot": 0.0,
-    #     "shot_toward_goal": 0.0,
-    #     "dash": 0.0,
-    #     "defender_goal_prox": 0.0,
-    #     "defensive_positioning": 0.0,
-    # }
-
-
-    # bra!
-    # rewards_start = {
-    #     "time_reward": -0.0,
-    #     "velocity": -0.0,
-    #     "goal": 1000,
-    #     "team_mate_proximity": -0.0,
-    #     "wrong_side_of_puck": -0.01,
-    #     "puck_proximity": 0.5,
-    #     "puck_vel_toward_goal": 0.0,
-    #     "goal_puck_proximity": 0.0,
-    #     "shot": 5.0,
-    #     "shot_toward_goal": 2.0,
-    #     "dash": 0.0,
-    # }
 
     rewards = rewards_start
     time_to_reach_end_reward = 60 * 7 * 2 * 10
@@ -131,8 +84,9 @@ class Reward:
             (self.shot, "shot"),
             (self.shot_toward_goal, "shot_toward_goal"),
             (self.dash, "dash"),
-            (self.defender_goal_prox, "defender_goal_prox"),
-            (self.defensive_positioning, "defensive_positioning")
+            (self.self_in_defense_zone, "self_in_defense_zone"),
+            # (self.defensive_positioning, "defensive_positioning")
+            (self.puck_in_defense_zone, "puck_in_defense_zone")
         ]
 
         total_reward = sum([self.calculate_specific_reward(reward_fn, reward_name) for reward_fn, reward_name in rewards])
@@ -222,32 +176,47 @@ class Reward:
         reward = self.puck.collect_shot_reward("shot", self.paddle)
         return reward
 
-    def defender_goal_prox(self):
+    def self_in_defense_zone(self):
+        # goal_pos = h.goal_pos(self.paddle.team)
+        # team_paddles = self.team_mates + [self.paddle]
+        # closest_dist_from_goal = min([np.linalg.norm(paddle.pos - goal_pos) for paddle in team_paddles])
+        # reward = h.map_value_to_range(closest_dist_from_goal, h.field_height() / 4, h.max_dist() * 0.7)
+        # return reward
         goal_pos = h.goal_pos(self.paddle.team)
-        team_paddles = self.team_mates + [self.paddle]
-        closest_dist_from_goal = min([np.linalg.norm(paddle.pos - goal_pos) for paddle in team_paddles])
-        reward = h.map_value_to_range(closest_dist_from_goal, h.field_height() / 4, h.max_dist() * 0.7)
-        return reward
-
-    def defensive_positioning(self):
-        goal_pos = h.goal_pos(self.paddle.team)
-        team_paddles = self.team_mates + [self.paddle]
-        min_dist = h.max_dist()
-        closest_paddle = None
-        for paddle in team_paddles:
-            dist_from_goal = np.linalg.norm(paddle.pos - goal_pos)
-            if dist_from_goal < min_dist:
-                min_dist = dist_from_goal
-                closest_paddle = paddle
-
-        if closest_paddle.player == self.paddle.player:
-            reward = 1
-            dist_from_optimal = h.point_to_line_distance(goal_pos, self.puck.pos, closest_paddle.pos)
-            reward = h.map_value_to_range(dist_from_optimal, 0, h.field_height())
+        dist_from_own_goal = np.linalg.norm(self.paddle.pos - goal_pos)
+        if dist_from_own_goal < c.settings["goal_height"] * 2:
+            return 1
         else:
-            reward = 0
+            return 0
 
-        return reward
+    # def defensive_positioning(self):
+    #     goal_pos = h.goal_pos(self.paddle.team)
+    #     team_paddles = self.team_mates + [self.paddle]
+    #     min_dist = h.max_dist()
+    #     closest_paddle = None
+    #     for paddle in team_paddles:
+    #         dist_from_goal = np.linalg.norm(paddle.pos - goal_pos)
+    #         if dist_from_goal < min_dist:
+    #             min_dist = dist_from_goal
+    #             closest_paddle = paddle
+
+    #     if closest_paddle.player == self.paddle.player:
+    #         reward = 1
+    #         dist_from_optimal = h.point_to_line_distance(goal_pos, self.puck.pos, closest_paddle.pos)
+    #         reward = h.map_value_to_range(dist_from_optimal, 0, h.field_height())
+    #     else:
+    #         reward = 0
+
+    #     return reward
+
+    def puck_in_defense_zone(self):
+        goal_pos = h.goal_pos(self.paddle.team)
+        puck_dist_to_own_goal = np.linalg.norm(self.puck.pos - goal_pos)
+        if puck_dist_to_own_goal < c.settings["goal_height"] * 2:
+            return 1
+        else:
+            return 0
+
 
 
 

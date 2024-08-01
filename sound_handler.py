@@ -107,6 +107,8 @@ class SoundHandler:
         return theme_alpha
 
     def target_color(self):
+        if c.settings["is_training"]:
+            return self.colors[self.scale_id_to_name(6)]
         target_color = h.interpolate_color(self.current_color(), self.next_color(), self.theme_alpha())
         return target_color
 

@@ -21,7 +21,8 @@ settings = {
     # "blocked_goals": True,
     "random_starting_locations": True,
     # "random_starting_locations": False,
-    "random_starting_locations_probability": 0.5,
+    # "random_starting_locations_probability": 0.5,
+    "random_starting_locations_probability": 0.99,
     "resolution": 0,
     "field_width": 3400,
     "field_height": 1700,
@@ -66,8 +67,9 @@ training = {
     "model_selection_variance_team": 0.0001,
     "base_path": "models",
     "algorithm": "PPO",
-    "model_name": "ShooterBigger"
 }
+
+model_names = ["DefenderNormal", "ShooterNormal", "ShooterNormal", "ShooterNormal"]
 
 gameplay = {
     "dash_cooldown": 0.4,
