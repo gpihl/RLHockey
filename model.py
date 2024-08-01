@@ -11,6 +11,7 @@ import environment
 import json
 from reward import Reward
 import random
+import collections
 
 class Model:
     def __init__(self, model, version, algorithm_name, model_name, team_size, environment):
@@ -117,6 +118,7 @@ class Model:
 
         if team == 1 and player == 1:
             model = Model.get_latest_model(c.model_names[0], c.training["algorithm"], c.settings["team_size"])
+            # model.model.policy.optimizer.state = collections.defaultdict(dict)
         else:
             if c.settings["is_training"]:
                 if team == 1:

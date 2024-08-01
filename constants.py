@@ -61,15 +61,16 @@ training = {
     "training_steps": 8000,
     # "learning_rate": 0.3e-3,
     "learning_rate": 1.0e-4,
-    # "ent_coef": 0.005,
+    # "ent_coef": 0.01,
     "ent_coef": 0.0,
-    "model_selection_variance_opponent": 0.30,
+    "model_selection_variance_opponent": 0.2,
     "model_selection_variance_team": 0.0001,
     "base_path": "models",
     "algorithm": "PPO",
 }
 
-model_names = ["DefenderNormal", "ShooterNormal", "ShooterNormal", "ShooterNormal"]
+# model_names = ["DefenderNormal", "ShooterNormal", "ShooterNormal", "DefenderNormal"]
+model_names = ["ShooterNormal", "DefenderNormal", "ShooterNormal", "DefenderNormal"]
 
 gameplay = {
     "dash_cooldown": 0.4,

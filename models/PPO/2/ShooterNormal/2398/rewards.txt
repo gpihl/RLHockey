@@ -1,0 +1,1 @@
+{"velocity": -0.0, "opponents_goal": 4000, "own_goal": -1000, "team_mate_proximity": 0.0, "wrong_side_of_puck": -0.0, "puck_proximity": 0.1, "puck_vel_toward_goal": 0.0, "goal_puck_proximity": 0.0, "shot": 0.1, "shot_toward_goal": 0.4, "dash": 1.0, "puck_own_goal_prox": -0.0, "self_goal_prox": 0.0}
