@@ -1,6 +1,10 @@
 import pyray as pr
 import helpers as h
 import numpy as np
+import noise
+import globals as g
+import random
+import constants as c
 
 class Controls:
     def __init__(self):
@@ -41,6 +45,22 @@ class Controls:
         if pr.is_key_down(pr.KEY_LEFT_SHIFT) or pr.is_key_down(pr.KEY_SPACE) or pr.is_key_down(pr.KEY_RIGHT_SHIFT):
             action["dash"] = True
         return action
+
+    def get_random_action(self, paddle):
+        if c.practice is not None:
+            c.practice.seed_rngs()
+        else:
+            random.seed(g.seed)
+
+        t = g.game.seconds_left()
+        time_scale = 1.0
+        paddle_idx = paddle.team * 2 + paddle.player
+        x = noise.pnoise1(t * time_scale + (random.random() + paddle_idx) * 10000) * (0.8 + random.random() * 0.2)
+        y = noise.pnoise1((t + 200) * time_scale + (random.random() + paddle_idx) * 10000) * (0.8 + random.random() * 0.2)
+        return {
+            "acceleration": np.array([x, y]),
+            "dash": False,
+        }
 
     def get_joystick_action(self):
         if self.stick is None:

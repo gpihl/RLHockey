@@ -76,16 +76,16 @@ def dist_alpha(dist):
 def interpolate_color_rgb(color1, color2, t):
     if len(color1) == 3:
         return (
-            int(color1[0] + (color2[0] - color1[0]) * t),
-            int(color1[1] + (color2[1] - color1[1]) * t),
-            int(color1[2] + (color2[2] - color1[2]) * t)
+            min(255, max(0, int(color1[0] + (color2[0] - color1[0]) * t))),
+            min(255, max(0, int(color1[1] + (color2[1] - color1[1]) * t))),
+            min(255, max(0, int(color1[2] + (color2[2] - color1[2]) * t)))
         )
     elif len(color1) == 4:
         return (
-            int(color1[0] + (color2[0] - color1[0]) * t),
-            int(color1[1] + (color2[1] - color1[1]) * t),
-            int(color1[2] + (color2[2] - color1[2]) * t),
-            int(color1[3] + (color2[3] - color1[3]) * t)
+            min(255, max(0, int(color1[0] + (color2[0] - color1[0]) * t))),
+            min(255, max(0, int(color1[1] + (color2[1] - color1[1]) * t))),
+            min(255, max(0, int(color1[2] + (color2[2] - color1[2]) * t))),
+            min(255, max(0, int(color1[3] + (color2[3] - color1[3]) * t)))
         )
 
 def color_float(color):
@@ -209,6 +209,10 @@ def clip_vector_length_inplace(vector, max_length=1):
 
     return vector
 
+def report_practice_event(event_name):
+    if c.practice is not None:
+        c.practice.events.append(event_name)
+
 def smoothstep(x):
     x = np.clip(x, 0, 1)
     return x * x * (3 - 2 * x)
@@ -288,3 +292,23 @@ def point_on_circle(position, radius, index, rotation):
 
 def full_visuals():
     return not c.settings["is_training"] or g.framework.fps_locked
+
+def random_vector_within_cone(position, direction, min_radius, max_radius, angular_range):
+    angular_range_rad = np.radians(angular_range)
+    distance = np.random.uniform(min_radius, max_radius)
+    angle_offset = np.random.uniform(-angular_range_rad / 2, angular_range_rad / 2)
+    rotation_matrix = np.array([
+        [np.cos(angle_offset), -np.sin(angle_offset)],
+        [np.sin(angle_offset), np.cos(angle_offset)]
+    ])
+    rotated_direction = np.dot(rotation_matrix, direction)
+    random_vector = position + distance * rotated_direction
+
+    return random_vector
+
+def generate_random_2d_dir_vector():
+    angle = np.random.uniform(0, 2 * np.pi)
+    x = np.cos(angle)
+    y = np.sin(angle)
+    vector = np.array([x, y])
+    return vector

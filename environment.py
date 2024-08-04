@@ -19,6 +19,12 @@ class AirHockeyEnv(gym.Env):
             "goal_1_bot_pos": spaces.Box(low=-1, high=1, shape=(2,), dtype=np.float32),
             "goal_2_top_pos": spaces.Box(low=-1, high=1, shape=(2,), dtype=np.float32),
             "goal_2_bot_pos": spaces.Box(low=-1, high=1, shape=(2,), dtype=np.float32),
+            "puck_finding_practice": spaces.Box(low=0, high=1, shape=(1,), dtype=np.float32),
+            "shooting_practice": spaces.Box(low=0, high=1, shape=(1,), dtype=np.float32),
+            "passing_practice": spaces.Box(low=0, high=1, shape=(1,), dtype=np.float32),
+            "defensive_practice": spaces.Box(low=0, high=1, shape=(1,), dtype=np.float32),
+            "scoring_practice": spaces.Box(low=0, high=1, shape=(1,), dtype=np.float32),
+            "full_game": spaces.Box(low=0, high=1, shape=(1,), dtype=np.float32),
         }
 
         other_players_positions_team_1 = { f"paddle_{1}_{i}_pos": spaces.Box(low=-1, high=1, shape=(2,), dtype=np.float32) for i in range(2, team_size + 1) }

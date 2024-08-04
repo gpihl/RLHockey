@@ -7,7 +7,7 @@ from light import Light
 from trail import Trail
 from collections import deque
 from model import Model
-from reward import Reward
+import time
 
 class Paddle:
     def __init__(self, team, player):
@@ -37,6 +37,7 @@ class Paddle:
         self.rot_vel = 0
         self.light = Light(self.pos, 0.45, 0, 0, None, self.color, light_type="paddle")
         self.dash_reward = 0
+        self.speed_dash_reward = 0
         self.dash_shot_reward = 0
         self.reward = None
         self.trail = Trail(0.93, (200,200,0), self.radius)
@@ -44,6 +45,7 @@ class Paddle:
         self.load_new_model()
 
     def reset(self):
+        # random.seed(time.time())
         agent_idx = 2 * (self.team - 1) + (self.player - 1)
         if c.settings["is_training"]:
             self.agent_control = c.settings["agent_control_training"][agent_idx]
@@ -51,7 +53,9 @@ class Paddle:
             self.agent_control = c.settings["agent_control_regular"][agent_idx]
 
         if c.settings["is_training"]:
-            if c.settings["random_starting_locations"]:
+            if c.practice is not None:
+                self.pos = c.practice.get_paddle_starting_pos(self, g.game.puck)
+            elif c.settings["random_starting_locations"]:
                 self.pos = self.get_starting_pos_random()
             else:
                 self.pos = self.get_starting_pos_regular()
@@ -62,6 +66,54 @@ class Paddle:
         self.charging_dash = False
         self.charging_dash_initial = False
         self.vel = np.zeros(2)
+
+    # def get_starting_pos_goalie_practice(self):
+    #     pos = np.zeros(2)
+    #     if not (self.team == 1 and self.player == 1):
+    #         if self.team == 1:
+    #             pos[0] = h.field_right() - self.radius
+    #             pos[1] = h.field_mid_y() - self.radius * self.player
+    #         else:
+    #             pos[0] = h.field_right() - self.radius
+    #             pos[1] = h.field_mid_y() + self.radius * self.player
+    #     else:
+    #         pos[0] = random.random() * h.field_height() * 0.2
+    #         pos[1] = h.field_mid_y() + (random.random() - 0.5) * h.field_height()
+
+    #     return pos
+
+    # def get_starting_pos_scoring_practice(self):
+    #     pos = np.zeros(2)
+    #     if g.game.scorer == 1 or g.game.scorer == -1:
+    #         if not (self.team == 1 and self.player == 1):
+    #             pos = np.array([random.uniform(2*self.radius, c.settings["field_width"] * 0.5 - 2*self.radius),
+    #                                     random.uniform(2*self.radius, c.settings["field_height"] - 2*self.radius)],
+    #                                     dtype=np.float32)
+
+    #             # pos[0] = h.field_right() - self.radius
+    #             # pos[1] = h.field_mid_y() + (random.random() - 0.5) * 2 * h.field_height()
+    #             # pos = self.get_starting_pos_random()
+    #         else:
+    #             max_dist = self.radius * 10.0
+    #             min_dist = self.radius * 2.0
+    #             angular_range = 30
+    #             puck_pos = np.copy(g.game.puck.pos)
+
+    #             goal_to_puck = g.game.puck.pos - h.goal_pos(2)
+    #             goal_to_puck_dir = goal_to_puck / np.linalg.norm(goal_to_puck)
+
+    #             pos = h.random_vector_within_cone(puck_pos, goal_to_puck_dir, min_dist, max_dist, angular_range)
+
+    #             # pos = np.array([random.uniform(c.settings["field_width"] * 0.7, c.settings["field_width"] * 1.0),
+    #             #                     random.uniform(c.settings["field_height"] * 0.0, c.settings["field_height"] * 1.0)],
+    #             #                     dtype=np.float32)
+
+
+    #         self.last_starting_pos = np.copy(pos)
+    #     else:
+    #         pos = np.copy(self.last_starting_pos)
+
+    #     return pos
 
     def get_starting_pos_random(self):
         starting_pos = np.array([random.uniform(2*self.radius, c.settings["field_width"] - 2*self.radius),
@@ -90,17 +142,19 @@ class Paddle:
             action = g.controls.game_action_from_model_action(model_action)
         elif self.agent_control == "human":
             action = g.controls.get_human_action()
+        elif self.agent_control == "random":
+            action = g.controls.get_random_action(self)
 
         return action
 
-    def dash(self, puck):
+    def dash(self, puck, acc):
         current_time = g.current_time
         if current_time - self.last_dash_time > c.gameplay["dash_cooldown"]:
             self.last_dash_time = current_time
             self.charging_dash = False
             self.charging_dash_initial = False
             self.dash_charge_power = self.charging_alpha()
-            dash_direction = self.dash_direction(puck)
+            dash_direction = self.dash_direction(puck, acc)
 
             average_speed = np.linalg.norm(self.average_velocity)
             self.vel += dash_direction * self.dash_charge_power * c.gameplay["dash_impulse"]
@@ -110,9 +164,18 @@ class Paddle:
             if self.agent_control == "human":
                 g.sound_handler.play_sound_velocity_based("dash", sound_vel, c.gameplay["max_paddle_speed"], 0.8, self.pos[0], exponent=2, pitch_shift=True)
             self.dash_reward = self.dash_charge_power
+            self.speed_dash_reward = self.dash_charge_power
 
-    def add_dash_shot_reward(self):
-        self.dash_shot_reward = self.dash_charge_power
+    def add_dash_shot_reward(self, puck):
+        puck_to_goal = h.goal_pos(2 if self.team == 1 else 1)
+        puck_to_goal_dir = puck_to_goal / np.linalg.norm(puck_to_goal)
+        puck_vel_dir = puck.vel / np.linalg.norm(puck.vel)
+        self.dash_shot_reward = self.dash_charge_power * np.dot(puck_to_goal_dir, puck_vel_dir)
+
+    def collect_speed_dash_reward(self):
+        reward = self.speed_dash_reward
+        self.speed_dash_reward = 0
+        return reward
 
     def collect_dash_reward(self):
         reward = self.dash_reward
@@ -124,10 +187,11 @@ class Paddle:
         self.dash_shot_reward = 0
         return reward
 
-    def dash_direction(self, puck):
+    def dash_direction(self, puck, acc):
         if np.linalg.norm(self.average_velocity) > 0:
             puck_direction = (puck.pos - self.pos) / np.linalg.norm(puck.pos - self.pos)
             velocity_direction = self.average_velocity / np.linalg.norm(self.average_velocity)
+            # velocity_direction = acc / np.linalg.norm(acc)
 
             epsilon = 0.3
             dash_direction = epsilon * puck_direction + (1 - epsilon) * velocity_direction
@@ -151,6 +215,9 @@ class Paddle:
 
     def is_dashing(self):
         return (g.current_time - self.last_dash_time) < c.gameplay["dash_duration"] * self.dash_charge_power
+
+    def get_idx(self):
+        return (self.team - 1) * 2 + self.player - 1
 
     def is_power_dashing(self):
         return self.is_dashing() and self.charging_alpha() == 1.0
@@ -224,7 +291,7 @@ class Paddle:
         elif self.charging_dash:
             self.charging_dash = False
             self.charging_dash_initial = False
-            self.dash(puck)
+            self.dash(puck, action["acceleration"])
 
         if self.team == 2 and not self.agent_control == "human":
             acc = action["acceleration"]

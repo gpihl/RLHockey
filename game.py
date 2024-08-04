@@ -25,6 +25,7 @@ class Game:
             self.total_steps = 0
             return
 
+        g.game = self
         self._initialized = True
         self.total_steps = 0
         self.prev_t = g.current_time
@@ -85,13 +86,15 @@ class Game:
         self.round_reward = 0.0
         self.start_time = g.current_time
 
+        self.puck.reset(self.last_scorer)
+
         for paddle in self.paddles_1 + self.paddles_2:
             paddle.reset()
             paddle.reward.reset()
 
-        self.puck.reset(self.last_scorer)
         g.sound_handler.reset()
         g.field.reset()
+        # g.framework.add_explosion_particles(h.field_mid())
         # g.sound_handler.play_sound(0.4, h.field_mid()[0], "light-broken")
 
     def non_player_1_team_1_paddles(self):
@@ -122,6 +125,9 @@ class Game:
             team_2_actions.append(action)
 
         scorer = self.update(team_1_actions, team_2_actions)
+        if scorer == 1:
+            h.report_practice_event("scoring")
+
         reward = self.handle_rewards(team_1_actions, team_2_actions, scorer)
 
         return self.player_1_observation, reward, self.is_done(scorer), {}
@@ -152,6 +158,9 @@ class Game:
         return self.is_done(scorer)
 
     def update(self, team_1_actions, team_2_actions):
+        if c.settings["is_training"] and c.practice is not None:
+            c.practice.update()
+
         self.handle_game_paused()
         self.current_step += 1
         self.total_steps += 1
@@ -184,6 +193,9 @@ class Game:
                 self.last_scorer = 2
                 self.score[1] += 1
                 break
+
+        if scorer != 0 and c.practice is not None:
+            h.report_practice_event("goal")
 
         c.settings["delta_t"] = delta_t_temp
 
@@ -219,9 +231,16 @@ class Game:
             team2_reward = sum([paddle.current_reward for paddle in self.paddles_2])
             reward = team1_reward - team2_reward
 
+        if c.settings["is_training"] and c.practice is not None:
+            practice_reward = c.practice.collect_reward()
+            reward += practice_reward
+            if practice_reward > 0:
+                print(reward)
+
         self.current_reward = reward
         self.round_reward += reward
         self.total_reward += reward
+
         return reward
 
     def handle_rendering(self):
@@ -264,19 +283,20 @@ class Game:
             print(f"puck_spin: {self.max_puck_spin}")
             print(f"paddle_speed: {self.max_paddle_speed}")
 
-
     def goal_scored_sequence(self, scorer):
-        if not c.settings["is_training"]:
-            g.framework.particles = []
-            for paddle in self.paddles_1 + self.paddles_2:
-                paddle.trail.entries = []
-            self.puck.trail.entries = []
+        g.framework.particles = []
+        for paddle in self.paddles_1 + self.paddles_2:
+            paddle.trail.entries = []
 
+        self.puck.trail.entries = []
+
+        if not c.settings["is_training"]:
             self.render()
             goal_time = g.current_time
             scorer = self.paddles_1[0] if scorer == 1 else self.paddles_2[0]
             position = h.field_mid()
             radius = c.settings["field_height"] / 5.4
+            scorer.reset()
             scorer.pos = position
             scorer.radius = radius
             g.framework.update_paddle_data([scorer])
@@ -372,6 +392,24 @@ class Game:
             }
 
             obs = { k: v if v.size == 1 else np.array([-v[0], v[1]]) for k, v in obs.items() }
+# "puck_finding_practice": spaces.Box(low=0, high=1, shape=(1,), dtype=np.float32),
+#             "shooting_practice": spaces.Box(low=0, high=1, shape=(1,), dtype=np.float32),
+#             "passing_practice": spaces.Box(low=0, high=1, shape=(1,), dtype=np.float32),
+#             "defensive_practice": spaces.Box(low=0, high=1, shape=(1,), dtype=np.float32),
+#             "scoring_practice": spaces.Box(low=0, high=1, shape=(1,), dtype=np.float32),
+#             "full_game": spaces.Box(low=0, high=1, shape=(1,), dtype=np.float32),
+
+        obs["puck_finding_practice"] = 0.0
+        obs["shooting_practice"] = 0.0
+        obs["passing_practice"] = 0.0
+        obs["defensive_practice"] = 0.0
+        obs["scoring_practice"] = 0.0
+        obs["full_game"] = 0.0
+
+        if c.practice is not None:
+            obs[c.practice.name + "_practice"] = 1.0
+        else:
+            obs["full_game"] = 1.0
 
         return obs
 
@@ -482,7 +520,11 @@ class Game:
 
     def is_done(self, scorer):
         if c.settings["is_training"]:
-            return self.current_step > self.match_steps or scorer != 0
+            if self.current_step > self.match_steps or scorer != 0:
+                h.report_practice_event("round_end")
+                return True
+            else:
+                return False
         else:
             return self.seconds_left() < 0 or scorer != 0
 
@@ -538,12 +580,12 @@ def main():
         g.game.close()
 
 def validate_string(value):
-    if len(value) != 4 or not all(char in 'hao' for char in value):
-        raise argparse.ArgumentTypeError("Input must be a 4-character string containing only 'h', 'a', or 'o'")
+    if len(value) != 4 or not all(char in 'haor' for char in value):
+        raise argparse.ArgumentTypeError("Input must be a 4-character string containing only 'h', 'a', 'r' or 'o'")
     return value
 
 def map_control(code):
-    mapping = {'h': 'human', 'a': 'ai', 'o': 'off'}
+    mapping = {'h': 'human', 'a': 'ai', 'o': 'off', 'r': 'random'}
     return [mapping[char] for char in code]
 
 if __name__ == "__main__":

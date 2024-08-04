@@ -4,26 +4,29 @@ import globals as g
 import constants as c
 
 class Reward:
+    # shooting practice
     rewards_start = {
         "velocity": -0.0,
         "opponents_goal": 4000,
-        "own_goal": -1000,
+        "own_goal": -4000,
         "team_mate_proximity": 0.0,
-        "wrong_side_of_puck": -0.0,
-        "puck_proximity": 0.1,
-        "puck_vel_toward_goal": 0.0,
-        "goal_puck_proximity": 0.0,
-        "shot": 0.1,
-        "shot_toward_goal": 0.4,
-        "dash": 1.0,
+        "wrong_side_of_puck": -0.2,
+        "puck_proximity": 0.5,
+        "puck_vel_toward_goal": 0.2,
+        "goal_puck_proximity": 0.5,
+        "shot": 1.0,
+        "shot_toward_goal": 1.5,
+        "dash_shot": 4.0,
         "puck_own_goal_prox": -0.0,
-        "self_goal_prox": 0.0,
+        "self_goal_prox": 0.0
     }
 
+
+    # defender
     # rewards_start = {
     #     "velocity": -0.0,
-    #     "own_goal": -4000,
-    #     "opponents_goal": 1000,
+    #     "own_goal": -6000,
+    #     "opponents_goal": 0000,
     #     "team_mate_proximity": 0.0,
     #     "wrong_side_of_puck": -0.0,
     #     "puck_proximity": 0.0,
@@ -31,10 +34,10 @@ class Reward:
     #     "goal_puck_proximity": 0.0,
     #     "shot": 0.0,
     #     "shot_toward_goal": 0.0,
-    #     # "dash": 4.0,
-    #     "dash": 0.0,
-    #     "puck_own_goal_prox": -4.0,
-    #     "self_goal_prox": 6.0,
+    #     "dash_shot": 2.0,
+    #     # "dash_shot": 0.0,
+    #     "puck_own_goal_prox": -2.0,
+    #     "self_goal_prox": 1.0,
     # }
 
     solipsistic_rewards = True
@@ -87,7 +90,8 @@ class Reward:
             (self.goal_puck_proximity, "goal_puck_proximity"),
             (self.shot, "shot"),
             (self.shot_toward_goal, "shot_toward_goal"),
-            (self.dash, "dash"),
+            (self.dash_shot, "dash_shot"),
+            (self.speed_dash, "speed_dash"),
             # (self.self_in_defense_zone, "self_in_defense_zone"),
             (self.self_goal_prox, "self_goal_prox"),
             # (self.defensive_positioning, "defensive_positioning")
@@ -106,7 +110,11 @@ class Reward:
         self.reward_breakdown["total"] = (self.reward_breakdown["total"][0] + reward, reward)
 
     def calculate_specific_reward(self, reward_fn, reward_name):
-        specific_reward = reward_fn() * Reward.rewards[reward_name]
+        if c.practice is not None:
+            specific_reward = reward_fn() * c.practice.reward_structure[reward_name]
+        else:
+            specific_reward = reward_fn() * Reward.rewards[reward_name]
+
         self.register_reward(specific_reward, reward_name)
         return specific_reward
 
@@ -136,9 +144,8 @@ class Reward:
             return 0
 
     def puck_proximity(self):
-        dist_to_puck = min([np.linalg.norm(self.puck.pos - team_player.pos) for team_player in self.team_mates + [self.paddle]])
-        reward = h.map_value_to_range(dist_to_puck, 0, h.max_dist() / 2)
-        # reward = (dist_to_puck / h.field_width())
+        dist_to_puck = np.linalg.norm(self.puck.pos - self.paddle.pos)
+        reward = h.map_value_to_range(dist_to_puck, 0, h.max_dist())
         return reward
 
     def team_mate_proximity(self):
@@ -176,7 +183,7 @@ class Reward:
         reward = self.paddle.pointless_motion(acceleration)
         return reward
 
-    def dash(self):
+    def dash_shot(self):
         reward = 0
         if self.paddle.collect_dash_reward() > 0:
             reward -= 1
@@ -184,6 +191,10 @@ class Reward:
         reward += self.paddle.collect_dash_shot_reward() * 6
         # if reward != 0:
         #     print(reward)
+        return reward
+
+    def speed_dash(self):
+        reward = self.paddle.collect_speed_dash_reward()
         return reward
 
     def shot_toward_goal(self):

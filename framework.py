@@ -167,6 +167,20 @@ class Framework():
         particles = Particle.random_particles(pos, n, colors)
         self.particles += particles
 
+    def add_explosion_particles(self, pos):
+        n = 60
+
+        for i in range(n):
+            angle = 2 * math.pi * i / n
+            x = math.cos(angle)
+            y = math.sin(angle)
+            dir = np.array([x, y])
+            mean_speed = 60 if i % 3 != 0 else 30
+            mean_radius = 300 if i % 3 != 0 else 150
+            color = (255,200,150) if i % 3 != 0 else (255,100,100)
+            particle = Particle.random_particle_with_direction(np.copy(pos), dir, color, mean_speed, mean_radius)
+            self.particles.append(particle)
+
     def update_light_data(self, lights):
         for i, light in enumerate(lights):
             pos = self.world_to_screen_coord(light.pos)
@@ -251,6 +265,7 @@ class Framework():
     def handle_keyboard_input(self):
         new_presses = self.handle_input()
         if pr.KEY_E in new_presses:
+            self.particles = []
             if c.settings["is_training"]:
                 self.fps_locked = not self.fps_locked
                 if self.fps_locked:

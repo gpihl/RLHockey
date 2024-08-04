@@ -23,6 +23,9 @@ class Light:
         self.broken = False
         self.base_intensity = self.spawn_intensity
 
+    def glow(self, glow_amount):
+        self.base_intensity = self.spawn_intensity + glow_amount
+
     def update(self, puck=None, object=None):
         if self.type == "wall":
             self.handle_puck_collision(puck)
@@ -38,6 +41,7 @@ class Light:
             # else:
             #     self.intensity = self.base_intensity
         elif self.type == "puck":
+            self.intensity = self.base_intensity
             self.pos = object.pos
             self.color = h.modify_hsl(object.color, 0, 0, 0.05)
 

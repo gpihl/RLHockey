@@ -97,6 +97,7 @@ class Model:
         return model_action
 
     def process_action(self, model_action):
+        # return model_action
         self.update_action_history(model_action)
         average_dash_action = np.mean(self.action_history, axis=0)
         model_action[2] = average_dash_action
@@ -106,6 +107,21 @@ class Model:
         return f"{self.algorithm_name}-{self.team_size}-{self.version}-{self.model_name}"
 
     @staticmethod
+    def get_paddle_model_idx(paddle):
+        team = paddle.team
+        player = paddle.player
+        idx = paddle.get_idx()
+
+        if c.settings["is_training"]:
+            if team != 1:
+                random.seed(g.seed)
+                idx = random.choice([2, 3])
+                if player == 2:
+                    idx = 2 if idx == 3 else 3
+
+        return idx
+
+    @staticmethod
     def get_paddle_model(paddle):
         player = paddle.player
         team = paddle.team
@@ -113,28 +129,20 @@ class Model:
 
         model = None
 
-        if paddle.agent_control == "human" or paddle.agent_control == "off":
+        if paddle.agent_control == "human" or paddle.agent_control == "off" or paddle.agent_control == "random":
             return None
 
+        idx = Model.get_paddle_model_idx(paddle)
+        model_name = c.model_names[idx]
+        model_ver = c.model_versions[idx]
+
         if team == 1 and player == 1:
-            model = Model.get_latest_model(c.model_names[0], c.training["algorithm"], c.settings["team_size"])
-            # model.model.policy.optimizer.state = collections.defaultdict(dict)
+            model = Model.get_latest_model(model_name, c.training["algorithm"], c.settings["team_size"], model_ver)
         else:
             if c.settings["is_training"]:
-                if team == 1:
-                    model_name = c.model_names[1]
-                else:
-                    random.seed(g.seed)
-                    idx = random.choice([2, 3])
-                    if player == 2:
-                        idx = 2 if idx == 3 else 3
-
-                    model_name = c.model_names[idx]
-
-                model = Model.get_random_model(model_name, c.training["algorithm"], c.settings["team_size"], paddle)
+                model = Model.get_random_model(model_name, c.training["algorithm"], c.settings["team_size"], paddle, model_ver)
             else:
-                model_name = c.model_names[(team - 1) * 2 + player - 1]
-                model = Model.get_latest_model(model_name, c.training["algorithm"], c.settings["team_size"], paddle)
+                model = Model.get_latest_model(model_name, c.training["algorithm"], c.settings["team_size"], model_ver)
 
         if model is None:
             print("No model fetched")
@@ -165,17 +173,21 @@ class Model:
         return model
 
     @staticmethod
-    def get_latest_model(model_name, algorithm_name, team_size):
+    def get_latest_model(model_name, algorithm_name, team_size, version=-1):
         print(f"Trying to get latest model: {model_name}, {algorithm_name}, {team_size}")
         search_path = Model.get_search_path(model_name, algorithm_name, team_size)
         Model.ensure_path_exists(search_path)
         models = os.listdir(search_path)
+        models = list(filter(lambda x: x.isdigit(), models))
         if len(models) == 0:
             print("Couldn't find any matching models")
             return Model.create_new_model(model_name, algorithm_name, team_size)
 
-        models = [model for model in models if model.isdigit()]
-        version = max(models, key=lambda x: int(x))
+        if version == -1:
+            version = max(models, key=lambda x: int(x))
+        else:
+            version = str(version)
+
         model_path = os.path.join(search_path, version)
         sb3_model, env = Model.get_model(model_path, algorithm_name)
         model = Model(sb3_model, int(version), algorithm_name, model_name, team_size, env)
@@ -191,7 +203,7 @@ class Model:
         return search_path
 
     @staticmethod
-    def get_random_model(model_name, algorithm_name, team_size, paddle):
+    def get_random_model(model_name, algorithm_name, team_size, paddle, version=-1):
         print(f"Trying to get random model: {model_name}, {algorithm_name}, {team_size}")
         search_path = Model.get_search_path(model_name, algorithm_name, team_size)
         Model.ensure_path_exists(search_path)
@@ -209,7 +221,11 @@ class Model:
             variance = c.training["model_selection_variance_opponent"]
 
         random_index = max(0, len(models) - int(np.abs(np.random.normal(0, variance, 1)[0]) * len(models)) - 1)
-        version = models[random_index]
+        if version == -1:
+            version = models[random_index]
+        else:
+            version = str(version)
+
         model_path = os.path.join(search_path, version)
         sb3_model, env = Model.get_model(model_path, algorithm_name)
         model = Model(sb3_model, int(version), algorithm_name, model_name, team_size, env)
