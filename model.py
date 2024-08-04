@@ -143,7 +143,6 @@ class Model:
                 model = Model.get_random_model(model_name, c.training["algorithm"], c.settings["team_size"], paddle, model_ver)
             else:
                 model = Model.get_latest_model(model_name, c.training["algorithm"], c.settings["team_size"], model_ver)
-
         if model is None:
             print("No model fetched")
 
