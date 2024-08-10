@@ -15,13 +15,13 @@ ui = None
 joystick = None
 field = None
 clock = None
+observation_space = None
 paddles = []
 
 def initialize():
     global field, sound_handler, \
         ui, framework, controls, device, \
-        current_time, game, clock, seed
-
+        current_time, game, clock, seed, observation_space
 
     seed = time.time()
     device = torch.device("cuda" if torch.cuda.is_available() else "cpu")

@@ -55,8 +55,9 @@ class Controls:
         t = g.game.seconds_left()
         time_scale = 1.0
         paddle_idx = paddle.team * 2 + paddle.player
-        x = noise.pnoise1(t * time_scale + (random.random() + paddle_idx) * 10000) * (0.8 + random.random() * 0.2)
-        y = noise.pnoise1((t + 200) * time_scale + (random.random() + paddle_idx) * 10000) * (0.8 + random.random() * 0.2)
+
+        x = noise.pnoise1(t * time_scale + (random.random() + paddle_idx) * 10000) * (c.settings["random_paddle_speed"])
+        y = noise.pnoise1((t + 200) * time_scale + (random.random() + paddle_idx) * 10000) * (c.settings["random_paddle_speed"])
         return {
             "acceleration": np.array([x, y]),
             "dash": False,

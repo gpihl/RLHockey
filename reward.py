@@ -50,7 +50,7 @@ class Reward:
     def __init__(self, paddle, puck, team_mates):
         self.paddle = paddle
         self.puck = puck
-        self.team_mates = list(filter(lambda x: x.agent_control != "off", team_mates))
+        self.team_mates = team_mates # list(filter(lambda x: x.agent_control != "off", team_mates))
         self.reward_breakdown = { "total": (0, 0) }
         self.action = None
         self.scorer = None
@@ -86,12 +86,17 @@ class Reward:
             (self.team_mate_proximity, "team_mate_proximity"),
             (self.wrong_side_of_puck, "wrong_side_of_puck"),
             (self.puck_proximity, "puck_proximity"),
+            (self.team_mate_puck_proximity, "team_mate_puck_proximity"),
             (self.puck_vel_toward_goal, "puck_vel_toward_goal"),
             (self.goal_puck_proximity, "goal_puck_proximity"),
             (self.shot, "shot"),
             (self.shot_toward_goal, "shot_toward_goal"),
             (self.dash_shot, "dash_shot"),
             (self.speed_dash, "speed_dash"),
+            (self.shot_toward_team_mate, "shot_toward_team_mate"),
+            (self.pre_pass_placement, "pre_pass_placement"),
+            (self.pre_shot_placement, "pre_shot_placement"),
+            (self.other_paddles_prox, "other_paddles_prox"),
             # (self.self_in_defense_zone, "self_in_defense_zone"),
             (self.self_goal_prox, "self_goal_prox"),
             # (self.defensive_positioning, "defensive_positioning")
@@ -111,9 +116,15 @@ class Reward:
 
     def calculate_specific_reward(self, reward_fn, reward_name):
         if c.practice is not None:
-            specific_reward = reward_fn() * c.practice.reward_structure[reward_name]
+            if reward_name in c.practice.reward_structure:
+                specific_reward = reward_fn() * c.practice.reward_structure[reward_name]
+            else:
+                specific_reward = 0
         else:
-            specific_reward = reward_fn() * Reward.rewards[reward_name]
+            if reward_name in Reward.rewards:
+                specific_reward = reward_fn() * Reward.rewards[reward_name]
+            else:
+                specific_reward = 0
 
         self.register_reward(specific_reward, reward_name)
         return specific_reward
@@ -137,6 +148,24 @@ class Reward:
         else:
             return 0
 
+    def pre_pass_placement(self):
+        puck_to_self = self.paddle.pos - self.puck.pos
+        puck_to_self_dir = puck_to_self / np.linalg.norm(puck_to_self)
+
+        puck_to_team_mate = self.team_mates[0].pos - self.puck.pos
+        puck_to_team_mate_dir = puck_to_team_mate / np.linalg.norm(puck_to_team_mate)
+
+        return -np.dot(puck_to_self_dir, puck_to_team_mate_dir)
+
+    def pre_shot_placement(self):
+        puck_to_self = self.paddle.pos - self.puck.pos
+        puck_to_self_dir = puck_to_self / np.linalg.norm(puck_to_self)
+
+        puck_to_goal = h.goal_pos(2) - self.puck.pos
+        puck_to_goal_dir = puck_to_goal / np.linalg.norm(puck_to_goal)
+
+        return -np.dot(puck_to_self_dir, puck_to_goal_dir)
+
     def opponents_goal(self):
         if self.scorer == self.paddle.team:
             return 1
@@ -145,6 +174,14 @@ class Reward:
 
     def puck_proximity(self):
         dist_to_puck = np.linalg.norm(self.puck.pos - self.paddle.pos)
+        reward = h.map_value_to_range(dist_to_puck, 0, h.max_dist())
+        return reward
+
+    def team_mate_puck_proximity(self):
+        if len(self.team_mates) == 0:
+            return 0
+
+        dist_to_puck = np.linalg.norm(self.puck.pos - self.team_mates[0].pos)
         reward = h.map_value_to_range(dist_to_puck, 0, h.max_dist())
         return reward
 
@@ -201,6 +238,10 @@ class Reward:
         reward = self.puck.collect_shot_reward("shot_toward_goal", self.paddle)
         return reward
 
+    def shot_toward_team_mate(self):
+        reward = self.puck.collect_shot_reward("shot_toward_team_mate", self.paddle)
+        return reward
+
     def shot(self):
         reward = self.puck.collect_shot_reward("shot", self.paddle)
         return reward
@@ -228,6 +269,15 @@ class Reward:
         dist_from_own_goal = np.linalg.norm(self.puck.pos - goal_pos)
         return h.map_value_to_range(dist_from_own_goal, h.field_height() / 8, h.max_dist() * 0.5)
 
+    def other_paddles_prox(self):
+        reward = 0
+        for paddle in filter(lambda x: not (x.team == self.paddle.team and x.player == self.paddle.player), g.game.paddles_1 + g.game.paddles_2):
+            dist = np.linalg.norm(self.paddle.pos - paddle.pos)
+            curr_reward = h.map_value_to_range(dist, 0, h.field_height() / 4)
+            curr_reward = (curr_reward + 1.0) / 2
+            reward += curr_reward
+
+        return reward
     # def defensive_positioning(self):
     #     goal_pos = h.goal_pos(self.paddle.team)
     #     team_paddles = self.team_mates + [self.paddle]

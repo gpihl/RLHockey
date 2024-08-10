@@ -89,7 +89,10 @@ class Model:
 
     def save_reward_structure(self, path):
         with open(path, "w") as file:
-            json.dump(Reward.rewards, file)
+            if c.practice is not None:
+                json.dump(c.practice.reward_structure, file)
+            else:
+                json.dump(Reward.rewards, file)
 
     def get_action(self, observation):
         model_action = self.model.predict(observation)[0]
@@ -164,8 +167,9 @@ class Model:
         print(f"Creating new model: {model_name}, {algorithm_name}, {team_size}")
         training_algorithm = Model.get_algorithm(algorithm_name)
         env = Model.get_environment_norm()
-        # policy_kwargs = dict(net_arch=dict(pi=[32, 32], vf=[32, 32]))
-        sb3_model = training_algorithm("MultiInputPolicy", env, learning_rate=c.training["learning_rate"], ent_coef=c.training["ent_coef"], verbose=1, device=g.device) #, policy_kwargs=policy_kwargs)
+        policy_kwargs = dict(net_arch=dict(pi=[128, 256, 128], vf=[128, 256, 128]))
+        # policy_kwargs = dict(net_arch=[256, 256, dict(pi=[128, 64], vf=[128, 64])])
+        sb3_model = training_algorithm("MultiInputPolicy", env, learning_rate=c.training["learning_rate"], ent_coef=c.training["ent_coef"], verbose=1, device=g.device, n_steps=c.training["n_steps"], policy_kwargs=policy_kwargs)
         version = 0
         model = Model(sb3_model, version, algorithm_name, model_name, team_size, env)
         print("Model created")
@@ -238,7 +242,7 @@ class Model:
         env_path = f"{path}/normalized_env"
         print(f"loading environment from: {env_path}")
         env = VecNormalize.load(env_path, Model.get_environment())
-        custom_objects = { "learning_rate": c.training["learning_rate"], "ent_coef": c.training["ent_coef"] }
+        custom_objects = { "learning_rate": c.training["learning_rate"], "ent_coef": c.training["ent_coef"], "n_steps": c.training["n_steps"] }
         print(f"loading model from: {model_path}")
         sb3_model = training_algorithm.load(model_path, env, custom_objects=custom_objects, device=g.device)
         return sb3_model, env

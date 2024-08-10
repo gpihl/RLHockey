@@ -48,13 +48,13 @@ class Field:
         self.draw_lights()
 
     def team_1_scored(self, puck):
-        if c.settings["blocked_goals"]:
+        if c.settings["goal_2_blocked"]:
             return False
 
         return puck.pos[0] >= c.settings["field_width"] - puck.radius and puck.pos[1] > h.goal_top() and puck.pos[1] < h.goal_bottom()
 
     def team_2_scored(self, puck):
-        if c.settings["blocked_goals"]:
+        if c.settings["goal_1_blocked"]:
             return False
 
         return puck.pos[0] <= puck.radius and puck.pos[1] > h.goal_top() and puck.pos[1] < h.goal_bottom()

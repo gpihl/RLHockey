@@ -13,36 +13,32 @@ class PuckFindingPractice(Practice):
         self.consecutive_win_req = 7
         self.name = "puck_finding"
         self.difficulty_increase = 0.02
-        self.difficulty_alpha = 0.8
+        self.starting_difficulty = 0.0
+        self.difficulty_alpha = self.starting_difficulty
+        c.settings["goal_1_blocked"] = True
+        c.settings["goal_2_blocked"] = True
+        c.settings["round_time"] = 3
 
         self.reward_structure = {
-            "velocity": -0.0,
-            "opponents_goal": 0,
-            "own_goal": -0,
-            "team_mate_proximity": 0.0,
-            "wrong_side_of_puck": 0.0,
             "puck_proximity": 2.0,
-            "puck_vel_toward_goal": 0.0,
-            "goal_puck_proximity": 0.0,
-            "shot": 0.0,
-            "shot_toward_goal": 0.0,
-            "speed_dash": 15.0,
-            "dash_shot": 0.0,
-            "puck_own_goal_prox": -0.0,
-            "self_goal_prox": 0.0
+            "speed_dash": 4.0,
+            "other_paddles_prox": -4.0,
         }
+        self.specific_level_change()
 
     def init_params(self):
         self.min_params = {
             "puck_distance": 60,
             "puck_init_speed_range": 0,
             "puck_init_spin_range": 0,
+            "other_paddles_speed_range": 0,
         }
 
         self.max_params = {
             "puck_distance": h.field_width(),
             "puck_init_speed_range": 75,
             "puck_init_spin_range": 70,
+            "other_paddles_speed_range": 1.0,
         }
 
         super().update_params()
@@ -53,9 +49,15 @@ class PuckFindingPractice(Practice):
         if paddle.team == 1 and paddle.player == 1:
             pos = h.random_vector_within_cone(puck.pos, np.array([1.0, 0]), 100, self.params["puck_distance"], 360)
         else:
-            pos = np.array([random.uniform(c.settings["field_width"] * 0.0 + 100, c.settings["field_width"] * 1.0 - 100),
-                            random.uniform(c.settings["field_height"] * 0.0 + 100, c.settings["field_height"] * 1.0 - 100)],
-                            dtype=np.float32)
+            while True:
+                pos = np.array([random.uniform(c.settings["field_width"] * 0.0 + 100, c.settings["field_width"] * 1.0 - 100),
+                                random.uniform(c.settings["field_height"] * 0.0 + 100, c.settings["field_height"] * 1.0 - 100)],
+                                dtype=np.float32)
+
+                dist_to_agent = np.linalg.norm(g.game.paddles_1[0].pos - pos)
+
+                if dist_to_agent > 500:
+                    break
 
         return pos
 
@@ -79,8 +81,23 @@ class PuckFindingPractice(Practice):
         return init_spin
 
     def handle_goal_achieved(self):
+        time_bonus = g.game.seconds_left() * 400
+        self.collectable_reward += time_bonus
         g.game.reset()
+
+    def handle_goal_failed(self):
+        pass
 
     def specific_update(self):
         if "goal" in self.events:
             self.seed += 1
+
+        if "paddle_collision" in self.events:
+            # self.collectable_reward -= 1000
+            self.events.append("round_end")
+            g.game.reset()
+
+    def specific_level_change(self):
+        c.settings["random_paddle_speed"] = self.params["other_paddles_speed_range"]
+
+

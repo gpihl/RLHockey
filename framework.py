@@ -476,17 +476,18 @@ class Framework():
 
         pr.draw_text_pro(font, text, pr.Vector2(position[0], position[1]), pr.Vector2(0, 0), rotation, font_size, 0, color)
 
-    def draw_dict(self, dictionary, font_name, pos, font_size=20):
+    def draw_dict_reward(self, dictionary, font_name, pos, font_size=20):
         x, y = pos
         line_height = 30
+        dictionary = dict(filter(lambda x: not (x[1][0] == 0 and x[1][1] == 0), dictionary.items()))
         items = list(dictionary.items())
         total_height = len(items) * line_height
         y -= total_height
 
         if "total" in dictionary:
-            keys = [key for key in dictionary if key != "total"] + ["total"]
+            keys = sorted([key for key in dictionary if key != "total"]) + ["total"]
         else:
-            keys = [key for key in dictionary]
+            keys = sorted([key for key in dictionary])
 
         decimal_places = 2
 
@@ -498,13 +499,42 @@ class Framework():
                 pass
             label_text = f"{key}:"
             try:
-                self.draw_text(label_text, font_name, (255,255,255), (x - 550 - pr.measure_text(".", font_size), y), "left", 0, font_size)
+                self.draw_text(label_text, font_name, (255,255,255), (x - 600 - pr.measure_text(".", font_size), y), "left", 0, font_size)
                 self.draw_text(str(value[0]), font_name, (255,255,255), (x - 120, y), "right", 0, font_size)
                 self.draw_text(f"{value[1]:.{decimal_places}f}", font_name, (255,255,255), (x, y), "right", 0, font_size)
             except:
-                self.draw_text(label_text, font_name, (255,255,255), (x - 550 - pr.measure_text(".", font_size), y), "left", 0, font_size)
+                self.draw_text(label_text, font_name, (255,255,255), (x - 600 - pr.measure_text(".", font_size), y), "left", 0, font_size)
                 self.draw_text(str(value), font_name, (255,255,255), (x - 120, y), "right", 0, font_size)
                 # self.draw_text(str(value), font_name, (255,255,255), (x, y), "right", 0, font_size)
+
+            y += line_height
+
+    def draw_dict_obs(self, dictionary, font_name, pos, font_size=20):
+        x, y = pos
+        line_height = 30
+        items = list(dictionary.items())
+        total_height = len(items) * line_height
+        y -= total_height
+
+        if "total" in dictionary:
+            keys = [key for key in dictionary if key != "total"] + ["total"]
+        else:
+            keys = [key for key in dictionary]
+
+        decimal_places = 3
+
+        for key in keys:
+            value = dictionary[key]
+            try:
+                value = value if not isinstance(value[0], float) else (round(value[0], decimal_places), value[1])
+                value = value if not isinstance(value[1], float) else (value[0], round(value[1], decimal_places))
+            except:
+                pass
+            label_text = f"{key}:"
+
+            self.draw_text(label_text, font_name, (255,255,255), (x - 600 - pr.measure_text(".", font_size), y), "left", 0, font_size)
+            self.draw_text(str(value), font_name, (255,255,255), (x, y), "left", 0, font_size)
+            # self.draw_text(str(value), font_name, (255,255,255), (x, y), "right", 0, font_size)
 
             y += line_height
 

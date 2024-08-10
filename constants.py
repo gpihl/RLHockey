@@ -1,5 +1,6 @@
 from scoring_practice import ScoringPractice
 from puck_finding_practice import PuckFindingPractice
+from passing_practice import PassingPractice
 
 resolutions = [
     (2560, 1440),
@@ -14,16 +15,16 @@ update_multiplier = 7
 updates_per_delta_t = update_multiplier * 15 / 23
 
 settings = {
-    # "round_time": 10,
+    "round_time": 10,
     # "round_time": 60,
-    "round_time": 1.3,
+    # "round_time": 1.5,
     "is_training": False,
     "paused": False,
     "no_render": False,
     "no_sound": True,
     "field_split": False,
-    "blocked_goals": False,
-    # "blocked_goals": True,
+    "goal_1_blocked": False,
+    "goal_2_blocked": False,
     "random_starting_locations": True,
     # "random_starting_locations": False,
     # "random_starting_locations_probability": 0.5,
@@ -39,6 +40,7 @@ settings = {
     "team_size": 2,
     "agent_control_training": ["ai", "ai", "ai", "ai"],
     "agent_control_regular": ["human", "ai", "ai", "ai"],
+    "random_paddle_speed": 0.5,
 }
 
 settings["goal_height"] = 400 * settings["field_width"] / 3000
@@ -63,11 +65,12 @@ training_regimes = [
 fixed_training_regime = None
 
 training = {
-    "training_steps": 8000,
+    "training_steps": 4096 * 4,
     # "learning_rate": 0.2e-3,
     "learning_rate": 1.0e-4,
     "ent_coef": 0.02,
-    # "ent_coef": 0.0,
+    # "ent_coef": 0.05,
+    "n_steps": 4096,
     "model_selection_variance_opponent": 0.20,
     "model_selection_variance_team": 0.0001,
     "base_path": "models",
@@ -78,12 +81,14 @@ training = {
 # model_names = ["ShooterNormal", "DefenderNormal", "ShooterNormal", "DefenderNormal"]
 # model_names = ["DefenderNormal", "ShooterNew", "ShooterNew", "DefenderNormal"]
 # model_names = ["ShooterNew", "DefenderNormal", "DefenderNormal", "ShooterNew"]
-model_names = ["Experiment", "DefenderNormal", "DefenderNormal", "ShooterNew"]
+model_names = ["8Aug", "8Aug", "Temp", "Temp"]
 model_versions = [-1, -1, -1, -1]
 
 # practice = None
-# practice = ScoringPractice()
-practice = PuckFindingPractice()
+practice = ScoringPractice()
+# practice = PuckFindingPractice()
+# practice = PassingPractice()
+
 
 # goalie_practice = True
 # goalie_practice = False

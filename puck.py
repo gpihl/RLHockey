@@ -14,6 +14,7 @@ class Puck:
         self.prev_puck_start_pos = self.pos
         self.shot_reward = {}
         self.shot_on_goal_reward = {}
+        self.shot_toward_team_mate_reward = {}
         self.base_radius = 48
         self.radius = self.base_radius
         self.wall_elasticity = 0.7
@@ -188,12 +189,12 @@ class Puck:
                 sound_vel = self.vel[1]
                 normal = np.array([0,-1])
 
-            if self.pos[0] < self.radius and not (self.pos[1] > h.goal_top() and self.pos[1] < h.goal_bottom()):
+            if self.pos[0] < self.radius and ((not (self.pos[1] > h.goal_top() and self.pos[1] < h.goal_bottom())) or (c.settings["goal_1_blocked"])):
                 self.pos[0] = self.radius
                 self.vel[0] = -self.vel[0] * self.wall_elasticity
                 sound_vel = self.vel[0]
                 normal = np.array([1,0])
-            elif self.pos[0] > c.settings["field_width"] - self.radius and not (self.pos[1] > h.goal_top() and self.pos[1] < h.goal_bottom()):
+            elif self.pos[0] > c.settings["field_width"] - self.radius and ((not (self.pos[1] > h.goal_top() and self.pos[1] < h.goal_bottom())) or (c.settings["goal_2_blocked"])):
                 self.pos[0] = c.settings["field_width"] - self.radius
                 self.vel[0] = -self.vel[0] * self.wall_elasticity
                 sound_vel = self.vel[0]
@@ -260,6 +261,10 @@ class Puck:
             if key in self.shot_reward:
                 reward = self.shot_reward[key]
             self.shot_reward[key] = 0
+        elif reward_type == "shot_toward_team_mate":
+            if key in self.shot_toward_team_mate_reward:
+                reward = self.shot_toward_team_mate_reward[key]
+            self.shot_toward_team_mate_reward[key] = 0
 
         return reward
 
@@ -306,11 +311,18 @@ class Puck:
                 goal_dir = (goal_pos - self.pos) / np.linalg.norm(goal_pos - self.pos)
                 self.shot_on_goal_reward[key] = np.dot(self.vel, goal_dir)
 
+                team_mate_pos = paddle.team_mate_paddles[0].pos
+                team_mate_dir = (team_mate_pos - self.pos) / np.linalg.norm(team_mate_pos - self.pos)
+                self.shot_toward_team_mate_reward[key] = np.dot(self.vel, team_mate_dir)
+
                 if paddle.is_dashing():
                     paddle.add_dash_shot_reward(self)
 
             if paddle.team == 1 and paddle.player == 1:
                 h.report_practice_event("puck_finding")
+
+            if paddle.team == 1 and paddle.player == 2:
+                h.report_practice_event("passing")
 
             sound_vel = np.linalg.norm(relative_velocity)
             if sound_vel != 0:

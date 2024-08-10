@@ -14,6 +14,7 @@ class Paddle:
         print(f"Creating paddle, team: {team}, player: {player}")
         self.player = player
         self.team = team
+        self.team_mate_paddles = []
         self.team_mates = 0
         self.color = (0,0,0)
         self.pos = np.zeros(2)
@@ -40,6 +41,7 @@ class Paddle:
         self.speed_dash_reward = 0
         self.dash_shot_reward = 0
         self.reward = None
+        self.past_observations = deque(maxlen=5)
         self.trail = Trail(0.93, (200,200,0), self.radius)
         self.reset()
         self.load_new_model()
@@ -66,6 +68,8 @@ class Paddle:
         self.charging_dash = False
         self.charging_dash_initial = False
         self.vel = np.zeros(2)
+        self.past_observations = deque(maxlen=self.past_observations.maxlen)
+        self.velocity_history = deque(maxlen=self.velocity_history.maxlen)
 
     # def get_starting_pos_goalie_practice(self):
     #     pos = np.zeros(2)
@@ -190,7 +194,7 @@ class Paddle:
     def dash_direction(self, puck, acc):
         if np.linalg.norm(self.average_velocity) > 0:
             puck_direction = (puck.pos - self.pos) / np.linalg.norm(puck.pos - self.pos)
-            velocity_direction = self.average_velocity / np.linalg.norm(self.average_velocity)
+            velocity_direction = self.vel / np.linalg.norm(self.vel)
             # velocity_direction = acc / np.linalg.norm(acc)
 
             epsilon = 0.3
@@ -420,6 +424,10 @@ class Paddle:
             paddle.pos -= (normal * overlap) / 2
 
             sound_vel = np.linalg.norm(relative_velocity)
+
+            if self.team == 1 and self.player == 1:
+                h.report_practice_event("paddle_collision")
+
             if sound_vel != 0:
                 g.sound_handler.play_sound_velocity_based("paddle", sound_vel, 2 * c.gameplay["max_paddle_speed"], 0.2, self.pos[0], exponent=2)
                 g.framework.add_temporary_particles(self.pos - self.radius * normal, sound_vel, [self.color, paddle.color])
@@ -514,7 +522,7 @@ class Paddle:
 
     def normalize_relative_pos(self, relative_pos):
         relative_pos[0] /= c.settings["field_width"]
-        relative_pos[1] /= c.settings["field_height"]
+        relative_pos[1] /= c.settings["field_width"]
         return relative_pos
 
     def wall_collision_factor(self, acceleration):
