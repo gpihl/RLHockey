@@ -41,7 +41,7 @@ settings = {
     "agent_control_training": ["ai", "ai", "ai", "ai"],
     "agent_control_regular": ["human", "ai", "ai", "ai"],
     "random_paddle_speed": 0.5,
-    "fps_multiplier": 2,
+    "fps_multiplier": 1,
 }
 
 settings["goal_height"] = 400 * settings["field_width"] / 3000
@@ -78,7 +78,7 @@ training = {
     "algorithm": "PPO",
 }
 
-model_names = ["15Aug", "Goalie", "15Aug", "Goalie"]
+model_names = ["Temp", "Goalie", "Temp", "Goalie"]
 model_versions = [-1, -1, -1, -1]
 
 gameplay = {
