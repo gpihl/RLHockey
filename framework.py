@@ -22,8 +22,8 @@ class Framework():
         self._initialized = True
 
         self.flags = pr.FLAG_MSAA_4X_HINT | pr.FLAG_WINDOW_RESIZABLE
-        # if not c.settings["is_training"]:
-        #     self.flags |= pr.FLAG_VSYNC_HINT
+        if not c.settings["is_training"]:
+            self.flags |= pr.FLAG_VSYNC_HINT
 
         self.current_resolution_idx = c.settings["resolution"]
         self.fullscreen = False
@@ -31,9 +31,6 @@ class Framework():
         self.fps_locked = False
         if c.settings["is_training"]:
             pr.set_target_fps(c.settings["fps"])
-            self.fps_locked = True
-        else:
-            pr.set_target_fps(c.settings["fps"] * c.settings["fps_multiplier"])
             self.fps_locked = True
 
         self.render_texture = None
@@ -217,6 +214,9 @@ class Framework():
     def draw_fps(self, x, y):
         self.draw_text(f"FPS: {pr.get_fps()}", "steps_left", (255,255,255), (x, y), "left", 0, 40)
 
+    def get_fps(self):
+        return pr.get_fps()
+
     def update_paddle_data(self, paddles):
         self.paddle_count_buffer[0] = len(paddles)
         for i, paddle in enumerate(paddles):
@@ -381,6 +381,7 @@ class Framework():
             pr.end_shader_mode()
 
         pr.end_drawing()
+
 
     def tick(self):
         if c.settings["is_training"]:

@@ -41,7 +41,7 @@ settings = {
     "agent_control_training": ["ai", "ai", "ai", "ai"],
     "agent_control_regular": ["human", "ai", "ai", "ai"],
     "random_paddle_speed": 0.5,
-    "fps_multiplier": 1,
+    # "fps_multiplier": 1,
 }
 
 settings["goal_height"] = 400 * settings["field_width"] / 3000
