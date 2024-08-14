@@ -164,6 +164,7 @@ class Game:
         return self.is_done(scorer)
 
     def update(self, team_1_actions, team_2_actions):
+        c.settings["fps_multiplier"] = max(1, round(float(g.framework.get_fps()) / float(c.settings["fps"])))
         self.handle_game_paused()
         self.current_step += 1
         self.total_steps += 1

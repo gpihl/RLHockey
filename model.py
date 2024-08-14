@@ -101,7 +101,7 @@ class Model:
                 json.dump(Reward.rewards, file)
 
     def get_action(self, observation):
-        if self.previous_action is None or self.action_counter % c.settings["fps_multiplier"] == 0:
+        if self.previous_action is None or self.action_counter % c.settings["fps_multiplier"] == 0 or c.settings["is_training"]:
             model_action = self.model.predict(observation)[0]
             model_action = self.process_action(model_action)
             self.previous_action = model_action
