@@ -23,6 +23,12 @@ class Model:
         self.team_size = team_size
         self.score_ratios = []
         self.action_history = deque(maxlen=5)
+        self.previous_action = None
+        self.action_counter = 0
+
+    def reset(self):
+        self.action_counter = 0
+        self.previous_action = None
 
     @staticmethod
     def get_algorithm(algorithm_name):
@@ -95,8 +101,15 @@ class Model:
                 json.dump(Reward.rewards, file)
 
     def get_action(self, observation):
-        model_action = self.model.predict(observation)[0]
-        model_action = self.process_action(model_action)
+        if self.previous_action is None or self.action_counter % c.settings["fps_multiplier"] == 0:
+            model_action = self.model.predict(observation)[0]
+            model_action = self.process_action(model_action)
+            self.previous_action = model_action
+            self.action_counter = 0
+        else:
+            model_action = self.previous_action
+
+        self.action_counter += 1
         return model_action
 
     def process_action(self, model_action):

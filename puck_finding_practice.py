@@ -13,16 +13,16 @@ class PuckFindingPractice(Practice):
         self.consecutive_win_req = 7
         self.name = "puck_finding"
         self.difficulty_increase = 0.02
-        self.starting_difficulty = 0.0
+        self.starting_difficulty = 0.5
         self.difficulty_alpha = self.starting_difficulty
         c.settings["goal_1_blocked"] = True
         c.settings["goal_2_blocked"] = True
-        c.settings["round_time"] = 3
+        c.settings["round_time"] = 1.2
 
         self.reward_structure = {
-            "puck_proximity": 2.0,
-            "speed_dash": 4.0,
-            "other_paddles_prox": -4.0,
+            # "puck_proximity": 4.0,
+            # "speed_dash": 8.0,
+            # "other_paddles_prox": -4.0,
         }
         self.specific_level_change()
 
@@ -69,7 +69,7 @@ class PuckFindingPractice(Practice):
 
         return pos
 
-    def get_puck_starting_vel(self):
+    def get_puck_starting_vel(self, puck):
         self.seed_rngs(self.seed + 40)
         init_speed = random.random() * self.params["puck_init_speed_range"]
         vel = h.generate_random_2d_dir_vector()
@@ -81,23 +81,39 @@ class PuckFindingPractice(Practice):
         return init_spin
 
     def handle_goal_achieved(self):
-        time_bonus = g.game.seconds_left() * 400
+        time_bonus = g.game.time_left() * 800
         self.collectable_reward += time_bonus
-        g.game.reset()
 
     def handle_goal_failed(self):
-        pass
+        dist_to_puck = np.linalg.norm(g.game.paddles_1[0].pos - g.game.puck.pos)
+        prox_reward = h.map_value_to_range(dist_to_puck, 0, h.max_dist()) * 1000
+        prox_reward = max(0.0, prox_reward)
+        self.collectable_reward += prox_reward
+        print("Prox reward: " + str(int(prox_reward)))
 
     def specific_update(self):
         if "goal" in self.events:
             self.seed += 1
 
-        if "paddle_collision" in self.events:
-            # self.collectable_reward -= 1000
-            self.events.append("round_end")
-            g.game.reset()
+        # if "paddle_collision" in self.events:
+        #     # self.collectable_reward -= 1000
+        #     self.events.append("round_end")
+        #     g.game.reset()
 
     def specific_level_change(self):
         c.settings["random_paddle_speed"] = self.params["other_paddles_speed_range"]
 
+    def goal_failed(self):
+        if "round_end" in self.events:
+            self.events = []
+            return True
+        else:
+            return False
 
+    def goal_achieved(self):
+        if self.name in self.events:
+            self.events = []
+            print(f"Difficulty: {self.difficulty_alpha}")
+            return True
+        else:
+            return False

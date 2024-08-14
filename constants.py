@@ -1,6 +1,6 @@
 from scoring_practice import ScoringPractice
 from puck_finding_practice import PuckFindingPractice
-from passing_practice import PassingPractice
+from goalie_practice import GoaliePractice
 
 resolutions = [
     (2560, 1440),
@@ -41,6 +41,7 @@ settings = {
     "agent_control_training": ["ai", "ai", "ai", "ai"],
     "agent_control_regular": ["human", "ai", "ai", "ai"],
     "random_paddle_speed": 0.5,
+    "fps_multiplier": 2,
 }
 
 settings["goal_height"] = 400 * settings["field_width"] / 3000
@@ -69,31 +70,16 @@ training = {
     # "learning_rate": 0.2e-3,
     "learning_rate": 1.0e-4,
     "ent_coef": 0.02,
-    # "ent_coef": 0.05,
+    # "ent_coef": 0.005,
     "n_steps": 4096,
-    "model_selection_variance_opponent": 0.20,
+    "model_selection_variance_opponent": 0.0001,
     "model_selection_variance_team": 0.0001,
     "base_path": "models",
     "algorithm": "PPO",
 }
 
-# model_names = ["DefenderNormal", "ShooterNormal", "ShooterNormal", "DefenderNormal"]
-# model_names = ["ShooterNormal", "DefenderNormal", "ShooterNormal", "DefenderNormal"]
-# model_names = ["DefenderNormal", "ShooterNew", "ShooterNew", "DefenderNormal"]
-# model_names = ["ShooterNew", "DefenderNormal", "DefenderNormal", "ShooterNew"]
-model_names = ["8Aug", "8Aug", "Temp", "Temp"]
+model_names = ["15Aug", "Goalie", "15Aug", "Goalie"]
 model_versions = [-1, -1, -1, -1]
-
-# practice = None
-practice = ScoringPractice()
-# practice = PuckFindingPractice()
-# practice = PassingPractice()
-
-
-# goalie_practice = True
-# goalie_practice = False
-# scoring_practice = True
-# scoring_practice = False
 
 gameplay = {
     "dash_cooldown": 0.4,
@@ -103,4 +89,11 @@ gameplay = {
     "max_paddle_speed": 40,
     "max_puck_speed": 75,
 }
+
+# practice = None
+practice = ScoringPractice()
+# practice = GoaliePractice()
+# practice = PuckFindingPractice()
+# practice = PassingPractice()
+
 

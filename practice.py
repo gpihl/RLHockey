@@ -16,9 +16,9 @@ class Practice(ABC):
         self.consecutive_failures = 0
         self.consecutive_level_fails = 0
         self.collectable_reward = 0
-        self.reward = 4000
-        self.goal_reward = 1000
-        self.level_reward = 16000
+        self.reward = 0
+        self.goal_reward = 4000
+        self.level_reward = 0
         self.reward_structure = dict()
         self.events = []
         self.name = ""
@@ -34,7 +34,6 @@ class Practice(ABC):
     def change_level(self):
         self.seed += 1
         self.specific_level_change()
-        g.game.reset()
 
     def update(self):
         self.specific_update()
@@ -59,6 +58,7 @@ class Practice(ABC):
 
             self.consecutive_failures = 0
             self.handle_goal_achieved()
+            g.game.done = True
         elif self.goal_failed():
             print("goal failed")
             self.consecutive_goals = 0
@@ -74,34 +74,20 @@ class Practice(ABC):
                 self.consecutive_failures = 0
 
             self.handle_goal_failed()
-
-
+            g.game.done = True
 
     def collect_reward(self):
         reward = self.collectable_reward
         self.collectable_reward = 0
         return reward
 
+    @abstractmethod
     def goal_achieved(self):
-        if self.name in self.events:
-            self.events = []
-            print(self.difficulty_alpha)
-            return True
-        else:
-            return False
-
-    def goal_failed(self):
-        if "round_end" in self.events:
-            self.events = []
-            return True
-        else:
-            return False
+        pass
 
     def update_params(self):
         print("updating params")
         self.params = h.interpolate_dicts(self.min_params, self.max_params, self.difficulty_alpha)
-        print(self.params)
-        print(self.difficulty_alpha)
 
     def increase_difficulty(self):
         print("increasing difficulty")
@@ -141,7 +127,7 @@ class Practice(ABC):
         pass
 
     @abstractmethod
-    def get_puck_starting_vel(self):
+    def get_puck_starting_vel(self, puck):
         pass
 
     @abstractmethod
@@ -154,6 +140,10 @@ class Practice(ABC):
 
     @abstractmethod
     def specific_level_change(self):
+        pass
+
+    @abstractmethod
+    def goal_failed(self):
         pass
 
 

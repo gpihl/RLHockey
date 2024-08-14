@@ -163,8 +163,9 @@ class Reward:
 
         puck_to_goal = h.goal_pos(2) - self.puck.pos
         puck_to_goal_dir = puck_to_goal / np.linalg.norm(puck_to_goal)
-
-        return -np.dot(puck_to_self_dir, puck_to_goal_dir)
+        reward = -np.dot(puck_to_self_dir, puck_to_goal_dir)
+        reward = max(0.0, reward)
+        return reward
 
     def opponents_goal(self):
         if self.scorer == self.paddle.team:
@@ -175,6 +176,7 @@ class Reward:
     def puck_proximity(self):
         dist_to_puck = np.linalg.norm(self.puck.pos - self.paddle.pos)
         reward = h.map_value_to_range(dist_to_puck, 0, h.max_dist())
+        reward = max(0.0, reward)
         return reward
 
     def team_mate_puck_proximity(self):
@@ -207,12 +209,14 @@ class Reward:
         goal_pos = h.goal_pos(2) if self.paddle.team == 1 else h.goal_pos(1)
         puck_to_goal_dist = np.linalg.norm(goal_pos - self.puck.pos)
         reward = ((h.field_width() - puck_to_goal_dist) / h.field_width())
+        reward = max(0.0, reward)
         return reward
 
     def puck_vel_toward_goal(self):
         goal_pos = h.goal_pos(2) if self.paddle.team == 1 else h.goal_pos(1)
         puck_to_goal_dir = (goal_pos - self.puck.pos) / np.linalg.norm(goal_pos - self.puck.pos)
         reward = np.dot(self.puck.vel, puck_to_goal_dir)
+        reward = max(0.0, reward)
         return reward
 
     def pointless(self):
@@ -228,6 +232,7 @@ class Reward:
         reward += self.paddle.collect_dash_shot_reward() * 6
         # if reward != 0:
         #     print(reward)
+        reward = max(0.0, reward)
         return reward
 
     def speed_dash(self):
@@ -236,6 +241,7 @@ class Reward:
 
     def shot_toward_goal(self):
         reward = self.puck.collect_shot_reward("shot_toward_goal", self.paddle)
+        reward = max(0.0, reward)
         return reward
 
     def shot_toward_team_mate(self):
@@ -262,7 +268,7 @@ class Reward:
     def self_goal_prox(self):
         goal_pos = h.goal_pos(self.paddle.team)
         dist_from_own_goal = np.linalg.norm(self.paddle.pos - goal_pos)
-        return h.map_value_to_range(dist_from_own_goal, h.field_height() / 4, h.max_dist() * 0.7)
+        return h.map_value_to_range(dist_from_own_goal, 0, h.max_dist() * 0.7)
 
     def puck_own_goal_prox(self):
         goal_pos = h.goal_pos(self.paddle.team)

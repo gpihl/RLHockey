@@ -32,6 +32,9 @@ class Framework():
         if c.settings["is_training"]:
             pr.set_target_fps(c.settings["fps"])
             self.fps_locked = True
+        else:
+            pr.set_target_fps(c.settings["fps"] * c.settings["fps_multiplier"])
+            self.fps_locked = True
 
         self.render_texture = None
         self.tick()

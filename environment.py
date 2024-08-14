@@ -11,41 +11,42 @@ class AirHockeyEnv(gym.Env):
 
         self.observation_space = {}
 
-        for j in range(1, 6):
-            self.observation_space |= {
-                "self_pos_absolute_" + str(j):     spaces.Box(low=-1, high=1, shape=(2,), dtype=np.float32),
-                "puck_pos_absolute_" + str(j):     spaces.Box(low=-1, high=1, shape=(2,), dtype=np.float32),
-                "puck_vel_absolute_" + str(j):     spaces.Box(low=-1, high=1, shape=(2,), dtype=np.float32),
-                "puck_rot_vel_absolute_" + str(j): spaces.Box(low=-1, high=1, shape=(1,), dtype=np.float32),
-                "charging_alpha_absolute_" + str(j): spaces.Box(low=-1, high=1, shape=(1,), dtype=np.float32),
-                "puck_pos_relative_" + str(j):     spaces.Box(low=-1, high=1, shape=(2,), dtype=np.float32),
-                "goal_1_top_pos_relative_" + str(j): spaces.Box(low=-1, high=1, shape=(2,), dtype=np.float32),
-                "goal_1_bot_pos_relative_" + str(j): spaces.Box(low=-1, high=1, shape=(2,), dtype=np.float32),
-                "goal_2_top_pos_relative_" + str(j): spaces.Box(low=-1, high=1, shape=(2,), dtype=np.float32),
-                "goal_2_bot_pos_relative_" + str(j): spaces.Box(low=-1, high=1, shape=(2,), dtype=np.float32),
-            }
+        # for j in range(1, 6):
+        j = 1
+        self.observation_space |= {
+            "self_pos_absolute_" + str(j):     spaces.Box(low=-1, high=1, shape=(2,), dtype=np.float32),
+            "puck_pos_absolute_" + str(j):     spaces.Box(low=-1, high=1, shape=(2,), dtype=np.float32),
+            "puck_vel_absolute_" + str(j):     spaces.Box(low=-1, high=1, shape=(2,), dtype=np.float32),
+            "puck_rot_vel_absolute_" + str(j): spaces.Box(low=-1, high=1, shape=(1,), dtype=np.float32),
+            "charging_alpha_absolute_" + str(j): spaces.Box(low=-1, high=1, shape=(1,), dtype=np.float32),
+            "puck_pos_relative_" + str(j):     spaces.Box(low=-1, high=1, shape=(2,), dtype=np.float32),
+            "goal_1_top_pos_relative_" + str(j): spaces.Box(low=-1, high=1, shape=(2,), dtype=np.float32),
+            "goal_1_bot_pos_relative_" + str(j): spaces.Box(low=-1, high=1, shape=(2,), dtype=np.float32),
+            "goal_2_top_pos_relative_" + str(j): spaces.Box(low=-1, high=1, shape=(2,), dtype=np.float32),
+            "goal_2_bot_pos_relative_" + str(j): spaces.Box(low=-1, high=1, shape=(2,), dtype=np.float32),
+        }
 
-            other_players_positions_team_1 = { f"paddle_{1}_{i}_pos_absolute_" + str(j): spaces.Box(low=-1, high=1, shape=(2,), dtype=np.float32) for i in range(2, team_size + 1) }
-            other_players_positions_team_2 = { f"paddle_{2}_{i}_pos_absolute_" + str(j): spaces.Box(low=-1, high=1, shape=(2,), dtype=np.float32) for i in range(1, team_size + 1) }
-            other_players_velocities_team_1 = { f"paddle_{1}_{i}_vel_absolute_" + str(j): spaces.Box(low=-1, high=1, shape=(2,), dtype=np.float32) for i in range(1, team_size + 1) }
-            other_players_velocities_team_2 = { f"paddle_{2}_{i}_vel_absolute_" + str(j): spaces.Box(low=-1, high=1, shape=(2,), dtype=np.float32) for i in range(1, team_size + 1) }
+        other_players_positions_team_1 = { f"paddle_{1}_{i}_pos_absolute_" + str(j): spaces.Box(low=-1, high=1, shape=(2,), dtype=np.float32) for i in range(2, team_size + 1) }
+        other_players_positions_team_2 = { f"paddle_{2}_{i}_pos_absolute_" + str(j): spaces.Box(low=-1, high=1, shape=(2,), dtype=np.float32) for i in range(1, team_size + 1) }
+        other_players_velocities_team_1 = { f"paddle_{1}_{i}_vel_absolute_" + str(j): spaces.Box(low=-1, high=1, shape=(2,), dtype=np.float32) for i in range(1, team_size + 1) }
+        other_players_velocities_team_2 = { f"paddle_{2}_{i}_vel_absolute_" + str(j): spaces.Box(low=-1, high=1, shape=(2,), dtype=np.float32) for i in range(1, team_size + 1) }
 
-            self.observation_space |= {
-                **other_players_positions_team_1,
-                **other_players_positions_team_2,
-                **other_players_velocities_team_1,
-                **other_players_velocities_team_2
-            }
+        self.observation_space |= {
+            **other_players_positions_team_1,
+            **other_players_positions_team_2,
+            **other_players_velocities_team_1,
+            **other_players_velocities_team_2
+        }
 
-            other_players_positions_team_1 = { f"paddle_{1}_{i}_pos_relative_" + str(j): spaces.Box(low=-1, high=1, shape=(2,), dtype=np.float32) for i in range(2, team_size + 1) }
-            other_players_positions_team_2 = { f"paddle_{2}_{i}_pos_relative_" + str(j): spaces.Box(low=-1, high=1, shape=(2,), dtype=np.float32) for i in range(1, team_size + 1) }
+        other_players_positions_team_1 = { f"paddle_{1}_{i}_pos_relative_" + str(j): spaces.Box(low=-1, high=1, shape=(2,), dtype=np.float32) for i in range(2, team_size + 1) }
+        other_players_positions_team_2 = { f"paddle_{2}_{i}_pos_relative_" + str(j): spaces.Box(low=-1, high=1, shape=(2,), dtype=np.float32) for i in range(1, team_size + 1) }
 
-            self.observation_space |= {
-                **other_players_positions_team_1,
-                **other_players_positions_team_2,
-                **other_players_velocities_team_1,
-                **other_players_velocities_team_2
-            }
+        self.observation_space |= {
+            **other_players_positions_team_1,
+            **other_players_positions_team_2,
+            **other_players_velocities_team_1,
+            **other_players_velocities_team_2
+        }
 
         self.observation_space |= {
             "goal_1_top_pos_absolute_1": spaces.Box(low=-1, high=1, shape=(2,), dtype=np.float32),
@@ -74,8 +75,9 @@ class AirHockeyEnv(gym.Env):
     def step(self, action):
         observation, reward, done, info = g.game.step_training(action)
         truncated = False
+
         if done:
-            print(g.game.round_reward)
+            print(f"Round reward: {g.game.round_reward}")
 
         return observation, reward, done, truncated, info
 

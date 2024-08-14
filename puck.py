@@ -46,7 +46,7 @@ class Puck:
             if c.practice is not None:
                 self.rot_vel = 0.0
                 self.pos = c.practice.get_puck_starting_pos()
-                self.vel = c.practice.get_puck_starting_vel()
+                self.vel = c.practice.get_puck_starting_vel(self)
                 self.rot_vel = c.practice.get_puck_starting_rot_vel()
             elif c.settings["random_starting_locations"]:
                 self.pos = self.get_starting_pos_random()

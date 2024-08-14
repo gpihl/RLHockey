@@ -80,9 +80,12 @@ class Game:
         g.paddles = self.paddles_1 + self.paddles_2
 
     def reset(self):
+        print("")
+        print("Resetting game!")
         if c.settings["is_training"]:
             c.settings["random_starting_locations"] = maybe_random_starting_locations()
 
+        self.done = False
         self.current_step = 0
         self.current_reward = 0.0
         self.round_reward = 0.0
@@ -132,7 +135,7 @@ class Game:
         done = self.is_done(scorer)
 
         reward = self.handle_rewards(team_1_actions, team_2_actions, scorer)
-
+        done = done or self.done
         return self.player_1_observation, reward, done, {}
 
     def step(self):
@@ -199,6 +202,8 @@ class Game:
 
         c.settings["delta_t"] = delta_t_temp
 
+        # print(c.settings["original_delta_t"] / c.settings["fps"])
+
         g.sound_handler.update(scorer)
         g.field.update(self.puck)
         if h.full_visuals():
@@ -237,8 +242,6 @@ class Game:
         if c.settings["is_training"] and c.practice is not None:
             practice_reward = c.practice.collect_reward()
             reward += practice_reward
-            if abs(practice_reward) > 0:
-                print(reward)
 
         self.current_reward = reward
         self.round_reward += reward
@@ -337,16 +340,18 @@ class Game:
         obs |= { k + "_absolute": v for k, v in absolute_obs.items() }
         obs |= { **practice_obs }
 
-        paddle.past_observations.append(obs)
-        while len(paddle.past_observations) < paddle.past_observations.maxlen:
-            paddle.past_observations.append(obs.copy())
+        # paddle.past_observations.append(obs)
+        # while len(paddle.past_observations) < paddle.past_observations.maxlen:
+        #     paddle.past_observations.append(obs.copy())
+
+        # res = {}
+        # for i, observation in enumerate(reversed(paddle.past_observations)):
+        #     for key, val in observation.items():
+        #         res[key + "_" + str(i+1)] = val
 
         res = {}
-        for i, observation in enumerate(reversed(paddle.past_observations)):
-            for key, val in observation.items():
-                res[key + "_" + str(i+1)] = val
-
-
+        for key, val in obs.items():
+            res[key + "_1"] = val
         res = self.process_observation(res)
         return res
 
@@ -548,10 +553,23 @@ class Game:
             seconds_left = math.ceil((self.match_steps / c.settings["fps"]) - (g.current_time - self.start_time))
         return seconds_left
 
+    def time_left(self):
+        if c.settings["is_training"]:
+            time_left = (self.match_steps - self.current_step) / c.settings["fps"]
+        else:
+            # seconds_left = math.ceil((self.match_steps - self.current_step) / c.settings["fps"])
+            time_left = (self.match_steps / c.settings["fps"]) - (g.current_time - self.start_time)
+        return time_left
+
     def is_done(self, scorer):
         if c.settings["is_training"]:
-            if self.current_step > self.match_steps or scorer != 0:
+            if self.current_step > self.match_steps or scorer != 0 or self.done:
                 h.report_practice_event("round_end")
+                if scorer != 0:
+                    h.report_practice_event(str(scorer) + "_scored")
+                elif self.current_step > self.match_steps:
+                    h.report_practice_event("time_up")
+
                 return True
             else:
                 return False

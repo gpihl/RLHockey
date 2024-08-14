@@ -43,6 +43,7 @@ class Paddle:
         self.reward = None
         self.past_observations = deque(maxlen=5)
         self.trail = Trail(0.93, (200,200,0), self.radius)
+        self.model = None
         self.reset()
         self.load_new_model()
 
@@ -63,6 +64,8 @@ class Paddle:
                 self.pos = self.get_starting_pos_regular()
         else:
             self.pos = self.get_starting_pos_regular()
+            if self.model is not None:
+                self.model.reset()
 
         self.last_dash_time = 0
         self.charging_dash = False
@@ -70,6 +73,7 @@ class Paddle:
         self.vel = np.zeros(2)
         self.past_observations = deque(maxlen=self.past_observations.maxlen)
         self.velocity_history = deque(maxlen=self.velocity_history.maxlen)
+
 
     # def get_starting_pos_goalie_practice(self):
     #     pos = np.zeros(2)

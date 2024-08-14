@@ -47,17 +47,19 @@ class Controls:
         return action
 
     def get_random_action(self, paddle):
+        paddle_idx = paddle.get_idx() * 10
+
         if c.practice is not None:
             c.practice.seed_rngs()
         else:
-            random.seed(g.seed)
+            random.seed(g.seed + paddle_idx)
 
-        t = g.game.seconds_left()
-        time_scale = 1.0
-        paddle_idx = paddle.team * 2 + paddle.player
+        t = g.game.time_left()
+        time_scale_x = 0.5 + random.random()
+        time_scale_y = 0.5 + random.random()
 
-        x = noise.pnoise1(t * time_scale + (random.random() + paddle_idx) * 10000) * (c.settings["random_paddle_speed"])
-        y = noise.pnoise1((t + 200) * time_scale + (random.random() + paddle_idx) * 10000) * (c.settings["random_paddle_speed"])
+        x = noise.pnoise1(t * time_scale_x + (random.random() + paddle_idx) * 10000) * (c.settings["random_paddle_speed"] * random.random())
+        y = noise.pnoise1((t + 2000) * time_scale_y + (random.random() + paddle_idx) * 10000) * (c.settings["random_paddle_speed"] * random.random())
         return {
             "acceleration": np.array([x, y]),
             "dash": False,
