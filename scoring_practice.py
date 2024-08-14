@@ -21,9 +21,9 @@ class ScoringPractice(Practice):
         # self.reward = 0
         # self.goal_reward = 4000
         # self.level_reward = 0
-
-        c.training["learning_rate"] = 0.5e-4
-        c.training["ent_coef"] = 0.005
+        self.regular_start = True
+        c.training["learning_rate"] = 1.0e-4
+        c.training["ent_coef"] = 0.01
 
         self.reward_structure = {
             # "puck_proximity": 0.5,
@@ -36,7 +36,7 @@ class ScoringPractice(Practice):
             # # "speed_dash": 0.5
         }
 
-        c.model_names = ["15Aug", "Goalie", "Temp", "Goalie"]
+        c.model_names = ["15Aug", "Goalie", "Goalie", "Goalie"]
 
         c.settings["round_time"] = 8
         # c.settings["goal_1_blocked"] = True
@@ -81,7 +81,7 @@ class ScoringPractice(Practice):
             # pos = h.random_vector_within_cone(puck_pos, goal_to_puck_dir, self.params["paddle_min_dist"], self.params["paddle_max_dist"], self.params["paddle_angular_range"])
         else:
             while True:
-                pos = np.array([random.uniform(2*paddle.radius, c.settings["field_width"] * 0.4 - 2*paddle.radius),
+                pos = np.array([random.uniform(2*paddle.radius, c.settings["field_width"] * 1.0 - 2*paddle.radius),
                                         random.uniform(2*paddle.radius, c.settings["field_height"] - 2*paddle.radius)],
                                         dtype=np.float32)
 
@@ -103,9 +103,9 @@ class ScoringPractice(Practice):
         return pos
 
     def handle_goal_achieved(self):
-        time_bonus = g.game.time_left() * 800
+        time_bonus = g.game.time_left() * 500
         self.collectable_reward += time_bonus
-        power_bonus = (np.linalg.norm(g.game.puck.vel) / c.gameplay["max_puck_speed"]) * 1200
+        power_bonus = (np.linalg.norm(g.game.puck.vel) / c.gameplay["max_puck_speed"]) * 1600
         self.collectable_reward += power_bonus
         print(f"time_bonus {time_bonus}")
         print(f"power_bonus {power_bonus}")
@@ -139,7 +139,7 @@ class ScoringPractice(Practice):
     def goal_failed(self):
         if "round_end" in self.events:
             if "2_scored" not in self.events:
-                self.collectable_reward += 2000
+                self.collectable_reward += 1600
             self.events = []
             return True
         else:

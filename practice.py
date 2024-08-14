@@ -30,6 +30,7 @@ class Practice(ABC):
         self.difficulty_increase = 0.0
         self.max_failure_atempts = 30
         self.max_level_fails = 3
+        self.regular_start = False
 
     def change_level(self):
         self.seed += 1

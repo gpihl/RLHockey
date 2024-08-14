@@ -42,7 +42,7 @@ class Puck:
         self.radius = self.base_radius
         self.exploding = False
 
-        if c.settings["is_training"]:
+        if c.settings["is_training"] and not (c.practice is not None and c.practice.regular_start):
             if c.practice is not None:
                 self.rot_vel = 0.0
                 self.pos = c.practice.get_puck_starting_pos()
@@ -53,7 +53,10 @@ class Puck:
             else:
                 self.pos = self.get_starting_pos_regular(last_scorer)
         else:
-            self.pos = self.get_starting_pos_regular(last_scorer)
+            if c.settings["is_training"]:
+                self.pos = self.get_starting_pos_regular(2)
+            else:
+                self.pos = self.get_starting_pos_regular(last_scorer)
 
     def get_starting_pos_random(self):
         starting_pos = np.array([random.uniform(2*self.radius, c.settings["field_width"] - 2*self.radius),

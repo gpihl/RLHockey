@@ -55,7 +55,7 @@ class Paddle:
         else:
             self.agent_control = c.settings["agent_control_regular"][agent_idx]
 
-        if c.settings["is_training"]:
+        if c.settings["is_training"] and not (c.practice is not None and c.practice.regular_start):
             if c.practice is not None:
                 self.pos = c.practice.get_paddle_starting_pos(self, g.game.puck)
             elif c.settings["random_starting_locations"]:
@@ -63,7 +63,10 @@ class Paddle:
             else:
                 self.pos = self.get_starting_pos_regular()
         else:
-            self.pos = self.get_starting_pos_regular()
+            if c.settings["is_training"] and self.model is None:
+                self.pos = c.practice.get_paddle_starting_pos(self, g.game.puck)
+            else:
+                self.pos = self.get_starting_pos_regular()
             if self.model is not None:
                 self.model.reset()
 
