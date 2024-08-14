@@ -5,6 +5,7 @@ import globals as g
 import constants as c
 import helpers as h
 import argparse
+from model import Model
 from paddle import Paddle
 from puck import Puck
 import cProfile
@@ -164,10 +165,15 @@ class Game:
         return self.is_done(scorer)
 
     def update(self, team_1_actions, team_2_actions):
-        c.settings["fps_multiplier"] = max(1, round(float(g.framework.get_fps()) / float(c.settings["fps"])))
+        # settings["original_delta_t"] / settings["fps"]
+
+        # c.settings["fps_multiplier"] = max(1, round(float(g.framework.get_fps()) / float(c.settings["fps"])))
         self.handle_game_paused()
         self.current_step += 1
         self.total_steps += 1
+        for paddle in self.paddles_1 + self.paddles_2:
+            if paddle.model is not None:
+                paddle.model.model_timer += c.settings["delta_t"]
         delta_t_temp = c.settings["delta_t"]
         num_updates = max(1, round(c.updates_per_delta_t * c.settings["delta_t"]))
         c.settings["delta_t"] /= num_updates

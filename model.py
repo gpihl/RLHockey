@@ -25,10 +25,12 @@ class Model:
         self.action_history = deque(maxlen=5)
         self.previous_action = None
         self.action_counter = 0
+        self.model_timer = 0.0
 
     def reset(self):
         self.action_counter = 0
         self.previous_action = None
+        self.model_timer = 0.0
 
     @staticmethod
     def get_algorithm(algorithm_name):
@@ -101,12 +103,18 @@ class Model:
                 json.dump(Reward.rewards, file)
 
     def get_action(self, observation):
-        if self.previous_action is None or self.action_counter % c.settings["fps_multiplier"] == 0 or c.settings["is_training"]:
+        model_update_time = c.settings["original_delta_t"] / c.settings["fps"]
+
+        if self.previous_action is None or c.settings["is_training"] or self.model_timer > model_update_time:
             model_action = self.model.predict(observation)[0]
             model_action = self.process_action(model_action)
             self.previous_action = model_action
             self.action_counter = 0
+            self.model_timer -= model_update_time
+            # print("new action")
         else:
+            # print("old action")
+            # print(self.model_timer)
             model_action = self.previous_action
 
         self.action_counter += 1
