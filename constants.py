@@ -78,7 +78,7 @@ training = {
     "algorithm": "PPO",
 }
 
-model_names = ["Temp", "Goalie", "Temp", "Goalie"]
+model_names = ["15Aug", "Goalie", "15Aug", "Goalie"]
 model_versions = [-1, -1, -1, -1]
 
 gameplay = {
@@ -90,8 +90,8 @@ gameplay = {
     "max_puck_speed": 75,
 }
 
-practice = None
-# practice = ScoringPractice()
+# practice = None
+practice = ScoringPractice()
 # practice = GoaliePractice()
 # practice = PuckFindingPractice()
 # practice = PassingPractice()
