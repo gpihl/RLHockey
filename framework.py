@@ -22,8 +22,8 @@ class Framework():
         self._initialized = True
 
         self.flags = pr.FLAG_MSAA_4X_HINT | pr.FLAG_WINDOW_RESIZABLE
-        if not c.settings["is_training"]:
-            self.flags |= pr.FLAG_VSYNC_HINT
+        # if not c.settings["is_training"]:
+        #     self.flags |= pr.FLAG_VSYNC_HINT
 
         self.current_resolution_idx = c.settings["resolution"]
         self.fullscreen = False

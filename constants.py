@@ -90,8 +90,8 @@ gameplay = {
     "max_puck_speed": 75,
 }
 
-# practice = None
-practice = ScoringPractice()
+practice = None
+# practice = ScoringPractice()
 # practice = GoaliePractice()
 # practice = PuckFindingPractice()
 # practice = PassingPractice()
