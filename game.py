@@ -12,6 +12,9 @@ import cProfile
 from reward import Reward
 from functools import reduce
 from collections import deque
+from scoring_practice import ScoringPractice
+from puck_finding_practice import PuckFindingPractice
+from goalie_practice import GoaliePractice
 
 class Game:
     _instance = None
@@ -652,6 +655,13 @@ if __name__ == "__main__":
     args = parser.parse_args()
     c.settings["team_size"] = args.number
     c.settings["is_training"] = args.training
+    if c.settings["is_training"]:
+        # c.practice = None
+        c.practice = ScoringPractice()
+        # c.practice = GoaliePractice()
+        # c.practice = PuckFindingPractice()
+        # c.practice = PassingPractice()
+
     c.settings["no_sound"] = args.training
     if args.control is not None:
         if c.settings["is_training"]:

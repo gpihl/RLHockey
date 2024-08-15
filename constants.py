@@ -1,7 +1,3 @@
-from scoring_practice import ScoringPractice
-from puck_finding_practice import PuckFindingPractice
-from goalie_practice import GoaliePractice
-
 resolutions = [
     (2560, 1440),
     (1920, 1080),
@@ -90,10 +86,6 @@ gameplay = {
     "max_puck_speed": 75,
 }
 
-# practice = None
-practice = ScoringPractice()
-# practice = GoaliePractice()
-# practice = PuckFindingPractice()
-# practice = PassingPractice()
+
 
 
