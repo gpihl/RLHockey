@@ -68,8 +68,8 @@ training = {
     "ent_coef": 0.02,
     # "ent_coef": 0.005,
     "n_steps": 4096,
-    "model_selection_variance_opponent": 0.0001,
-    "model_selection_variance_team": 0.0001,
+    "model_selection_variance_opponent": 0.3,
+    "model_selection_variance_team": 0.00001,
     "base_path": "models",
     "algorithm": "PPO",
 }

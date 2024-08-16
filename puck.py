@@ -53,10 +53,10 @@ class Puck:
             else:
                 self.pos = self.get_starting_pos_regular(last_scorer)
         else:
-            if c.settings["is_training"]:
-                self.pos = self.get_starting_pos_regular(2)
-            else:
-                self.pos = self.get_starting_pos_regular(last_scorer)
+            # if c.settings["is_training"]:
+            #     self.pos = self.get_starting_pos_regular(2)
+            # else:
+            self.pos = self.get_starting_pos_regular(last_scorer)
 
     def get_starting_pos_random(self):
         starting_pos = np.array([random.uniform(2*self.radius, c.settings["field_width"] - 2*self.radius),

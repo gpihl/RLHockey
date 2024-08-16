@@ -16,17 +16,17 @@ class GoaliePractice(Practice):
         self.consecutive_win_req = 4
         self.max_failure_atempts = 8
         self.name = "goalie"
-        c.settings["goal_2_blocked"] = True
-
+        # c.settings["goal_2_blocked"] = True
+        self.regular_start = True
 
         # self.reward = 0
         self.goal_reward = 800
         # self.level_reward = 0
 
-        c.training["learning_rate"] = 0.5e-4
-        c.training["ent_coef"] = 0.01
+        c.training["learning_rate"] = 0.3e-4
+        c.training["ent_coef"] = 0.001
 
-        c.model_names = ["Goalie", "15Aug", "15Aug", "Goalie"]
+        c.model_names = ["Goalie", "15Aug", "15Aug", "MixGoalie"]
 
         self.reward_structure = {
             "self_goal_prox": 3.0,

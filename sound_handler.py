@@ -274,7 +274,7 @@ class SoundHandler:
                 if channel is not None:
                     self.change_pan(channel, paddle.pos[0], volume)
                 else:
-                    self.play_sound(0.3, paddle.pos[0], sound_name, active=True)
+                    self.play_sound(0.23, paddle.pos[0], sound_name, active=True)
             elif channel is not None:
                 self.stop_sound(sound_name)
                 self.active_channels[sound_name] = None

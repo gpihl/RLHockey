@@ -19,11 +19,11 @@ class ScoringPractice(Practice):
         # c.settings["goal_1_blocked"] = True
 
         # self.reward = 0
-        # self.goal_reward = 4000
+        self.goal_reward = 7500
         # self.level_reward = 0
         self.regular_start = True
-        c.training["learning_rate"] = 1.0e-4
-        c.training["ent_coef"] = 0.01
+        c.training["learning_rate"] = 0.15e-4
+        c.training["ent_coef"] = 0.0005
 
         self.reward_structure = {
             # "puck_proximity": 0.5,
@@ -36,9 +36,9 @@ class ScoringPractice(Practice):
             # # "speed_dash": 0.5
         }
 
-        c.model_names = ["15Aug", "Goalie", "Goalie", "Goalie"]
+        c.model_names = ["15Aug", "Goalie", "MixScorer", "MixGoalie"]
 
-        c.settings["round_time"] = 8
+        c.settings["round_time"] = 60
         # c.settings["goal_1_blocked"] = True
 
     def init_params(self):
@@ -103,13 +103,14 @@ class ScoringPractice(Practice):
         return pos
 
     def handle_goal_achieved(self):
-        time_bonus = g.game.time_left() * 500
-        self.collectable_reward += time_bonus
-        power_bonus = (np.linalg.norm(g.game.puck.vel) / c.gameplay["max_puck_speed"]) * 1600
-        self.collectable_reward += power_bonus
-        print(f"time_bonus {time_bonus}")
-        print(f"power_bonus {power_bonus}")
-        # self.change_level()
+        # time_bonus = g.game.time_left() * 500
+        # self.collectable_reward += time_bonus
+        # power_bonus = (np.linalg.norm(g.game.puck.vel) / c.gameplay["max_puck_speed"]) * 1600
+        # self.collectable_reward += power_bonus
+        # print(f"time_bonus {time_bonus}")
+        # print(f"power_bonus {power_bonus}")
+        pass
+        # # self.change_level()
 
     def handle_goal_failed(self):
         # self.change_level()

@@ -173,7 +173,7 @@ class Paddle:
 
             sound_vel = c.gameplay["max_paddle_speed"] * self.dash_charge_power
             if self.agent_control == "human":
-                g.sound_handler.play_sound_velocity_based("dash", sound_vel, c.gameplay["max_paddle_speed"], 0.8, self.pos[0], exponent=2, pitch_shift=True)
+                g.sound_handler.play_sound_velocity_based("dash", sound_vel, c.gameplay["max_paddle_speed"], 0.85, self.pos[0], exponent=2, pitch_shift=True)
             self.dash_reward = self.dash_charge_power
             self.speed_dash_reward = self.dash_charge_power
 
